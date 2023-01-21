@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      background-color: grey;
+    }
+  </style>
+</head>
+<body>
+<script>
+
+var opened = false;
+var socket = null;
+
+const recvFn = (event) => {
+	console.log(event.data);
+};
+
+fetch("http://127.0.0.1:8000/register", {
+	method: 'POST',
+	headers: {
+		'Content-Type': 'application/json'
+	},
+	body: JSON.stringify({"user_id": 1})
+})
+.then(response => response.json())
+.then(result => {
+	socket = new WebSocket(result['url']);
+	//socket.onopen = (e) => {socket.send(JSON.stringify({"user_id": 1, topics: ["cats"], "message": "aaa"}));}
+	socket.onmessage = recvFn;
+	socket.onopen = ()=>opened=true;
+	socket.onclose = (event)=>{
+		opened=false;
+		console.log(event.wasClean ? "closed cleanly":"connection died");
+	}
+});
+
+document.addEventListener('keydown', (event) => {
+	if (!opened) return;
+
+	if (event.key == "ArrowUp"){
+		socket.send(JSON.stringify({"user_id": 1, topics: ["cats", "potatoes"], "message": "aaa"}));
+		socket.send("ping");
+	}
+});
+
+</script>
+</body>
+</html>
