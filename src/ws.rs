@@ -1,15 +1,10 @@
 use crate::{Client, Clients};
 use futures::{FutureExt, StreamExt};
-use serde::Deserialize;
-use serde_json::from_str;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::ws::{Message, WebSocket};
 
-#[derive(Deserialize, Debug)]
-pub struct TopicsRequest {
-	topics: Vec<String>,
-}
+use crate::game::handle_game_message;
 
 pub async fn client_connection(ws: WebSocket, id: String, clients: Clients, mut client: Client) {
 	let (client_ws_sender, mut client_ws_rcv) = ws.split();
@@ -42,30 +37,15 @@ pub async fn client_connection(ws: WebSocket, id: String, clients: Clients, mut 
 	println!("{} disconnected", id);
 }
 
-async fn client_msg(id: &str, msg: Message, clients: &Clients) {
-	println!("received message from {}: {:?}", id, msg);
+async fn client_msg(private_id: &str, msg: Message, clients: &Clients) {
+	println!("received message from {}: {:?}", private_id, msg);
 	let message = match msg.to_str() {
 		Ok(v) => v,
-		Err(_) => return,
-	};
-
-	if message == "ping" || message == "ping\n" {
-		println!("got ping");
-		let client = clients.read().await.get(id).cloned();
-		client.unwrap().sender.unwrap().send(Ok(Message::text("pong")));
-		return;
-	}
-
-	let topics_req: TopicsRequest = match from_str(&message) {
-		Ok(v) => v,
-		Err(e) => {
-			eprintln!("error while parsing message to topics request: {}", e);
+		Err(_) => {
+			eprintln!("msg.to_str failed");
 			return;
 		}
 	};
 
-	let mut locked = clients.write().await;
-	if let Some(v) = locked.get_mut(id) {
-		v.topics = topics_req.topics;
-	}
+	handle_game_message(private_id, message, clients).await;
 }

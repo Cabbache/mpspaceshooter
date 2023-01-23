@@ -5,15 +5,17 @@ use tokio::sync::{mpsc, RwLock};
 use warp::{ws::Message, Filter, Rejection};
 
 mod handler;
+mod game;
 mod ws;
+
+use crate::game::PlayerState;
 
 type Result<T> = std::result::Result<T, Rejection>;
 type Clients = Arc<RwLock<HashMap<String, Client>>>;
 
 #[derive(Debug, Clone)]
 pub struct Client {
-	pub user_id: usize,
-	pub topics: Vec<String>,
+	pub state: PlayerState,
 	pub sender: Option<mpsc::UnboundedSender<std::result::Result<Message, warp::Error>>>,
 }
 
@@ -39,11 +41,6 @@ async fn main() {
 		.and(warp::get())
 		.and_then(handler::serve_page);
 
-	let publish = warp::path!("publish")
-		.and(warp::body::json())
-		.and(with_clients(clients.clone()))
-		.and_then(handler::publish_handler);
-
 	let ws_route = warp::path("ws")
 		.and(warp::ws())
 		.and(warp::path::param())
@@ -53,7 +50,6 @@ async fn main() {
 	let routes = health_route
 		.or(register_routes)
 		.or(ws_route)
-		.or(publish)
 		.or(index)
 		.with(warp::cors().allow_any_origin());
 

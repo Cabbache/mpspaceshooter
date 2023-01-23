@@ -22,28 +22,42 @@ fetch("http://127.0.0.1:8000/register", {
 	headers: {
 		'Content-Type': 'application/json'
 	},
-	body: JSON.stringify({"user_id": 1})
+	body: "{}"
 })
 .then(response => response.json())
 .then(result => {
-	socket = new WebSocket(result['url']);
-	//socket.onopen = (e) => {socket.send(JSON.stringify({"user_id": 1, topics: ["cats"], "message": "aaa"}));}
+	socket = new WebSocket("ws://127.0.0.1:8000/ws/"+result['private']);
 	socket.onmessage = recvFn;
-	socket.onopen = ()=>opened=true;
+	socket.onopen = () => {
+		opened=true;
+		socket.send(JSON.stringify({"t":"StateQuery"}));
+	};
 	socket.onclose = (event)=>{
 		opened=false;
 		console.log(event.wasClean ? "closed cleanly":"connection died");
 	}
 });
 
-document.addEventListener('keydown', (event) => {
-	if (!opened) return;
+window.addEventListener('keydown', (event) => keyAction(event.repeat, event.keyCode, event.key, false));
+window.addEventListener('keyup', (event) => keyAction(event.repeat, event.keyCode, event.key, true));
 
-	if (event.key == "ArrowUp"){
-		socket.send(JSON.stringify({"user_id": 1, topics: ["cats", "potatoes"], "message": "aaa"}));
-		socket.send("ping");
+function keyAction(repeated, code, name, up){
+	if (!opened || repeated) return;
+
+	let goodKeys = ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"];
+	if (goodKeys.includes(name)){
+		socket.send("{\"z\":\"aa\"}");
+		socket.send(
+			JSON.stringify({
+				"t":"KeyUpdate",
+				"c":{
+					"keyname": name,
+					"up": up
+				 }
+			})
+		);
 	}
-});
+}
 
 </script>
 </body>
