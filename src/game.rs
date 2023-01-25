@@ -19,8 +19,8 @@ pub struct Color{
 pub struct PlayerState {
 	pub name: String,
 	pub public_id: String,
-	pub x: i32,
-	pub y: i32,
+	pub x: f32,
+	pub y: f32,
 	pub color: Color,
 	pub motion: MotionStart,
 }
@@ -68,9 +68,16 @@ pub enum ServerMessage{
 	BroadCast {message: ClientMessage, from: String}
 }
 
-//fn live_pos(pstate: PlayerState) -> (i32, i32){
-//	let now = Instant::now();
-//}
+fn live_pos(pstate: PlayerState) -> (i32, i32){
+	let mult = 9;
+	let now = Instant::now();
+	let diff = (now - pstate.motion.time).as_nanos();
+	eprintln!("{:?}",diff);
+	(0,0)
+	//match pstate.motion.direction {
+	//	MoveUp => (pstate.x, pstate.y+diff*)
+	//}
+}
 
 pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clients){
 	match from_str(message){
@@ -97,7 +104,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 
 					let readlock = clients.read().await;
 					let client = readlock.get(private_id).cloned().unwrap(); 
-					eprintln!("{:?}",client.state);
+					live_pos(client.state.clone());
 					let public_id = client.state.public_id;
 					let broadcast = to_string(&ServerMessage::BroadCast {message: v, from: public_id}).unwrap();
 					for (_, player) in readlock.iter(){

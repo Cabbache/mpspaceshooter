@@ -47,8 +47,8 @@ async fn register_client(private_id: String, public_id: String, clients: Clients
 			state: PlayerState{
 				name: "Bob".to_string(),
 				public_id: public_id,
-				x:0,
-				y:0,
+				x:0.0,
+				y:0.0,
 				color: Color{r:0,g:0,b:0},
 				motion: MotionStart{direction: PlayerMotion::Stopped, time: Instant::now()}
 			},
