@@ -1,9 +1,13 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 use crate::Clients;
-use serde::{Serialize,Deserialize};
+use serde::{Serialize,Deserialize,Serializer};
+use serde::ser::SerializeStruct;
 use serde_json::to_string;
 use serde_json::from_str;
 use warp::ws::Message;
+use std::time::Instant;
+//use std::hash::Hasher;
+//use std::hash::Hash;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Color{
@@ -12,14 +16,30 @@ pub struct Color{
 	pub b: i32,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct PlayerState {
 	pub name: String,
 	pub public_id: String,
 	pub x: i32,
 	pub y: i32,
 	pub color: Color,
-	pub keys: HashSet<GameKey>,
+	pub keys: HashMap<GameKey, Option<Instant>>,
+}
+
+impl Serialize for PlayerState {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: Serializer,
+	{
+		let mut state = serializer.serialize_struct("PlayerState", 6)?;
+		state.serialize_field("name", &self.name)?;
+		state.serialize_field("public_id", &self.public_id)?;
+		state.serialize_field("x", &self.x)?;
+		state.serialize_field("y", &self.y)?;
+		state.serialize_field("color", &self.color)?;
+		state.serialize_field("keys", &self.keys.keys().filter(|&k| self.keys[k].is_some()).collect::<Vec<_>>())?;
+		state.end()
+	}
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq, Hash, Copy)]
@@ -38,7 +58,7 @@ pub enum ClientMessage{
 	StateQuery,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Serialize, Debug)]
 #[serde(tag = "t", content = "c")]
 pub enum ServerMessage{
 	GameState(Vec<PlayerState>),
@@ -50,21 +70,37 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 		Ok(v) => match v{
 			ClientMessage::KeyUpdate { keyname, up } => {
 				eprintln!("got keyupdate from {}: {:?}, {}", private_id, keyname, up);
-				let has_effect = match clients.write().await.get_mut(private_id){
+				let action_required = match clients.read().await.get(private_id){
 					Some(v) => {
-						match up {
-							true => v.state.keys.remove(&keyname),
-							false => v.state.keys.insert(keyname)
+						let keystate = v.state.keys.get(&keyname);
+						match keystate.and_then(|k| k.as_ref()).is_none(){
+							true => !up,
+							false => up
 						}
 					},
 					_ => {
-						eprintln!("Can't get lock on clients");
+						eprintln!("Can't find client in hashmap");
 						false
 					}
 				};
-				if has_effect {
+				if action_required{
+					eprintln!("doing action");
+					match clients.write().await.get_mut(private_id){
+						Some(v) => v.state.keys.insert(keyname,
+							match up{
+								true => None,
+								false => Some(Instant::now())
+							}
+						),
+						_ => {
+							eprintln!("Can't get write lock on clients");
+							None
+						}
+					};
+
 					let readlock = clients.read().await;
 					let client = readlock.get(private_id).cloned().unwrap(); 
+					eprintln!("{:?}",client.state);
 					let public_id = client.state.public_id;
 					let broadcast = to_string(&ServerMessage::BroadCast {message: v, from: public_id}).unwrap();
 					for (_, player) in readlock.iter(){
@@ -85,23 +121,4 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 		}
 		_ => eprintln!("got something weird: {}", message),
 	};
-	//let topics_req: TopicsRequest = match from_str(&message) {
-	//	Ok(v) => v,
-	//	Err(e) => {
-	//		eprintln!("error while parsing message to topics request: {}", e);
-	//		return;
-	//	}
-	//};
-
-	//if message == "ping" || message == "ping\n" {
-	//	println!("got ping");
-	//	let client = clients.read().await.get(id).cloned();
-	//	client.unwrap().sender.unwrap().send(Ok(Message::text("pong")));
-	//	return;
-	//}
-
-	//let mut locked = clients.write().await;
-	//if let Some(v) = locked.get_mut(id) {
-	//	v.topics = topics_req.topics;
-	//}
 }

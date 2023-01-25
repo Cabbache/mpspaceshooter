@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 use crate::{ws, Client, Clients, Result};
 use serde::{Serialize};
 use serde_json::Value;
@@ -42,7 +42,7 @@ async fn register_client(private_id: String, public_id: String, clients: Clients
 	clients.write().await.insert(
 		private_id,
 		Client {
-			state: PlayerState{name: "Bob".to_string(), public_id: public_id, x:0, y:0, color: Color{r:0,g:0,b:0}, keys: HashSet::new()},
+			state: PlayerState{name: "Bob".to_string(), public_id: public_id, x:0, y:0, color: Color{r:0,g:0,b:0}, keys: HashMap::new()},
 			sender: None,
 		},
 	);
