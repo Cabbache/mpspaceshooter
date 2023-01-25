@@ -122,12 +122,12 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 					match clients.write().await.get_mut(private_id){
 						Some(v) => {
 							let (nx,ny) = live_pos(&v.state);
+							v.state.x = nx;
+							v.state.y = ny;
 							v.state.motion = MotionStart{
 								direction: motion,
 								time: Instant::now()
 							};
-							v.state.x = nx;
-							v.state.y = ny;
 						},
 						_ => {
 							eprintln!("Can't get write lock on clients");

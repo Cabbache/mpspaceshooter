@@ -56,7 +56,7 @@ function keyAction(repeated, code, name, up){
 			JSON.stringify({
 				"t":"MotionUpdate",
 				"c":{
-					"motion": dict[name],
+					"motion": up ? "Stopped":dict[name],
 				 }
 			})
 		);
