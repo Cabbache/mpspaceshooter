@@ -45,14 +45,18 @@ function keyAction(repeated, code, name, up){
 	if (!opened || repeated) return;
 
 	let goodKeys = ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"];
+	let dict = {
+		"ArrowUp": "MoveUp",
+		"ArrowDown": "MoveDown",
+		"ArrowLeft": "MoveLeft",
+		"ArrowRight": "MoveRight",
+	}
 	if (goodKeys.includes(name)){
-		socket.send("{\"z\":\"aa\"}");
 		socket.send(
 			JSON.stringify({
-				"t":"KeyUpdate",
+				"t":"MotionUpdate",
 				"c":{
-					"keyname": name,
-					"up": up
+					"motion": dict[name],
 				 }
 			})
 		);

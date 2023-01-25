@@ -1,13 +1,15 @@
-use std::collections::HashMap;
 use crate::{ws, Client, Clients, Result};
 use serde::{Serialize};
 use serde_json::Value;
 use uuid::Uuid;
 use warp::{http::StatusCode, reply::json, Reply};
 use std::fs;
+use std::time::Instant;
 
 use crate::PlayerState;
 use crate::game::Color;
+use crate::game::MotionStart;
+use crate::game::PlayerMotion;
 
 #[derive(Serialize, Debug)]
 pub struct RegisterResponse {
@@ -42,7 +44,14 @@ async fn register_client(private_id: String, public_id: String, clients: Clients
 	clients.write().await.insert(
 		private_id,
 		Client {
-			state: PlayerState{name: "Bob".to_string(), public_id: public_id, x:0, y:0, color: Color{r:0,g:0,b:0}, keys: HashMap::new()},
+			state: PlayerState{
+				name: "Bob".to_string(),
+				public_id: public_id,
+				x:0,
+				y:0,
+				color: Color{r:0,g:0,b:0},
+				motion: MotionStart{direction: PlayerMotion::Stopped, time: Instant::now()}
+			},
 			sender: None,
 		},
 	);
