@@ -3,10 +3,13 @@ use futures::{FutureExt, StreamExt};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::ws::{Message, WebSocket};
+use xxhash_rust::xxh3::xxh3_64;
 
 use crate::game::handle_game_message;
+use crate::game::ServerMessage;
+use crate::game::broadcast;
 
-pub async fn client_connection(ws: WebSocket, id: String, clients: Clients, mut client: Client) {
+pub async fn client_connection(ws: WebSocket, private_id: String, clients: Clients, mut client: Client) {
 	let (client_ws_sender, mut client_ws_rcv) = ws.split();
 	let (client_sender, client_rcv) = mpsc::unbounded_channel();
 
@@ -18,23 +21,35 @@ pub async fn client_connection(ws: WebSocket, id: String, clients: Clients, mut 
 	}));
 
 	client.sender = Some(client_sender);
-	clients.write().await.insert(id.clone(), client);
 
-	println!("{} connected", id);
+	broadcast(
+		&ServerMessage::PlayerJoin(client.state.clone()),
+		&clients
+	).await;
+
+	clients.write().await.insert(private_id.clone(), client);
+
+	println!("{} connected", private_id);
 
 	while let Some(result) = client_ws_rcv.next().await {
 		let msg = match result {
 			Ok(msg) => msg,
 			Err(e) => {
-				eprintln!("error receiving ws message for id: {}): {}", id.clone(), e);
+				eprintln!("error receiving ws message for id: {}): {}", private_id.clone(), e);
 				break;
 			}
 		};
-		client_msg(&id, msg, &clients).await;
+		client_msg(&private_id, msg, &clients).await;
 	}
 
-	clients.write().await.remove(&id);
-	println!("{} disconnected", id);
+	broadcast(
+		&ServerMessage::PlayerLeave(
+			format!("{:x}", xxh3_64(private_id.as_bytes()))
+		),
+		&clients
+	).await;
+	clients.write().await.remove(&private_id);
+	println!("{} disconnected", private_id);
 }
 
 async fn client_msg(private_id: &str, msg: Message, clients: &Clients) {

@@ -57,7 +57,7 @@ async fn main() {
 	//.tls()
 	//.cert_path("cert.pem")
 	//.key_path("key.rsa")
-	.run(([127, 0, 0, 1], 8000)).await;
+	.run(([0, 0, 0, 0], 8000)).await;
 }
 
 fn with_clients(clients: Clients) -> impl Filter<Extract = (Clients,), Error = Infallible> + Clone {

@@ -8,13 +8,34 @@
   </style>
 </head>
 <body>
+<canvas id="gameCanvas" width="1000" height="500"></canvas>
 <script>
+
+const invr2 = 0.7071067811865475;
 
 var opened = false;
 var socket = null;
+var gameState = {};
 
 const recvFn = (event) => {
-	console.log(event.data);
+	console.log("receive: " + event.data);
+	let data = JSON.parse(event.data);
+	let datatype = data["t"];
+	let content = data["c"];
+	if (datatype == "GameState"){
+		gameState = content;
+	} else if (datatype == "BroadCast") {
+		if (content["message"]["t"] == "MotionUpdate"){
+			let player = content["from"];
+			for (let i = 0;i < gameState.length;++i){
+				if (gameState[i].public_id == player){
+					console.log("updated motion to " + content.message.c.motion);
+					gameState[i].motion.direction = content.message.c.motion;
+					break;
+				}
+			}
+		}
+	}
 };
 
 fetch("http://127.0.0.1:8000/register", {
@@ -41,27 +62,90 @@ fetch("http://127.0.0.1:8000/register", {
 window.addEventListener('keydown', (event) => keyAction(event.repeat, event.keyCode, event.key, false));
 window.addEventListener('keyup', (event) => keyAction(event.repeat, event.keyCode, event.key, true));
 
+let keymap = {
+	"ArrowUp": false,
+	"ArrowDown": false,
+	"ArrowLeft": false,
+	"ArrowRight": false
+};
+
 function keyAction(repeated, code, name, up){
 	if (!opened || repeated) return;
 
 	let goodKeys = ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"];
-	let dict = {
-		"ArrowUp": "MoveUp",
-		"ArrowDown": "MoveDown",
-		"ArrowLeft": "MoveLeft",
-		"ArrowRight": "MoveRight",
+	if (!goodKeys.includes(name)) //some other key was pressed
+		return;
+	keymap[name] = !up;
+	let response = "";
+	if (keymap["ArrowUp"] && keymap["ArrowRight"]){
+		response = "MoveUpRight";
+	} else if (keymap["ArrowUp"] && keymap["ArrowLeft"]){
+		response = "MoveUpLeft";
+	} else if (keymap["ArrowUp"]){
+		response = "MoveUp";
+	}else if (keymap["ArrowDown"] && keymap["ArrowRight"]){
+		response = "MoveDownRight";
+	} else if (keymap["ArrowDown"] && keymap["ArrowLeft"]){
+		response = "MoveDownLeft";
+	} else if (keymap["ArrowDown"]){
+		response = "MoveDown";
+	} else if (keymap["ArrowLeft"]){
+		response = "MoveLeft";
+	} else if (keymap["ArrowRight"]){
+		response = "MoveRight";
+	} else {
+		response = "Stopped";
 	}
-	if (goodKeys.includes(name)){
-		socket.send(
-			JSON.stringify({
-				"t":"MotionUpdate",
-				"c":{
-					"motion": up ? "Stopped":dict[name],
-				 }
-			})
-		);
-	}
+	socket.send(
+		JSON.stringify({
+			"t":"MotionUpdate",
+			"c":{
+				"motion": response,
+			 }
+		})
+	);
 }
+
+var canvas = document.getElementById("gameCanvas");
+var ctx = canvas.getContext("2d");
+ctx.fillStyle = "lime";
+setInterval(function () {
+	ctx.clearRect(0,0,canvas.width,canvas.height);
+	for (let i = 0;i < gameState.length;++i){
+		let player = gameState[i];
+		ctx.beginPath();
+		ctx.rect(player.x, player.y, 100, 100);
+		ctx.fill();
+
+		switch (player.motion.direction){
+			case "MoveUp":
+				player.y-=5;break;
+			case "MoveDown":
+				player.y+=5;break;
+			case "MoveLeft":
+				player.x-=5;break;
+			case "MoveRight":
+				player.x+=5;break;
+			case "MoveUpRight":
+				player.x += 5 * invr2;
+				player.y -= 5 * invr2;
+				break;
+			case "MoveDownRight":
+				player.x += 5 * invr2;
+				player.y += 5 * invr2;
+				break;
+			case "MoveDownLeft":
+				player.x -= 5 * invr2;
+				player.y += 5 * invr2;
+				break;
+			case "MoveUpLeft":
+				player.x -= 5 * invr2;
+				player.y -= 5 * invr2;
+				break;
+			default:
+		}
+	}
+}, 50);
 
 </script>
 </body>

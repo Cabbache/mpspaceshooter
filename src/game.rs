@@ -7,6 +7,7 @@ use warp::ws::Message;
 use num_traits::checked_pow;
 use std::time::Instant;
 use std::f32::consts::FRAC_1_SQRT_2;
+use xxhash_rust::xxh3::xxh3_64;
 
 const UNITS_PER_SECOND: f32 = 30.0;
 
@@ -84,7 +85,23 @@ pub enum ClientMessage{
 #[serde(tag = "t", content = "c")]
 pub enum ServerMessage{
 	GameState(Vec<PlayerState>),
-	BroadCast {message: ClientMessage, from: String}
+	PlayerJoin(PlayerState),
+	PlayerLeave(String),
+	BroadCast {message: ClientMessage, from: String},
+}
+
+pub async fn broadcast(msg: &ServerMessage, clients: &Clients){
+	let serialized_msg = to_string(msg).unwrap();
+	for (_, player) in clients.read().await.iter(){
+		let ch = player.sender.as_ref();
+		match ch{
+			Some(sender) => match sender.send(Ok(Message::text(serialized_msg.clone()))){
+				Err(e) => eprintln!("Sending failed: {}", e),
+				_ => {}
+			},
+			None => {}
+		}
+	}
 }
 
 fn live_pos(pstate: &PlayerState) -> (f32, f32){
@@ -134,13 +151,9 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 						}
 					};
 
-					let readlock = clients.read().await;
-					let client = readlock.get(private_id).cloned().unwrap(); 
-					let public_id = client.state.public_id;
-					let broadcast = to_string(&ServerMessage::BroadCast {message: v, from: public_id}).unwrap();
-					for (_, player) in readlock.iter(){
-						player.sender.as_ref().unwrap().send(Ok(Message::text(broadcast.clone()))).unwrap();
-					}
+					let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
+					let msg = ServerMessage::BroadCast {message: v, from: public_id};
+					broadcast(&msg, clients).await;
 				}
 			},
 			ClientMessage::StateQuery => {

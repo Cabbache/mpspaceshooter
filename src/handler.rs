@@ -2,6 +2,7 @@ use crate::{ws, Client, Clients, Result};
 use serde::{Serialize};
 use serde_json::Value;
 use uuid::Uuid;
+use xxhash_rust::xxh3::xxh3_64;
 use warp::{http::StatusCode, reply::json, Reply};
 use std::fs;
 use std::time::Instant;
@@ -13,24 +14,23 @@ use crate::game::PlayerMotion;
 
 #[derive(Serialize, Debug)]
 pub struct RegisterResponse {
-	//url: String,
 	public: String,
 	private: String,
 }
 
 pub async fn register_handler(_body: Value, clients: Clients) -> Result<impl Reply> {
 	let private_uuid = Uuid::new_v4().as_simple().to_string();
-	let public_uuid = Uuid::new_v4().as_simple().to_string();
+	let public_id = format!("{:x}", xxh3_64(private_uuid.as_bytes()));
+	eprintln!("pub uuid: {}", public_id);
 
 	println!("got reg");
 	register_client(
 		private_uuid.clone(),
-		public_uuid.clone(),
+		public_id.clone(),
 		clients,
 	).await;
 	Ok(json(&RegisterResponse {
-		//url: format!("ws://127.0.0.1:8000/ws/{}", uuid),
-		public: public_uuid,
+		public: public_id,
 		private: private_uuid,
 	}))
 }
