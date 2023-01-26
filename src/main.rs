@@ -40,6 +40,9 @@ async fn main() {
 	let index = warp::path("index.html")
 		.and(warp::get())
 		.and_then(handler::serve_page);
+	
+	let assets = warp::path("static")
+		.and(warp::fs::dir("client"));
 
 	let ws_route = warp::path("ws")
 		.and(warp::ws())
@@ -51,6 +54,7 @@ async fn main() {
 		.or(register_routes)
 		.or(ws_route)
 		.or(index)
+		.or(assets)
 		.with(warp::cors().allow_any_origin());
 
 	warp::serve(routes)
