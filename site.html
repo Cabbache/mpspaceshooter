@@ -96,11 +96,17 @@
 	}
 
 	const handle_playerleave = function(content){
-		for (let player of gameState){
-			if (player.p.public_id == content){
-				app.stage.removeChild(player.graphics);
-			}
+		let toremove = -1;
+		for (let i = 0;i < gameState.length;++i){
+			if (gameState[i].p.public_id != content)
+				continue;
+			app.stage.removeChild(gameState[i].graphics);
+			toremove = i;
 		}
+		if (toremove == -1){
+			console.error("Cant find player to remove on leave");
+		}
+		gameState.splice(toremove, 1);
 	}
 
 	const recvFn = function(event) {
@@ -115,6 +121,7 @@
 			case "PlayerLeave": handle_playerleave(content); break;
 			default: console.error("received uknown server message");break;
 		}
+		console.log("gamestate: " + gameState.map((f) => JSON.stringify(f.p)));
 	};
 
 	const keyAction = function (repeated, name, up){
