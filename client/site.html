@@ -62,8 +62,10 @@
 		gameState = state.map((p) => {
 			const square = new PIXI.Graphics();
 			square.beginFill(0xff9900);
-			square.drawRect(p.x, p.y, 50, 50);
+			square.drawRect(0, 0, 50, 50);
 			square.endFill();
+			square.x = p.x;
+			square.y = p.y;
 			app.stage.addChild(square);
 			return {
 				graphics: square,
@@ -78,6 +80,7 @@
 			if (gameState[i].p.public_id == broadcaster){
 				console.log("updated motion to " + content.direction);
 				gameState[i].p.motion.direction = content.direction;
+				console.log(`server: (${content.x},${content.y})\nactual: (${gameState[i].graphics.x},${gameState[i].graphics.y})`)
 				gameState[i].graphics.x = content.x;
 				gameState[i].graphics.y = content.y;
 				break;
@@ -88,8 +91,10 @@
 	const handle_playerjoin = function(content){
 		const square = new PIXI.Graphics();
 		square.beginFill(0xff9900);
-		square.drawRect(content.x, content.y, 50, 50);
+		square.drawRect(0, 0, 50, 50);
 		square.endFill();
+		square.x = content.x;
+		square.y = content.y;
 		app.stage.addChild(square);
 		gameState.push({
 			graphics: square,
