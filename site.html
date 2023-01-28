@@ -1,152 +1,211 @@
-<!DOCTYPE html>
+<!DOCTYPE HTML>
 <html>
 <head>
-  <style>
-    body {
-      background-color: grey;
-    }
-  </style>
+	<title>pixi.js example 13 - Graphics</title>
+	<style>
+		body {
+			margin: 0;
+			padding: 0;
+			overflow: hidden;
+			background-color: #000000;
+		}
+	</style>
+	
+	<script src="static/pixi.js"></script>
 </head>
 <body>
-<canvas id="gameCanvas" width="1000" height="500"></canvas>
-<script src="static/pixi.min.js" />
 <script>
+	var gameState = [];
+	var socket = null;
+	var opened = false;
+	var keymap = {
+		"ArrowUp": false,
+		"ArrowDown": false,
+		"ArrowLeft": false,
+		"ArrowRight": false
+	};
+	const app = new PIXI.Application({
+			width: window.innerWidth,
+			height: window.innerHeight,
+			backgroundColor: 0x101010
+	});
 
-const invr2 = 0.7071067811865475;
+	const invr2 = 0.7071067811865475;
 
-var opened = false;
-var socket = null;
-var gameState = {};
+	const openWebSocket = function(){
+		fetch("http://127.0.0.1:8000/register", {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: "{}"
+		})
+		.then(response => response.json())
+		.then(result => {
+			socket = new WebSocket("ws://127.0.0.1:8000/ws/"+result['private']);
+			socket.onmessage = recvFn;
+			socket.onopen = () => {
+				opened=true;
+				socket.send(JSON.stringify({"t":"StateQuery"}));
+			};
+			socket.onclose = (event)=>{
+				opened=false;
+				console.log(event.wasClean ? "closed cleanly":"connection died");
+			}
+		});
+	};
 
-const recvFn = (event) => {
-	console.log("receive: " + event.data);
-	let data = JSON.parse(event.data);
-	let datatype = data["t"];
-	let content = data["c"];
-	if (datatype == "GameState"){
-		gameState = content;
-	} else if (datatype == "BroadCast") {
+	const handle_gamestate = function(state){
+		for (var i = app.stage.children.length - 1; i >= 0; i--) {	app.stage.removeChild(app.stage.children[i]);};
+		gameState = state.map((p) => {
+			const square = new PIXI.Graphics();
+			square.beginFill(0xff9900);
+			square.drawRect(p.x, p.y, 50, 50);
+			square.endFill();
+			app.stage.addChild(square);
+			return {
+				graphics: square,
+				p: p
+			};
+		});	
+	};
+
+	const handle_broadcast = function(content){
 		if (content["message"]["t"] == "MotionUpdate"){
-			let player = content["from"];
+			let broadcaster = content["from"];
 			for (let i = 0;i < gameState.length;++i){
-				if (gameState[i].public_id == player){
+				if (gameState[i].p.public_id == broadcaster){
 					console.log("updated motion to " + content.message.c.motion);
-					gameState[i].motion.direction = content.message.c.motion;
+					gameState[i].p.motion.direction = content.message.c.motion;
 					break;
 				}
 			}
 		}
 	}
-};
 
-fetch("http://127.0.0.1:8000/register", {
-	method: 'POST',
-	headers: {
-		'Content-Type': 'application/json'
-	},
-	body: "{}"
-})
-.then(response => response.json())
-.then(result => {
-	socket = new WebSocket("ws://127.0.0.1:8000/ws/"+result['private']);
-	socket.onmessage = recvFn;
-	socket.onopen = () => {
-		opened=true;
-		socket.send(JSON.stringify({"t":"StateQuery"}));
-	};
-	socket.onclose = (event)=>{
-		opened=false;
-		console.log(event.wasClean ? "closed cleanly":"connection died");
+	const handle_playerjoin = function(content){
+		const square = new PIXI.Graphics();
+		square.beginFill(0xff9900);
+		square.drawRect(content.x, content.y, 50, 50);
+		square.endFill();
+		app.stage.addChild(square);
+		gameState.push({
+			graphics: square,
+			p: content
+		});
 	}
-});
 
-window.addEventListener('keydown', (event) => keyAction(event.repeat, event.keyCode, event.key, false));
-window.addEventListener('keyup', (event) => keyAction(event.repeat, event.keyCode, event.key, true));
-
-let keymap = {
-	"ArrowUp": false,
-	"ArrowDown": false,
-	"ArrowLeft": false,
-	"ArrowRight": false
-};
-
-function keyAction(repeated, code, name, up){
-	if (!opened || repeated) return;
-
-	let goodKeys = ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"];
-	if (!goodKeys.includes(name)) //some other key was pressed
-		return;
-	keymap[name] = !up;
-	let response = "";
-	if (keymap["ArrowUp"] && keymap["ArrowRight"]){
-		response = "MoveUpRight";
-	} else if (keymap["ArrowUp"] && keymap["ArrowLeft"]){
-		response = "MoveUpLeft";
-	} else if (keymap["ArrowUp"]){
-		response = "MoveUp";
-	}else if (keymap["ArrowDown"] && keymap["ArrowRight"]){
-		response = "MoveDownRight";
-	} else if (keymap["ArrowDown"] && keymap["ArrowLeft"]){
-		response = "MoveDownLeft";
-	} else if (keymap["ArrowDown"]){
-		response = "MoveDown";
-	} else if (keymap["ArrowLeft"]){
-		response = "MoveLeft";
-	} else if (keymap["ArrowRight"]){
-		response = "MoveRight";
-	} else {
-		response = "Stopped";
-	}
-	socket.send(
-		JSON.stringify({
-			"t":"MotionUpdate",
-			"c":{
-				"motion": response,
-			 }
-		})
-	);
-}
-
-var canvas = document.getElementById("gameCanvas");
-var ctx = canvas.getContext("2d");
-ctx.fillStyle = "lime";
-setInterval(function () {
-	ctx.clearRect(0,0,canvas.width,canvas.height);
-	for (let i = 0;i < gameState.length;++i){
-		let player = gameState[i];
-		ctx.beginPath();
-		ctx.rect(player.x, player.y, 100, 100);
-		ctx.fill();
-
-		switch (player.motion.direction){
-			case "MoveUp":
-				player.y-=5;break;
-			case "MoveDown":
-				player.y+=5;break;
-			case "MoveLeft":
-				player.x-=5;break;
-			case "MoveRight":
-				player.x+=5;break;
-			case "MoveUpRight":
-				player.x += 5 * invr2;
-				player.y -= 5 * invr2;
-				break;
-			case "MoveDownRight":
-				player.x += 5 * invr2;
-				player.y += 5 * invr2;
-				break;
-			case "MoveDownLeft":
-				player.x -= 5 * invr2;
-				player.y += 5 * invr2;
-				break;
-			case "MoveUpLeft":
-				player.x -= 5 * invr2;
-				player.y -= 5 * invr2;
-				break;
-			default:
+	const handle_playerleave = function(content){
+		for (let player of gameState){
+			if (player.p.public_id == content){
+				app.stage.removeChild(player.graphics);
+			}
 		}
 	}
-}, 50);
+
+	const recvFn = function(event) {
+		console.log("receive: " + event.data);
+		let data = JSON.parse(event.data);
+		let datatype = data["t"];
+		let content = data["c"];
+		switch (datatype){
+			case "GameState": handle_gamestate(content); break;
+			case "BroadCast": handle_broadcast(content); break;
+			case "PlayerJoin": handle_playerjoin(content); break;
+			case "PlayerLeave": handle_playerleave(content); break;
+			default: console.error("received uknown server message");break;
+		}
+	};
+
+	const keyAction = function (repeated, name, up){
+		if (!opened || repeated) return;
+
+		let goodKeys = ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"];
+		if (!goodKeys.includes(name))
+			return;
+		keymap[name] = !up;
+
+		let response = "";
+		if (keymap["ArrowUp"] && keymap["ArrowRight"]){
+			response = "MoveUpRight";
+		} else if (keymap["ArrowUp"] && keymap["ArrowLeft"]){
+			response = "MoveUpLeft";
+		} else if (keymap["ArrowUp"]){
+			response = "MoveUp";
+		}else if (keymap["ArrowDown"] && keymap["ArrowRight"]){
+			response = "MoveDownRight";
+		} else if (keymap["ArrowDown"] && keymap["ArrowLeft"]){
+			response = "MoveDownLeft";
+		} else if (keymap["ArrowDown"]){
+			response = "MoveDown";
+		} else if (keymap["ArrowLeft"]){
+			response = "MoveLeft";
+		} else if (keymap["ArrowRight"]){
+			response = "MoveRight";
+		} else {
+			response = "Stopped";
+		}
+		socket.send(
+			JSON.stringify({
+				"t":"MotionUpdate",
+				"c":{
+					"motion": response,
+				 }
+			})
+		);
+	};
+
+
+	document.body.appendChild(app.view);
+
+	openWebSocket();
+
+	// Define the speed and direction of the square's movement
+	let speed = 2;
+
+	const ticker = PIXI.Ticker.shared.add(delta => {
+		for (let player of gameState){
+			switch (player.p.motion.direction){
+				case "MoveUp":
+					player.graphics.y -= speed * delta;break;
+				case "MoveDown":
+					player.graphics.y += speed * delta;break;
+				case "MoveLeft":
+					player.graphics.x -= speed * delta;break;
+				case "MoveRight":
+					player.graphics.x += speed * delta;break;
+				case "MoveUpRight":
+					player.graphics.x += speed * delta * invr2;
+					player.graphics.y -= speed * delta * invr2;
+					break;
+				case "MoveDownRight":
+					player.graphics.x += speed * delta * invr2;
+					player.graphics.y += speed * delta * invr2;
+					break;
+				case "MoveDownLeft":
+					player.graphics.x -= speed * delta * invr2;
+					player.graphics.y += speed * delta * invr2;
+					break;
+				case "MoveUpLeft":
+					player.graphics.x -= speed * delta * invr2;
+					player.graphics.y -= speed * delta * invr2;
+					break;
+				default:
+			}
+		}
+	});
+
+	ticker.speed = 1;
+	ticker.minFPS = 20;
+	ticker.maxFPS = 60;
+	ticker.start();
+
+	window.addEventListener("resize", function(){
+    app.renderer.resize(window.innerWidth, window.innerHeight);
+	});
+
+	window.addEventListener('keydown', (event) => keyAction(event.repeat, event.key, false));
+	window.addEventListener('keyup', (event) => keyAction(event.repeat, event.key, true));
 
 </script>
 </body>
