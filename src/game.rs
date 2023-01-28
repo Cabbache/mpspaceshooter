@@ -87,7 +87,7 @@ pub enum ServerMessage{
 	GameState(Vec<PlayerState>),
 	PlayerJoin(PlayerState),
 	PlayerLeave(String),
-	BroadCast {message: ClientMessage, from: String},
+	MotionUpdate {direction: PlayerMotion, from: String, x: f32, y: f32},
 }
 
 pub async fn broadcast(msg: &ServerMessage, clients: &Clients){
@@ -128,8 +128,12 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 		Ok(v) => match v{
 			ClientMessage::MotionUpdate { motion } => {
 				eprintln!("got keyupdate from {}: {:?}", private_id, motion);
+				let (mut nx, mut ny) = (0.0,0.0);
 				let action_required = match clients.read().await.get(private_id){
-					Some(v) => v.state.motion.direction != motion,
+					Some(v) => {
+						(nx, ny) = live_pos(&v.state);
+						v.state.motion.direction != motion
+					},
 					_ => {
 						eprintln!("Can't find client in hashmap");
 						false
@@ -138,7 +142,6 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				if action_required{
 					match clients.write().await.get_mut(private_id){
 						Some(v) => {
-							let (nx,ny) = live_pos(&v.state);
 							v.state.x = nx;
 							v.state.y = ny;
 							v.state.motion = MotionStart{
@@ -147,12 +150,17 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 							};
 						},
 						_ => {
-							eprintln!("Can't get write lock on clients");
+							eprintln!("Can't get write lock on clients in motionupdate");
 						}
 					};
 
 					let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
-					let msg = ServerMessage::BroadCast {message: v, from: public_id};
+					let msg = ServerMessage::MotionUpdate {
+						direction: motion,
+						from: public_id,
+						x: nx,
+						y: ny,
+					};
 					broadcast(&msg, clients).await;
 				}
 			},

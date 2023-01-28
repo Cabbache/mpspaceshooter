@@ -70,15 +70,15 @@
 		});	
 	};
 
-	const handle_broadcast = function(content){
-		if (content["message"]["t"] == "MotionUpdate"){
-			let broadcaster = content["from"];
-			for (let i = 0;i < gameState.length;++i){
-				if (gameState[i].p.public_id == broadcaster){
-					console.log("updated motion to " + content.message.c.motion);
-					gameState[i].p.motion.direction = content.message.c.motion;
-					break;
-				}
+	const handle_motionupdate = function(content){
+		let broadcaster = content["from"];
+		for (let i = 0;i < gameState.length;++i){
+			if (gameState[i].p.public_id == broadcaster){
+				console.log("updated motion to " + content.direction);
+				gameState[i].p.motion.direction = content.direction;
+				gameState[i].graphics.x = content.x;
+				gameState[i].graphics.y = content.y;
+				break;
 			}
 		}
 	}
@@ -116,7 +116,7 @@
 		let content = data["c"];
 		switch (datatype){
 			case "GameState": handle_gamestate(content); break;
-			case "BroadCast": handle_broadcast(content); break;
+			case "MotionUpdate": handle_motionupdate(content); break;
 			case "PlayerJoin": handle_playerjoin(content); break;
 			case "PlayerLeave": handle_playerleave(content); break;
 			default: console.error("received uknown server message");break;
@@ -152,6 +152,7 @@
 		} else {
 			response = "Stopped";
 		}
+		console.log("sending " + response);
 		socket.send(
 			JSON.stringify({
 				"t":"MotionUpdate",
