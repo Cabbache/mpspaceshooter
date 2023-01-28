@@ -168,34 +168,35 @@
 	openWebSocket();
 
 	// Define the speed and direction of the square's movement
-	let speed = 2;
+	let speed = 200;
 
 	const ticker = PIXI.Ticker.shared.add(delta => {
+		const deltaTime = delta / (1000*PIXI.settings.TARGET_FPMS);
 		for (let player of gameState){
 			switch (player.p.motion.direction){
 				case "MoveUp":
-					player.graphics.y -= speed * delta;break;
+					player.graphics.y -= speed * deltaTime;break;
 				case "MoveDown":
-					player.graphics.y += speed * delta;break;
+					player.graphics.y += speed * deltaTime;break;
 				case "MoveLeft":
-					player.graphics.x -= speed * delta;break;
+					player.graphics.x -= speed * deltaTime;break;
 				case "MoveRight":
-					player.graphics.x += speed * delta;break;
+					player.graphics.x += speed * deltaTime;break;
 				case "MoveUpRight":
-					player.graphics.x += speed * delta * invr2;
-					player.graphics.y -= speed * delta * invr2;
+					player.graphics.x += speed * deltaTime * invr2;
+					player.graphics.y -= speed * deltaTime * invr2;
 					break;
 				case "MoveDownRight":
-					player.graphics.x += speed * delta * invr2;
-					player.graphics.y += speed * delta * invr2;
+					player.graphics.x += speed * deltaTime * invr2;
+					player.graphics.y += speed * deltaTime * invr2;
 					break;
 				case "MoveDownLeft":
-					player.graphics.x -= speed * delta * invr2;
-					player.graphics.y += speed * delta * invr2;
+					player.graphics.x -= speed * deltaTime * invr2;
+					player.graphics.y += speed * deltaTime * invr2;
 					break;
 				case "MoveUpLeft":
-					player.graphics.x -= speed * delta * invr2;
-					player.graphics.y -= speed * delta * invr2;
+					player.graphics.x -= speed * deltaTime * invr2;
+					player.graphics.y -= speed * deltaTime * invr2;
 					break;
 				default:
 			}
@@ -203,7 +204,7 @@
 	});
 
 	ticker.speed = 1;
-	ticker.minFPS = 20;
+	ticker.minFPS = 30;
 	ticker.maxFPS = 60;
 	ticker.start();
 

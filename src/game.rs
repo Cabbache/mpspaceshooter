@@ -9,7 +9,7 @@ use std::time::Instant;
 use std::f32::consts::FRAC_1_SQRT_2;
 use xxhash_rust::xxh3::xxh3_64;
 
-const UNITS_PER_SECOND: f32 = 30.0;
+const UNITS_PER_SECOND: f32 = 200.0;
 
 #[derive(Serialize, Debug, Clone)]
 pub struct Color{
@@ -109,14 +109,14 @@ fn live_pos(pstate: &PlayerState) -> (f32, f32){
 	let now = Instant::now();
 	let diff = ((now - pstate.motion.time).as_nanos() as f32) / (mult as f32);
 	let (dx,dy) = match pstate.motion.direction{
-		PlayerMotion::MoveUp => (0.0,diff),
-		PlayerMotion::MoveDown => (0.0,-diff),
+		PlayerMotion::MoveUp => (0.0,-diff),
+		PlayerMotion::MoveDown => (0.0,diff),
 		PlayerMotion::MoveRight => (diff,0.0),
 		PlayerMotion::MoveLeft => (-diff,0.0),
-		PlayerMotion::MoveUpRight => (diff * FRAC_1_SQRT_2, diff * FRAC_1_SQRT_2),
-		PlayerMotion::MoveUpLeft => (-diff * FRAC_1_SQRT_2, diff * FRAC_1_SQRT_2),
-		PlayerMotion::MoveDownLeft => (-diff * FRAC_1_SQRT_2, -diff * FRAC_1_SQRT_2),
-		PlayerMotion::MoveDownRight => (diff * FRAC_1_SQRT_2, -diff * FRAC_1_SQRT_2),
+		PlayerMotion::MoveUpRight => (diff * FRAC_1_SQRT_2, -diff * FRAC_1_SQRT_2),
+		PlayerMotion::MoveUpLeft => (-diff * FRAC_1_SQRT_2, -diff * FRAC_1_SQRT_2),
+		PlayerMotion::MoveDownLeft => (-diff * FRAC_1_SQRT_2, diff * FRAC_1_SQRT_2),
+		PlayerMotion::MoveDownRight => (diff * FRAC_1_SQRT_2, diff * FRAC_1_SQRT_2),
 		PlayerMotion::Stopped => (0.0,0.0)
 	};
 	let (dx,dy) = (dx*UNITS_PER_SECOND, dy*UNITS_PER_SECOND);
