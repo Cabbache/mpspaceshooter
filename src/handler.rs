@@ -36,7 +36,7 @@ pub async fn register_handler(_body: Value, clients: Clients) -> Result<impl Rep
 }
 
 pub async fn serve_page() -> Result<impl Reply> {
-	let html = fs::read_to_string("site.html").unwrap();
+	let html = fs::read_to_string("client/site.html").unwrap();
 	Ok(warp::reply::html(html))
 }
 
@@ -47,8 +47,8 @@ async fn register_client(private_id: String, public_id: String, clients: Clients
 			state: PlayerState{
 				name: "Bob".to_string(),
 				public_id: public_id,
-				x:200.0,
-				y:200.0,
+				x:0.0,
+				y:0.0,
 				color: Color{r:0,g:0,b:0},
 				motion: MotionStart{direction: PlayerMotion::Stopped, time: Instant::now()}
 			},

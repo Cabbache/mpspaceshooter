@@ -1,8 +1,8 @@
 [package]
-name = "warp-websockets-example"
-version = "0.1.1"
-authors = ["Mario Zupan <mario@zupzup.org>"]
-edition = "2018"
+name = "game"
+version = "0.1.0"
+authors = ["Cabbache <cabbache@cabbache.net>"]
+edition = "2021"
 
 [dependencies]
 tokio = { version = "1.19.2", features = ["macros", "sync", "rt-multi-thread"] }

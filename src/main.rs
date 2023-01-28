@@ -37,7 +37,7 @@ async fn main() {
 			.and(with_clients(clients.clone()))
 			.and_then(handler::unregister_handler));
 
-	let index = warp::path("index.html")
+	let index = warp::path::end()
 		.and(warp::get())
 		.and_then(handler::serve_page);
 	
@@ -61,7 +61,7 @@ async fn main() {
 	//.tls()
 	//.cert_path("cert.pem")
 	//.key_path("key.rsa")
-	.run(([0, 0, 0, 0], 8000)).await;
+	.run(([0, 0, 0, 0], 80)).await;
 }
 
 fn with_clients(clients: Clients) -> impl Filter<Extract = (Clients,), Error = Infallible> + Clone {
