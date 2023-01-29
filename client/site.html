@@ -25,7 +25,6 @@
 		"ArrowRight": false
 	};
 	const ip = '127.0.0.1';
-	//const ip = '192.168.1.139';
 	const app = new PIXI.Application({
 			width: window.innerWidth,
 			height: window.innerHeight,
@@ -60,12 +59,12 @@
 	const handle_gamestate = function(state){
 		for (var i = app.stage.children.length - 1; i >= 0; i--) {	app.stage.removeChild(app.stage.children[i]);};
 		gameState = state.map((p) => {
-			const square = new PIXI.Graphics();
-			square.beginFill(0xff9900);
-			square.drawRect(0, 0, 50, 50);
-			square.endFill();
-			square.x = p.x;
-			square.y = p.y;
+			const square = new PIXI.Sprite(PIXI.Texture.WHITE);
+			square.anchor.set(0.5);
+			square.width = 50;
+			square.height = 50;
+			square.tint = 0xff9900;
+			square.position.set(p.x, p.y);
 			app.stage.addChild(square);
 			return {
 				graphics: square,
@@ -89,12 +88,12 @@
 	}
 
 	const handle_playerjoin = function(content){
-		const square = new PIXI.Graphics();
-		square.beginFill(0xff9900);
-		square.drawRect(0, 0, 50, 50);
-		square.endFill();
-		square.x = content.x;
-		square.y = content.y;
+		const square = new PIXI.Sprite(PIXI.Texture.WHITE);
+		square.anchor.set(0.5);
+		square.width = 50;
+		square.height = 50;
+		square.tint = 0xff9900;
+		square.position.set(content.x, content.y);
 		app.stage.addChild(square);
 		gameState.push({
 			graphics: square,
@@ -181,6 +180,7 @@
 	const ticker = PIXI.Ticker.shared.add(delta => {
 		const deltaTime = delta / (1000*PIXI.settings.TARGET_FPMS);
 		for (let player of gameState){
+			player.graphics.rotation += 0.05;
 			switch (player.p.motion.direction){
 				case "MoveUp":
 					player.graphics.y -= speed * deltaTime;break;
