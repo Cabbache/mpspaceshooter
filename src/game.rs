@@ -7,9 +7,11 @@ use warp::ws::Message;
 use num_traits::checked_pow;
 use std::time::Instant;
 use std::f32::consts::FRAC_1_SQRT_2;
+use std::f32::consts::PI;
 use xxhash_rust::xxh3::xxh3_64;
 
 const UNITS_PER_SECOND: f32 = 200.0;
+const RADIANS_PER_SECOND: f32 = PI;
 
 #[derive(Serialize, Debug, Clone)]
 pub struct Color{
@@ -24,23 +26,28 @@ pub struct PlayerState {
 	pub public_id: String,
 	pub x: f32,
 	pub y: f32,
+	pub rotation: f32,
 	pub color: Color,
 	pub motion: MotionStart,
+	pub rotation_motion: RotationStart,
 }
 
 impl Serialize for PlayerState {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where S: Serializer,
 	{
-		let mut state = serializer.serialize_struct("PlayerState", 6)?;
+		let mut state = serializer.serialize_struct("PlayerState", 8)?;
 		state.serialize_field("name", &self.name)?;
 		state.serialize_field("public_id", &self.public_id)?;
 		state.serialize_field("color", &self.color)?;
 		state.serialize_field("motion", &self.motion)?;
+		state.serialize_field("rotation_motion", &self.rotation_motion)?;
 
 		let (x,y) = live_pos(self);
+		let r = live_rot(self);
 		state.serialize_field("x", &x)?;
 		state.serialize_field("y", &y)?;
+		state.serialize_field("rotation", &r)?;
 		state.end()
 	}
 }
@@ -61,6 +68,22 @@ impl Serialize for MotionStart {
 	}
 }
 
+#[derive(Debug, Clone)]
+pub struct RotationStart{
+	pub direction: PlayerRotation,
+	pub time: Instant,
+}
+
+impl Serialize for RotationStart {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where S: Serializer,
+	{
+		let mut state = serializer.serialize_struct("RotationStart", 1)?;
+		state.serialize_field("direction", &self.direction)?;
+		state.end()
+	}
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq, Hash, Copy)]
 pub enum PlayerMotion {
 	MoveUp,
@@ -74,10 +97,18 @@ pub enum PlayerMotion {
 	Stopped
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq, Hash, Copy)]
+pub enum PlayerRotation {
+	AntiClockwise,
+	Clockwise,
+	Stopped
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "t", content = "c")]
 pub enum ClientMessage{
 	MotionUpdate {motion: PlayerMotion},
+	RotationUpdate {direction: PlayerRotation},
 	StateQuery,
 }
 
@@ -88,6 +119,7 @@ pub enum ServerMessage{
 	PlayerJoin(PlayerState),
 	PlayerLeave(String),
 	MotionUpdate {direction: PlayerMotion, from: String, x: f32, y: f32},
+	RotationUpdate {direction: PlayerRotation, from: String, r: f32},
 }
 
 pub async fn broadcast(msg: &ServerMessage, clients: &Clients){
@@ -121,6 +153,18 @@ fn live_pos(pstate: &PlayerState) -> (f32, f32){
 	};
 	let (dx,dy) = (dx*UNITS_PER_SECOND, dy*UNITS_PER_SECOND);
 	(pstate.x + dx, pstate.y + dy)
+}
+
+fn live_rot(pstate: &PlayerState) -> f32 {
+	let mult = checked_pow(10, 9).unwrap();
+	let now = Instant::now();
+	let diff = ((now - pstate.rotation_motion.time).as_nanos() as f32) / (mult as f32);
+	let dr = match pstate.rotation_motion.direction{
+		PlayerRotation::AntiClockwise => -diff,
+		PlayerRotation::Clockwise => diff,
+		PlayerRotation::Stopped => 0.0
+	} * RADIANS_PER_SECOND;
+	pstate.rotation + dr
 }
 
 pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clients){
@@ -160,6 +204,42 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 						from: public_id,
 						x: nx,
 						y: ny,
+					};
+					broadcast(&msg, clients).await;
+				}
+			},
+			ClientMessage::RotationUpdate { direction } => {
+				eprintln!("got rotation update from {}: {:?}", private_id, direction);
+				let mut nr = 0.0;
+				let action_required = match clients.read().await.get(private_id){
+					Some(v) => {
+						nr = live_rot(&v.state);
+						v.state.rotation_motion.direction != direction
+					},
+					_ => {
+						eprintln!("Can't find client in hashmap");
+						false
+					}
+				};
+				if action_required{
+					match clients.write().await.get_mut(private_id){
+						Some(v) => {
+							v.state.rotation = nr;
+							v.state.rotation_motion = RotationStart{
+								direction: direction,
+								time: Instant::now()
+							};
+						},
+						_ => {
+							eprintln!("Can't get write lock on clients in rotation update");
+						}
+					};
+
+					let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
+					let msg = ServerMessage::RotationUpdate {
+						direction: direction,
+						from: public_id,
+						r: nr
 					};
 					broadcast(&msg, clients).await;
 				}

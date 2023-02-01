@@ -10,7 +10,9 @@ use std::time::Instant;
 use crate::PlayerState;
 use crate::game::Color;
 use crate::game::MotionStart;
+use crate::game::RotationStart;
 use crate::game::PlayerMotion;
+use crate::game::PlayerRotation;
 
 #[derive(Serialize, Debug)]
 pub struct RegisterResponse {
@@ -49,8 +51,10 @@ async fn register_client(private_id: String, public_id: String, clients: Clients
 				public_id: public_id,
 				x:0.0,
 				y:0.0,
+				rotation: 0.0,
 				color: Color{r:0,g:0,b:0},
-				motion: MotionStart{direction: PlayerMotion::Stopped, time: Instant::now()}
+				motion: MotionStart{direction: PlayerMotion::Stopped, time: Instant::now()},
+				rotation_motion: RotationStart{direction: PlayerRotation::Stopped, time: Instant::now()}
 			},
 			sender: None,
 		},

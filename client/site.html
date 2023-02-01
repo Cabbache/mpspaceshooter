@@ -22,7 +22,9 @@
 		"ArrowUp": false,
 		"ArrowDown": false,
 		"ArrowLeft": false,
-		"ArrowRight": false
+		"ArrowRight": false,
+		"A": false,
+		"D": false
 	};
 	const ip = '127.0.0.1';
 	const app = new PIXI.Application({
@@ -79,9 +81,20 @@
 			if (gameState[i].p.public_id == broadcaster){
 				console.log("updated motion to " + content.direction);
 				gameState[i].p.motion.direction = content.direction;
-				console.log(`server: (${content.x},${content.y})\nactual: (${gameState[i].graphics.x},${gameState[i].graphics.y})`)
 				gameState[i].graphics.x = content.x;
 				gameState[i].graphics.y = content.y;
+				break;
+			}
+		}
+	}
+
+	const handle_rotationupdate = function(content){
+		let broadcaster = content["from"];
+		for (let i = 0;i < gameState.length;++i){
+			if (gameState[i].p.public_id == broadcaster){
+				console.log("updated rotation to " + content.direction);
+				gameState[i].p.rotation_motion.direction = content.direction;
+				gameState[i].graphics.rotation = content.r;
 				break;
 			}
 		}
@@ -123,6 +136,7 @@
 		switch (datatype){
 			case "GameState": handle_gamestate(content); break;
 			case "MotionUpdate": handle_motionupdate(content); break;
+			case "RotationUpdate": handle_rotationupdate(content); break;
 			case "PlayerJoin": handle_playerjoin(content); break;
 			case "PlayerLeave": handle_playerleave(content); break;
 			default: console.error("received uknown server message");break;
@@ -131,42 +145,63 @@
 	};
 
 	const keyAction = function (repeated, name, up){
+		console.log(name);
 		if (!opened || repeated) return;
 
-		let goodKeys = ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"];
-		if (!goodKeys.includes(name))
-			return;
+		let translation_keys = ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"];
+		let rotation_keys = ["a","d"]; //case sensitive (todo make this insensitive)
+
 		keymap[name] = !up;
 
-		let response = "";
-		if (keymap["ArrowUp"] && keymap["ArrowRight"]){
-			response = "MoveUpRight";
-		} else if (keymap["ArrowUp"] && keymap["ArrowLeft"]){
-			response = "MoveUpLeft";
-		} else if (keymap["ArrowUp"]){
-			response = "MoveUp";
-		}else if (keymap["ArrowDown"] && keymap["ArrowRight"]){
-			response = "MoveDownRight";
-		} else if (keymap["ArrowDown"] && keymap["ArrowLeft"]){
-			response = "MoveDownLeft";
-		} else if (keymap["ArrowDown"]){
-			response = "MoveDown";
-		} else if (keymap["ArrowLeft"]){
-			response = "MoveLeft";
-		} else if (keymap["ArrowRight"]){
-			response = "MoveRight";
-		} else {
-			response = "Stopped";
+		if (translation_keys.includes(name)){
+			let response = "";
+			if (keymap["ArrowUp"] && keymap["ArrowRight"]){
+				response = "MoveUpRight";
+			} else if (keymap["ArrowUp"] && keymap["ArrowLeft"]){
+				response = "MoveUpLeft";
+			} else if (keymap["ArrowUp"]){
+				response = "MoveUp";
+			}else if (keymap["ArrowDown"] && keymap["ArrowRight"]){
+				response = "MoveDownRight";
+			} else if (keymap["ArrowDown"] && keymap["ArrowLeft"]){
+				response = "MoveDownLeft";
+			} else if (keymap["ArrowDown"]){
+				response = "MoveDown";
+			} else if (keymap["ArrowLeft"]){
+				response = "MoveLeft";
+			} else if (keymap["ArrowRight"]){
+				response = "MoveRight";
+			} else {
+				response = "Stopped";
+			}
+			console.log("sending " + response);
+			socket.send(
+				JSON.stringify({
+					"t":"MotionUpdate",
+					"c":{
+						"motion": response,
+					 }
+				})
+			);
+		} else if (rotation_keys.includes(name)) {
+			let response = "";
+			if (keymap["a"]){
+				response = "AntiClockwise";
+			} else if (keymap["d"]){
+				response = "Clockwise";
+			} else {
+				response = "Stopped";
+			}
+			console.log("sending " + response);
+			socket.send(
+				JSON.stringify({
+					"t":"RotationUpdate",
+					"c":{
+						"direction": response,
+					 }
+				})
+			);
 		}
-		console.log("sending " + response);
-		socket.send(
-			JSON.stringify({
-				"t":"MotionUpdate",
-				"c":{
-					"motion": response,
-				 }
-			})
-		);
 	};
 
 
@@ -176,11 +211,21 @@
 
 	// Define the speed and direction of the square's movement
 	let speed = 200;
+	let rotation_speed = 3.14159265358979323;
 
 	const ticker = PIXI.Ticker.shared.add(delta => {
 		const deltaTime = delta / (1000*PIXI.settings.TARGET_FPMS);
 		for (let player of gameState){
-			player.graphics.rotation += 0.05;
+			
+			//apply rotations
+			switch (player.p.rotation_motion.direction){
+				case "Clockwise":
+					player.graphics.rotation += rotation_speed * deltaTime;break;
+				case "AntiClockwise":
+					player.graphics.rotation += -rotation_speed * deltaTime;break;
+			}
+			
+			//apply translations
 			switch (player.p.motion.direction){
 				case "MoveUp":
 					player.graphics.y -= speed * deltaTime;break;
@@ -206,8 +251,8 @@
 					player.graphics.x -= speed * deltaTime * invr2;
 					player.graphics.y -= speed * deltaTime * invr2;
 					break;
-				default:
 			}
+
 		}
 	});
 
