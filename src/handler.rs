@@ -52,6 +52,7 @@ async fn register_client(private_id: String, public_id: String, clients: Clients
 				x:0.0,
 				y:0.0,
 				rotation: 0.0,
+				health: 100.0,
 				color: Color{r:0,g:0,b:0},
 				motion: MotionStart{direction: PlayerMotion::Stopped, time: Instant::now()},
 				rotation_motion: RotationStart{direction: PlayerRotation::Stopped, time: Instant::now()}

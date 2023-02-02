@@ -26,7 +26,6 @@
 		"A": false,
 		"D": false
 	};
-	const ip = '127.0.0.1';
 	const app = new PIXI.Application({
 			width: window.innerWidth,
 			height: window.innerHeight,
@@ -36,7 +35,7 @@
 	const invr2 = 0.7071067811865475;
 
 	const openWebSocket = function(){
-		fetch(`http://${ip}/register`, {
+		fetch(`http://${window.location.hostname}/register`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
@@ -45,7 +44,7 @@
 		})
 		.then(response => response.json())
 		.then(result => {
-			socket = new WebSocket(`ws://${ip}/ws/`+result['private']);
+			socket = new WebSocket(`ws://${window.location.hostname}/ws/`+result['private']);
 			socket.onmessage = recvFn;
 			socket.onopen = () => {
 				opened=true;

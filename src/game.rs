@@ -24,6 +24,7 @@ pub struct Color{
 pub struct PlayerState {
 	pub name: String,
 	pub public_id: String,
+	pub health: f32,
 	pub x: f32,
 	pub y: f32,
 	pub rotation: f32,
@@ -36,11 +37,12 @@ impl Serialize for PlayerState {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where S: Serializer,
 	{
-		let mut state = serializer.serialize_struct("PlayerState", 8)?;
+		let mut state = serializer.serialize_struct("PlayerState", 9)?;
 		state.serialize_field("name", &self.name)?;
 		state.serialize_field("public_id", &self.public_id)?;
 		state.serialize_field("color", &self.color)?;
 		state.serialize_field("motion", &self.motion)?;
+		state.serialize_field("health", &self.health)?;
 		state.serialize_field("rotation_motion", &self.rotation_motion)?;
 
 		let (x,y) = live_pos(self);
