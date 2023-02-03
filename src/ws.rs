@@ -23,7 +23,7 @@ pub async fn client_connection(ws: WebSocket, private_id: String, clients: Clien
 	client.sender = Some(client_sender);
 
 	broadcast(
-		&ServerMessage::PlayerJoin(client.state.clone()),
+		&ServerMessage::PlayerJoin(client.state.read().await.clone()),
 		&clients
 	).await;
 

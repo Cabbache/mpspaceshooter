@@ -15,7 +15,7 @@ type Clients = Arc<RwLock<HashMap<String, Client>>>;
 
 #[derive(Debug, Clone)]
 pub struct Client {
-	pub state: PlayerState,
+	pub state: Arc<RwLock<PlayerState>>,
 	pub sender: Option<mpsc::UnboundedSender<std::result::Result<Message, warp::Error>>>,
 }
 

@@ -177,8 +177,9 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				let (mut nx, mut ny) = (0.0,0.0);
 				let action_required = match clients.read().await.get(private_id){
 					Some(v) => {
-						(nx, ny) = live_pos(&v.state);
-						v.state.motion.direction != motion
+						let cl = v.state.read().await.clone();
+						(nx, ny) = live_pos(&cl);
+						cl.motion.direction != motion
 					},
 					_ => {
 						eprintln!("Can't find client in hashmap");
@@ -186,11 +187,12 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 					}
 				};
 				if action_required{
-					match clients.write().await.get_mut(private_id){
+					match clients.read().await.get(private_id){
 						Some(v) => {
-							v.state.x = nx;
-							v.state.y = ny;
-							v.state.motion = MotionStart{
+							let mut writeable = v.state.write().await;
+							writeable.x = nx;
+							writeable.y = ny;
+							writeable.motion = MotionStart{
 								direction: motion,
 								time: Instant::now()
 							};
@@ -215,8 +217,9 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				let mut nr = 0.0;
 				let action_required = match clients.read().await.get(private_id){
 					Some(v) => {
-						nr = live_rot(&v.state);
-						v.state.rotation_motion.direction != direction
+						let cl = v.state.read().await.clone();
+						nr = live_rot(&cl);
+						cl.rotation_motion.direction != direction
 					},
 					_ => {
 						eprintln!("Can't find client in hashmap");
@@ -224,10 +227,11 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 					}
 				};
 				if action_required{
-					match clients.write().await.get_mut(private_id){
+					match clients.read().await.get(private_id){
 						Some(v) => {
-							v.state.rotation = nr;
-							v.state.rotation_motion = RotationStart{
+							let mut writeable = v.state.write().await;
+							writeable.rotation = nr;
+							writeable.rotation_motion = RotationStart{
 								direction: direction,
 								time: Instant::now()
 							};
@@ -248,12 +252,22 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			},
 			ClientMessage::StateQuery => {
 				eprintln!("Got statequery");
+				let mut players: Vec<PlayerState> = vec![];
 				let readlock = clients.read().await;
-				let res = to_string(&ServerMessage::GameState(readlock.iter().map(|(_, value)| {
-					value.state.clone()
-				}).collect::<Vec<PlayerState>>())).unwrap();
-				println!("{:?}", res);
+				for (_, value) in readlock.iter(){
+					let cl = value.state.read().await.clone();
+					players.push(cl);
+				}
+				let res = to_string(
+					&ServerMessage::GameState(players)
+				).unwrap();
 				let client = readlock.get(private_id).cloned();
+				//let res = to_string(&ServerMessage::GameState(readlock.iter().map(|(_, value)| {
+				//	value.state.read().clone()
+				//}).collect::<Vec<PlayerState>>())).unwrap();
+
+				//println!("{:?}", res);
+				//let client = readlock.get(private_id).cloned();
 				client.unwrap().sender.unwrap().send(Ok(Message::text(res))).unwrap();
 			},
 		}

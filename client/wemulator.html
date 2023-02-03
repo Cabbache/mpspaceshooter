@@ -1,0 +1,166 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<title>cche</title>
+	<style>
+		body {
+			margin: 0;
+			padding: 0;
+			overflow: hidden;
+			background-color: #000000;
+		}
+	</style>
+</head>
+<body>
+<script>
+	var gameState = [];
+	var socket = null;
+	var opened = false;
+	var keymap = {
+		"ArrowUp": false,
+		"ArrowDown": false,
+		"ArrowLeft": false,
+		"ArrowRight": false,
+		"A": false,
+		"D": false
+	};
+	const invr2 = 0.7071067811865475;
+
+	const openWebSocket = function(){
+		fetch(`http://${window.location.hostname}/register`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: "{}"
+		})
+		.then(response => response.json())
+		.then(result => {
+			socket = new WebSocket(`ws://${window.location.hostname}/ws/`+result['private']);
+			socket.onmessage = recvFn;
+			socket.onopen = () => {
+				opened=true;
+				socket.send(JSON.stringify({"t":"StateQuery"}));
+			};
+			socket.onclose = (event)=>{
+				opened=false;
+				console.log(event.wasClean ? "closed cleanly":"connection died");
+			}
+		});
+	};
+
+	const handle_gamestate = function(state){
+	};
+
+	const handle_motionupdate = function(content){
+	}
+
+	const handle_rotationupdate = function(content){
+	}
+
+	const handle_playerjoin = function(content){
+	}
+
+	const handle_playerleave = function(content){
+	}
+
+	const recvFn = function(event) {
+		console.log("receive: " + event.data);
+	};
+
+	const keyAction = function (repeated, name, up){
+		console.log(name);
+		if (!opened || repeated) return;
+
+		let translation_keys = ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"];
+		let rotation_keys = ["a","d"]; //case sensitive (todo make this insensitive)
+
+		keymap[name] = !up;
+
+		if (translation_keys.includes(name)){
+			let response = "";
+			if (keymap["ArrowUp"] && keymap["ArrowRight"]){
+				response = "MoveUpRight";
+			} else if (keymap["ArrowUp"] && keymap["ArrowLeft"]){
+				response = "MoveUpLeft";
+			} else if (keymap["ArrowUp"]){
+				response = "MoveUp";
+			}else if (keymap["ArrowDown"] && keymap["ArrowRight"]){
+				response = "MoveDownRight";
+			} else if (keymap["ArrowDown"] && keymap["ArrowLeft"]){
+				response = "MoveDownLeft";
+			} else if (keymap["ArrowDown"]){
+				response = "MoveDown";
+			} else if (keymap["ArrowLeft"]){
+				response = "MoveLeft";
+			} else if (keymap["ArrowRight"]){
+				response = "MoveRight";
+			} else {
+				response = "Stopped";
+			}
+			console.log("sending " + response);
+			socket.send(
+				JSON.stringify({
+					"t":"MotionUpdate",
+					"c":{
+						"motion": response,
+					 }
+				})
+			);
+		} else if (rotation_keys.includes(name)) {
+			let response = "";
+			if (keymap["a"]){
+				response = "AntiClockwise";
+			} else if (keymap["d"]){
+				response = "Clockwise";
+			} else {
+				response = "Stopped";
+			}
+			console.log("sending " + response);
+			socket.send(
+				JSON.stringify({
+					"t":"RotationUpdate",
+					"c":{
+						"direction": response,
+					 }
+				})
+			);
+		}
+	};
+
+	openWebSocket();
+
+	const schedule = [
+		() => keyAction(false, "ArrowRight", false),
+		() => {keyAction(false, "ArrowRight", true);keyAction(false, "ArrowDown", false)},
+		() => {keyAction(false, "ArrowDown", true);keyAction(false, "ArrowRight", false)},
+		() => {keyAction(false, "ArrowRight", true);keyAction(false, "d", false)},
+		() => {keyAction(false, "d", true);keyAction(false, "ArrowLeft", false)},
+		() => {keyAction(false, "ArrowLeft", true);keyAction(false, "ArrowUp", false)},
+		() => {keyAction(false, "ArrowUp", true);keyAction(false, "ArrowLeft", false)},
+		() => {keyAction(false, "ArrowLeft", true)},
+	];
+
+	let last_second = Math.floor(Date.now()/1000);
+	let schedule_index = 0;
+	setInterval(() => {
+
+		const current_second = Math.floor(Date.now()/200);
+		if (current_second > last_second){
+			schedule[schedule_index]();
+			schedule_index = (schedule_index + 1) % schedule.length;
+			last_second = current_second;
+		}
+
+	}, 50);
+
+	window.addEventListener("resize", function(){
+    app.renderer.resize(window.innerWidth, window.innerHeight);
+	});
+
+	window.addEventListener('keydown', (event) => keyAction(event.repeat, event.key, false));
+	window.addEventListener('keyup', (event) => keyAction(event.repeat, event.key, true));
+
+</script>
+</body>
+</html>

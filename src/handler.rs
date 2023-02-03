@@ -5,7 +5,9 @@ use uuid::Uuid;
 use xxhash_rust::xxh3::xxh3_64;
 use warp::{http::StatusCode, reply::json, Reply};
 use std::fs;
+use std::sync::Arc;
 use std::time::Instant;
+use tokio::sync::RwLock;
 
 use crate::PlayerState;
 use crate::game::Color;
@@ -46,17 +48,19 @@ async fn register_client(private_id: String, public_id: String, clients: Clients
 	clients.write().await.insert(
 		private_id,
 		Client {
-			state: PlayerState{
-				name: "Bob".to_string(),
-				public_id: public_id,
-				x:0.0,
-				y:0.0,
-				rotation: 0.0,
-				health: 100.0,
-				color: Color{r:0,g:0,b:0},
-				motion: MotionStart{direction: PlayerMotion::Stopped, time: Instant::now()},
-				rotation_motion: RotationStart{direction: PlayerRotation::Stopped, time: Instant::now()}
-			},
+			state: Arc::new(RwLock::new(
+				PlayerState{
+					name: "Bob".to_string(),
+					public_id: public_id,
+					x:0.0,
+					y:0.0,
+					rotation: 0.0,
+					health: 100.0,
+					color: Color{r:0,g:0,b:0},
+					motion: MotionStart{direction: PlayerMotion::Stopped, time: Instant::now()},
+					rotation_motion: RotationStart{direction: PlayerRotation::Stopped, time: Instant::now()}
+				}
+			)),
 			sender: None,
 		},
 	);
