@@ -56,4 +56,4 @@ const openWebSocket = function(){
 	});
 }
 
-setInterval(() => openWebSocket(), 200);
+setInterval(() => openWebSocket(), 20);

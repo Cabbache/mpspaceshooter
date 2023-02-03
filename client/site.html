@@ -15,7 +15,7 @@
 </head>
 <body>
 <script>
-	var gameState = [];
+	var gameState = {};
 	var socket = null;
 	var opened = false;
 	var keymap = {
@@ -59,7 +59,8 @@
 
 	const handle_gamestate = function(state){
 		for (var i = app.stage.children.length - 1; i >= 0; i--) {	app.stage.removeChild(app.stage.children[i]);};
-		gameState = state.map((p) => {
+		gameState = {};
+		state.forEach((p) => {
 			const square = new PIXI.Sprite(PIXI.Texture.WHITE);
 			square.anchor.set(0.5);
 			square.width = 50;
@@ -68,7 +69,7 @@
 			square.position.set(p.x, p.y);
 			square.rotation = p.rotation;
 			app.stage.addChild(square);
-			return {
+			gameState[p.public_id] = {
 				graphics: square,
 				p: p
 			};
@@ -77,27 +78,17 @@
 
 	const handle_motionupdate = function(content){
 		let broadcaster = content["from"];
-		for (let i = 0;i < gameState.length;++i){
-			if (gameState[i].p.public_id == broadcaster){
-				console.log("updated motion to " + content.direction);
-				gameState[i].p.motion.direction = content.direction;
-				gameState[i].graphics.x = content.x;
-				gameState[i].graphics.y = content.y;
-				break;
-			}
-		}
+		console.log("updated motion to " + content.direction);
+		gameState[broadcaster].p.motion.direction = content.direction;
+		gameState[broadcaster].graphics.x = content.x;
+		gameState[broadcaster].graphics.y = content.y;
 	}
 
 	const handle_rotationupdate = function(content){
 		let broadcaster = content["from"];
-		for (let i = 0;i < gameState.length;++i){
-			if (gameState[i].p.public_id == broadcaster){
-				console.log("updated rotation to " + content.direction);
-				gameState[i].p.rotation_motion.direction = content.direction;
-				gameState[i].graphics.rotation = content.r;
-				break;
-			}
-		}
+		console.log("updated rotation to " + content.direction);
+		gameState[broadcaster].p.rotation_motion.direction = content.direction;
+		gameState[broadcaster].graphics.rotation = content.r;
 	}
 
 	const handle_playerjoin = function(content){
@@ -108,24 +99,15 @@
 		square.tint = 0xff9900;
 		square.position.set(content.x, content.y);
 		app.stage.addChild(square);
-		gameState.push({
+		gameState[content.public_id] = {
 			graphics: square,
 			p: content
-		});
+		};
 	}
 
 	const handle_playerleave = function(content){
-		let toremove = -1;
-		for (let i = 0;i < gameState.length;++i){
-			if (gameState[i].p.public_id != content)
-				continue;
-			app.stage.removeChild(gameState[i].graphics);
-			toremove = i;
-		}
-		if (toremove == -1){
-			console.error("Cant find player to remove on leave");
-		}
-		gameState.splice(toremove, 1);
+		app.stage.removeChild(gameState[content].graphics);
+		delete gameState[content];
 	}
 
 	const recvFn = function(event) {
@@ -141,7 +123,7 @@
 			case "PlayerLeave": handle_playerleave(content); break;
 			default: console.error("received uknown server message");break;
 		}
-		console.log("gamestate: " + gameState.map((f) => JSON.stringify(f.p)));
+		//console.log("gamestate: " + gameState.map((f) => JSON.stringify(f.p)));
 	};
 
 	const keyAction = function (repeated, name, up){
@@ -215,8 +197,7 @@
 
 	const ticker = PIXI.Ticker.shared.add(delta => {
 		const deltaTime = delta / (1000*PIXI.settings.TARGET_FPMS);
-		for (let player of gameState){
-			
+		Object.values(gameState).forEach(player => {
 			//apply rotations
 			switch (player.p.rotation_motion.direction){
 				case "Clockwise":
@@ -252,8 +233,7 @@
 					player.graphics.y -= speed * deltaTime * invr2;
 					break;
 			}
-
-		}
+		})
 	});
 
 	ticker.speed = 1;
