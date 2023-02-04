@@ -57,17 +57,22 @@
 		});
 	};
 
+	const getSprite = function(player){
+		var square = new PIXI.Sprite(PIXI.Texture.WHITE);
+		square.anchor.set(0.5);
+		square.width = 50;
+		square.height = 50;
+		square.tint = 0xff9900;
+		square.position.set(player.x, player.y);
+		square.rotation = player.rotation;
+		return square;
+	}
+
 	const handle_gamestate = function(state){
 		for (var i = app.stage.children.length - 1; i >= 0; i--) {	app.stage.removeChild(app.stage.children[i]);};
 		gameState = {};
 		state.forEach((p) => {
-			const square = new PIXI.Sprite(PIXI.Texture.WHITE);
-			square.anchor.set(0.5);
-			square.width = 50;
-			square.height = 50;
-			square.tint = 0xff9900;
-			square.position.set(p.x, p.y);
-			square.rotation = p.rotation;
+			const square = getSprite(p);
 			app.stage.addChild(square);
 			gameState[p.public_id] = {
 				graphics: square,
@@ -78,7 +83,6 @@
 
 	const handle_motionupdate = function(content){
 		let broadcaster = content["from"];
-		console.log("updated motion to " + content.direction);
 		gameState[broadcaster].p.motion.direction = content.direction;
 		gameState[broadcaster].graphics.x = content.x;
 		gameState[broadcaster].graphics.y = content.y;
@@ -86,18 +90,12 @@
 
 	const handle_rotationupdate = function(content){
 		let broadcaster = content["from"];
-		console.log("updated rotation to " + content.direction);
 		gameState[broadcaster].p.rotation_motion.direction = content.direction;
 		gameState[broadcaster].graphics.rotation = content.r;
 	}
 
 	const handle_playerjoin = function(content){
-		const square = new PIXI.Sprite(PIXI.Texture.WHITE);
-		square.anchor.set(0.5);
-		square.width = 50;
-		square.height = 50;
-		square.tint = 0xff9900;
-		square.position.set(content.x, content.y);
+		const square = getSprite(content);
 		app.stage.addChild(square);
 		gameState[content.public_id] = {
 			graphics: square,
@@ -105,13 +103,13 @@
 		};
 	}
 
-	const handle_playerleave = function(content){
-		app.stage.removeChild(gameState[content].graphics);
-		delete gameState[content];
+	const handle_playerleave = function(public_id){
+		app.stage.removeChild(gameState[public_id].graphics);
+		delete gameState[public_id];
 	}
 
 	const recvFn = function(event) {
-		console.log("receive: " + event.data);
+		//console.log("receive: " + event.data);
 		let data = JSON.parse(event.data);
 		let datatype = data["t"];
 		let content = data["c"];
@@ -127,7 +125,7 @@
 	};
 
 	const keyAction = function (repeated, name, up){
-		console.log(name);
+		//console.log(name);
 		if (!opened || repeated) return;
 
 		let translation_keys = ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"];
@@ -156,7 +154,7 @@
 			} else {
 				response = "Stopped";
 			}
-			console.log("sending " + response);
+			//console.log("sending " + response);
 			socket.send(
 				JSON.stringify({
 					"t":"MotionUpdate",
@@ -174,7 +172,7 @@
 			} else {
 				response = "Stopped";
 			}
-			console.log("sending " + response);
+			//console.log("sending " + response);
 			socket.send(
 				JSON.stringify({
 					"t":"RotationUpdate",
