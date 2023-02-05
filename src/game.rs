@@ -5,6 +5,7 @@ use serde_json::to_string;
 use serde_json::from_str;
 use warp::ws::Message;
 use num_traits::checked_pow;
+use std::collections::HashMap;
 use std::time::Instant;
 use std::f32::consts::FRAC_1_SQRT_2;
 use std::f32::consts::PI;
@@ -12,12 +13,31 @@ use xxhash_rust::xxh3::xxh3_64;
 
 const UNITS_PER_SECOND: f32 = 200.0;
 const RADIANS_PER_SECOND: f32 = PI;
+const PLAYER_RADIUS: f32 = 25.0;
 
 #[derive(Serialize, Debug, Clone)]
 pub struct Color{
 	pub r: i32,
 	pub g: i32,
 	pub b: i32,
+}
+
+#[derive(Debug, Clone)]
+pub struct Weapon{
+	weptype: WeaponType,
+	ammo: u32,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub enum WeaponType{
+	Pistol,
+	FlameThrower,
+}
+
+#[derive(Debug, Clone)]
+pub struct Inventory{
+	pub selection: u8,
+	pub weapons: HashMap<u8, Weapon>,
 }
 
 #[derive(Debug, Clone)]
@@ -29,6 +49,7 @@ pub struct PlayerState {
 	pub y: f32,
 	pub rotation: f32,
 	pub color: Color,
+	pub inventory: Inventory,
 	pub motion: MotionStart,
 	pub rotation_motion: RotationStart,
 }
@@ -111,6 +132,9 @@ pub enum PlayerRotation {
 pub enum ClientMessage{
 	MotionUpdate {motion: PlayerMotion},
 	RotationUpdate {direction: PlayerRotation},
+	ChangeSlot {slot: u8},
+	TrigPress,
+	TrigRelease,
 	StateQuery,
 }
 
@@ -122,6 +146,9 @@ pub enum ServerMessage{
 	PlayerLeave(String),
 	MotionUpdate {direction: PlayerMotion, from: String, x: f32, y: f32},
 	RotationUpdate {direction: PlayerRotation, from: String, r: f32},
+	HealthUpdate {value: f32},
+	ShotFired {by: String, weptype: WeaponType},
+	TrigRelease {by: String, weptype: WeaponType},
 }
 
 pub async fn broadcast(msg: &ServerMessage, clients: &Clients){
@@ -262,13 +289,21 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 					&ServerMessage::GameState(players)
 				).unwrap();
 				let client = readlock.get(private_id).cloned();
-				//let res = to_string(&ServerMessage::GameState(readlock.iter().map(|(_, value)| {
-				//	value.state.read().clone()
-				//}).collect::<Vec<PlayerState>>())).unwrap();
-
-				//println!("{:?}", res);
-				//let client = readlock.get(private_id).cloned();
 				client.unwrap().sender.unwrap().send(Ok(Message::text(res))).unwrap();
+			},
+			ClientMessage::ChangeSlot { slot } => {
+				match clients.read().await.get(private_id){
+					Some(v) => {
+						
+					}
+					None => eprintln!("Can't get lock on clients")
+				}
+			},
+			ClientMessage::TrigPress => {
+				
+			},
+			ClientMessage::TrigRelease => {
+				
 			},
 		}
 		_ => eprintln!("got something weird: {}", message),

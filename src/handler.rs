@@ -7,6 +7,7 @@ use warp::{http::StatusCode, reply::json, Reply};
 use std::fs;
 use std::sync::Arc;
 use std::time::Instant;
+use std::collections::HashMap;
 use tokio::sync::RwLock;
 use rand::Rng;
 
@@ -16,6 +17,9 @@ use crate::game::MotionStart;
 use crate::game::RotationStart;
 use crate::game::PlayerMotion;
 use crate::game::PlayerRotation;
+use crate::game::Inventory;
+use crate::game::Weapon;
+use crate::game::WeaponType;
 
 #[derive(Serialize, Debug)]
 pub struct RegisterResponse {
@@ -61,6 +65,13 @@ async fn register_client(private_id: String, public_id: String, clients: Clients
 						r: rand::thread_rng().gen_range(50..255),
 						g: rand::thread_rng().gen_range(50..255),
 						b: rand::thread_rng().gen_range(50..255),
+					},
+					inventory: Inventory{
+						selection: 0,
+						weapons: HashMap::from([
+							(0, Weapon{ weptype: WeaponType::Pistol, ammo: 10 }),
+							(1, Weapon{ weptype: WeaponType::FlameThrower, ammo: 100 }),
+						])
 					},
 					motion: MotionStart{direction: PlayerMotion::Stopped, time: Instant::now()},
 					rotation_motion: RotationStart{direction: PlayerRotation::Stopped, time: Instant::now()}
