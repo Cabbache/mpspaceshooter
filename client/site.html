@@ -18,6 +18,8 @@
 	var gameState = {};
 	var socket = null;
 	var opened = false;
+	var public_id = null;
+	var selfSprite = null;
 	var keymap = {
 		"ArrowUp": false,
 		"ArrowDown": false,
@@ -26,13 +28,18 @@
 		"A": false,
 		"D": false
 	};
+
+	const invr2 = 0.7071067811865475;
+
 	const app = new PIXI.Application({
 			width: window.innerWidth,
 			height: window.innerHeight,
-			backgroundColor: 0x101010
+			backgroundColor: 0x101510
 	});
 
-	const invr2 = 0.7071067811865475;
+	const world = new PIXI.Container();
+	world.position.set(app.screen.width/2, app.screen.height/2);
+	app.stage.addChild(world);
 
 	const openWebSocket = function(){
 		fetch(`http://${window.location.hostname}/register`, {
@@ -44,6 +51,7 @@
 		})
 		.then(response => response.json())
 		.then(result => {
+			public_id = result['public'];
 			socket = new WebSocket(`ws://${window.location.hostname}/ws/`+result['private']);
 			socket.onmessage = recvFn;
 			socket.onopen = () => {
@@ -57,7 +65,7 @@
 		});
 	};
 
-	const getSprite = function(player){
+	const getPlayerSprite = function(player){
 		var square = new PIXI.Sprite(PIXI.Texture.WHITE);
 		square.anchor.set(0.5);
 		square.width = 50;
@@ -69,11 +77,20 @@
 	}
 
 	const handle_gamestate = function(state){
-		for (var i = app.stage.children.length - 1; i >= 0; i--) {	app.stage.removeChild(app.stage.children[i]);};
+		
+		//remove all other sprites
+		for (var i = world.children.length - 1; i >= 0; i--)
+			world.removeChild(world.children[i]);
+
 		gameState = {};
 		state.forEach((p) => {
-			const square = getSprite(p);
-			app.stage.addChild(square);
+			const square = getPlayerSprite(p);
+			if (p.public_id == public_id){
+				square.x = app.screen.width/2;
+				square.y = app.screen.height/2;
+				app.stage.addChild(square);
+			} else
+				world.addChild(square);
 			gameState[p.public_id] = {
 				graphics: square,
 				p: p
@@ -84,8 +101,13 @@
 	const handle_motionupdate = function(content){
 		let broadcaster = content["from"];
 		gameState[broadcaster].p.motion.direction = content.direction;
-		gameState[broadcaster].graphics.x = content.x;
-		gameState[broadcaster].graphics.y = content.y;
+		if (broadcaster == public_id){
+			world.pivot.x = content.x;
+			world.pivot.y = content.y;
+		} else {
+			gameState[broadcaster].graphics.x = content.x;
+			gameState[broadcaster].graphics.y = content.y;
+		}
 	}
 
 	const handle_rotationupdate = function(content){
@@ -95,8 +117,12 @@
 	}
 
 	const handle_playerjoin = function(content){
-		const square = getSprite(content);
-		app.stage.addChild(square);
+		const square = getPlayerSprite(content);
+		if (content.public_id == public_id){
+			console.log("got playerjoin for self, ignoring");
+			return;
+		}
+		world.addChild(square);
 		gameState[content.public_id] = {
 			graphics: square,
 			p: content
@@ -104,7 +130,7 @@
 	}
 
 	const handle_playerleave = function(public_id){
-		app.stage.removeChild(gameState[public_id].graphics);
+		world.removeChild(gameState[public_id].graphics);
 		delete gameState[public_id];
 	}
 
@@ -205,31 +231,60 @@
 			}
 			
 			//apply translations
-			switch (player.p.motion.direction){
-				case "MoveUp":
-					player.graphics.y -= speed * deltaTime;break;
-				case "MoveDown":
-					player.graphics.y += speed * deltaTime;break;
-				case "MoveLeft":
-					player.graphics.x -= speed * deltaTime;break;
-				case "MoveRight":
-					player.graphics.x += speed * deltaTime;break;
-				case "MoveUpRight":
-					player.graphics.x += speed * deltaTime * invr2;
-					player.graphics.y -= speed * deltaTime * invr2;
-					break;
-				case "MoveDownRight":
-					player.graphics.x += speed * deltaTime * invr2;
-					player.graphics.y += speed * deltaTime * invr2;
-					break;
-				case "MoveDownLeft":
-					player.graphics.x -= speed * deltaTime * invr2;
-					player.graphics.y += speed * deltaTime * invr2;
-					break;
-				case "MoveUpLeft":
-					player.graphics.x -= speed * deltaTime * invr2;
-					player.graphics.y -= speed * deltaTime * invr2;
-					break;
+			if (player.p.public_id == public_id){
+				switch (player.p.motion.direction){
+					case "MoveUp":
+						world.pivot.y -= speed * deltaTime;break;
+					case "MoveDown":
+						world.pivot.y += speed * deltaTime;break;
+					case "MoveLeft":
+						world.pivot.x -= speed * deltaTime;break;
+					case "MoveRight":
+						world.pivot.x += speed * deltaTime;break;
+					case "MoveUpRight":
+						world.pivot.x += speed * deltaTime * invr2;
+						world.pivot.y -= speed * deltaTime * invr2;
+						break;
+					case "MoveDownRight":
+						world.pivot.x += speed * deltaTime * invr2;
+						world.pivot.y += speed * deltaTime * invr2;
+						break;
+					case "MoveDownLeft":
+						world.pivot.x -= speed * deltaTime * invr2;
+						world.pivot.y += speed * deltaTime * invr2;
+						break;
+					case "MoveUpLeft":
+						world.pivot.x -= speed * deltaTime * invr2;
+						world.pivot.y -= speed * deltaTime * invr2;
+						break;
+				}			
+			} else {
+				switch (player.p.motion.direction){
+					case "MoveUp":
+						player.graphics.y -= speed * deltaTime;break;
+					case "MoveDown":
+						player.graphics.y += speed * deltaTime;break;
+					case "MoveLeft":
+						player.graphics.x -= speed * deltaTime;break;
+					case "MoveRight":
+						player.graphics.x += speed * deltaTime;break;
+					case "MoveUpRight":
+						player.graphics.x += speed * deltaTime * invr2;
+						player.graphics.y -= speed * deltaTime * invr2;
+						break;
+					case "MoveDownRight":
+						player.graphics.x += speed * deltaTime * invr2;
+						player.graphics.y += speed * deltaTime * invr2;
+						break;
+					case "MoveDownLeft":
+						player.graphics.x -= speed * deltaTime * invr2;
+						player.graphics.y += speed * deltaTime * invr2;
+						break;
+					case "MoveUpLeft":
+						player.graphics.x -= speed * deltaTime * invr2;
+						player.graphics.y -= speed * deltaTime * invr2;
+						break;
+				}
 			}
 		})
 	});
