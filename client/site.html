@@ -70,7 +70,7 @@
 		square.anchor.set(0.5);
 		square.width = 50;
 		square.height = 50;
-		square.tint = 0xff9900;
+		square.tint = player.color.r << 16 | player.color.g << 8 | player.color.b;
 		square.position.set(player.x, player.y);
 		square.rotation = player.rotation;
 		return square;

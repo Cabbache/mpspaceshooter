@@ -8,6 +8,7 @@ use std::fs;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::RwLock;
+use rand::Rng;
 
 use crate::PlayerState;
 use crate::game::Color;
@@ -56,7 +57,11 @@ async fn register_client(private_id: String, public_id: String, clients: Clients
 					y:0.0,
 					rotation: 0.0,
 					health: 100.0,
-					color: Color{r:0,g:0,b:0},
+					color: Color{
+						r: rand::thread_rng().gen_range(50..255),
+						g: rand::thread_rng().gen_range(50..255),
+						b: rand::thread_rng().gen_range(50..255),
+					},
 					motion: MotionStart{direction: PlayerMotion::Stopped, time: Instant::now()},
 					rotation_motion: RotationStart{direction: PlayerRotation::Stopped, time: Instant::now()}
 				}
