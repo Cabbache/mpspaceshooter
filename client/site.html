@@ -26,10 +26,12 @@
 		"ArrowLeft": false,
 		"ArrowRight": false,
 		"A": false,
-		"D": false
+		"D": false,
+		" ": false,
 	};
 
 	const invr2 = 0.7071067811865475;
+	const PI = 3.14159265358979323;
 
 	const app = new PIXI.Application({
 			width: window.innerWidth,
@@ -116,6 +118,26 @@
 		gameState[broadcaster].graphics.rotation = content.r;
 	}
 
+	const handle_trigUpdate = function(content){
+		const weapon = content.weptype;
+		const updater = content.by;
+		const isTriggered = content.pressed;
+		if (!isTriggered) //temporary
+			return;
+		if (weapon == "Pistol"){
+			const bullet_line = new PIXI.Graphics();
+			bullet_line.lineStyle(2, 0xffff00, 1);
+			const line_start_x = public_id == updater ? world.pivot.x:gameState[updater].graphics.x;
+			const line_start_y = public_id == updater ? world.pivot.y:gameState[updater].graphics.y;
+			bullet_line.moveTo(line_start_x, line_start_y);
+			bullet_line.lineTo(
+				line_start_x + Math.cos(gameState[updater].graphics.rotation - PI/2)*200,
+				line_start_y + Math.sin(gameState[updater].graphics.rotation - PI/2)*200
+			);
+			world.addChild(bullet_line);
+		}
+	}
+
 	const handle_playerjoin = function(content){
 		const square = getPlayerSprite(content);
 		if (content.public_id == public_id){
@@ -145,6 +167,7 @@
 			case "RotationUpdate": handle_rotationupdate(content); break;
 			case "PlayerJoin": handle_playerjoin(content); break;
 			case "PlayerLeave": handle_playerleave(content); break;
+			case "TrigUpdate": handle_trigUpdate(content); break;
 			default: console.error("received uknown server message");break;
 		}
 		//console.log("gamestate: " + gameState.map((f) => JSON.stringify(f.p)));
@@ -156,6 +179,7 @@
 
 		let translation_keys = ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"];
 		let rotation_keys = ["a","d"]; //case sensitive (todo make this insensitive)
+		let misc_keys = [" "];
 
 		keymap[name] = !up;
 
@@ -207,6 +231,17 @@
 					 }
 				})
 			);
+		} else if (misc_keys.includes(name)) {
+			if (name == " "){
+				socket.send(
+					JSON.stringify({
+						"t":"TrigUpdate",
+						"c":{
+							"pressed": keymap[name],
+						 }
+					})
+				);
+			}
 		}
 	};
 
@@ -217,7 +252,7 @@
 
 	// Define the speed and direction of the square's movement
 	let speed = 200;
-	let rotation_speed = 3.14159265358979323;
+	let rotation_speed = PI;
 
 	const ticker = PIXI.Ticker.shared.add(delta => {
 		const deltaTime = delta / (1000*PIXI.settings.TARGET_FPMS);

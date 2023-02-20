@@ -73,6 +73,7 @@ async fn register_client(private_id: String, public_id: String, clients: Clients
 							(1, Weapon{ weptype: WeaponType::FlameThrower, ammo: 100 }),
 						])
 					},
+					trigger_pressed: false,
 					motion: MotionStart{direction: PlayerMotion::Stopped, time: Instant::now()},
 					rotation_motion: RotationStart{direction: PlayerRotation::Stopped, time: Instant::now()}
 				}

@@ -24,8 +24,8 @@ pub struct Color{
 
 #[derive(Debug, Clone)]
 pub struct Weapon{
-	weptype: WeaponType,
-	ammo: u32,
+	pub weptype: WeaponType,
+	pub ammo: u32,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -52,6 +52,7 @@ pub struct PlayerState {
 	pub inventory: Inventory,
 	pub motion: MotionStart,
 	pub rotation_motion: RotationStart,
+	pub trigger_pressed: bool,
 }
 
 impl Serialize for PlayerState {
@@ -133,8 +134,7 @@ pub enum ClientMessage{
 	MotionUpdate {motion: PlayerMotion},
 	RotationUpdate {direction: PlayerRotation},
 	ChangeSlot {slot: u8},
-	TrigPress,
-	TrigRelease,
+	TrigUpdate {pressed: bool},
 	StateQuery,
 }
 
@@ -146,9 +146,8 @@ pub enum ServerMessage{
 	PlayerLeave(String),
 	MotionUpdate {direction: PlayerMotion, from: String, x: f32, y: f32},
 	RotationUpdate {direction: PlayerRotation, from: String, r: f32},
+	TrigUpdate {by: String, weptype: WeaponType, pressed: bool},
 	HealthUpdate {value: f32},
-	ShotFired {by: String, weptype: WeaponType},
-	TrigRelease {by: String, weptype: WeaponType},
 }
 
 pub async fn broadcast(msg: &ServerMessage, clients: &Clients){
@@ -239,7 +238,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 					broadcast(&msg, clients).await;
 				}
 			},
-			ClientMessage::RotationUpdate { direction } => {
+			ClientMessage::RotationUpdate { direction } => { //TODO remove action_required variable since now we have locks within the hashmap, instead handle things inside the first match statement
 				eprintln!("got rotation update from {}: {:?}", private_id, direction);
 				let mut nr = 0.0;
 				let action_required = match clients.read().await.get(private_id){
@@ -264,7 +263,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 							};
 						},
 						_ => {
-							eprintln!("Can't get write lock on clients in rotation update");
+							eprintln!("Can't find client in clients (rotation update)");
 						}
 					};
 
@@ -294,16 +293,36 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			ClientMessage::ChangeSlot { slot } => {
 				match clients.read().await.get(private_id){
 					Some(v) => {
-						
-					}
-					None => eprintln!("Can't get lock on clients")
+						let cl = v.state.read().await.clone();
+						if cl.inventory.selection != slot
+							{ v.state.write().await.inventory.selection = slot; }
+					},
+					None => eprintln!("Can't find client in clients")
 				}
 			},
-			ClientMessage::TrigPress => {
-				
-			},
-			ClientMessage::TrigRelease => {
-				
+			ClientMessage::TrigUpdate { pressed } => {
+				match clients.read().await.get(private_id){
+					Some(v) => {
+						let cl = v.state.read().await.clone();
+						if cl.trigger_pressed == pressed {
+							return;
+						}
+						let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
+						v.state.write().await.trigger_pressed = pressed;
+						let weapon_type = cl.inventory.weapons.get( //TODO since we are not using .read() it might be outdated
+							&cl.inventory.selection
+						).unwrap().weptype.clone();
+						broadcast(
+							&ServerMessage::TrigUpdate {
+								by: public_id,
+								weptype: weapon_type,
+								pressed: pressed,
+							},
+							clients
+						).await;
+					},
+					None => eprintln!("Can't find client in clients")
+				}
 			},
 		}
 		_ => eprintln!("got something weird: {}", message),
