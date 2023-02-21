@@ -33,6 +33,11 @@
 	const invr2 = 0.7071067811865475;
 	const PI = 3.14159265358979323;
 
+	const bullet_distance = 500;
+	const player_speed = 200;
+	const fadeRate = 8;
+	const rotation_speed = PI;
+
 	const app = new PIXI.Application({
 			width: window.innerWidth,
 			height: window.innerHeight,
@@ -41,6 +46,13 @@
 
 	const world = new PIXI.Container();
 	world.position.set(app.screen.width/2, app.screen.height/2);
+
+	const players_container = new PIXI.Container();
+	const bullets_container = new PIXI.Container();
+
+	world.addChild(players_container);
+	world.addChild(bullets_container);
+
 	app.stage.addChild(world);
 
 	const openWebSocket = function(){
@@ -82,7 +94,7 @@
 		
 		//remove all other sprites
 		for (var i = world.children.length - 1; i >= 0; i--)
-			world.removeChild(world.children[i]);
+			players_container.removeChild(world.children[i]);
 
 		gameState = {};
 		state.forEach((p) => {
@@ -92,7 +104,7 @@
 				square.y = app.screen.height/2;
 				app.stage.addChild(square);
 			} else
-				world.addChild(square);
+				players_container.addChild(square);
 			gameState[p.public_id] = {
 				graphics: square,
 				p: p
@@ -126,15 +138,13 @@
 			return;
 		if (weapon == "Pistol"){
 			const bullet_line = new PIXI.Graphics();
-			bullet_line.lineStyle(2, 0xffff00, 1);
+			bullet_line.lineStyle(4, 0xffff00, 1);
 			const line_start_x = public_id == updater ? world.pivot.x:gameState[updater].graphics.x;
 			const line_start_y = public_id == updater ? world.pivot.y:gameState[updater].graphics.y;
-			bullet_line.moveTo(line_start_x, line_start_y);
-			bullet_line.lineTo(
-				line_start_x + Math.cos(gameState[updater].graphics.rotation - PI/2)*200,
-				line_start_y + Math.sin(gameState[updater].graphics.rotation - PI/2)*200
-			);
-			world.addChild(bullet_line);
+			bullet_line.position.set(line_start_x, line_start_y);
+			bullet_line.lineTo(0, -bullet_distance);
+			bullet_line.rotation = gameState[updater].graphics.rotation;
+			bullets_container.addChild(bullet_line);
 		}
 	}
 
@@ -144,7 +154,7 @@
 			console.log("got playerjoin for self, ignoring");
 			return;
 		}
-		world.addChild(square);
+		players_container.addChild(square);
 		gameState[content.public_id] = {
 			graphics: square,
 			p: content
@@ -152,7 +162,7 @@
 	}
 
 	const handle_playerleave = function(public_id){
-		world.removeChild(gameState[public_id].graphics);
+		players_container.removeChild(gameState[public_id].graphics);
 		delete gameState[public_id];
 	}
 
@@ -245,14 +255,8 @@
 		}
 	};
 
-
 	document.body.appendChild(app.view);
-
 	openWebSocket();
-
-	// Define the speed and direction of the square's movement
-	let speed = 200;
-	let rotation_speed = PI;
 
 	const ticker = PIXI.Ticker.shared.add(delta => {
 		const deltaTime = delta / (1000*PIXI.settings.TARGET_FPMS);
@@ -269,59 +273,66 @@
 			if (player.p.public_id == public_id){
 				switch (player.p.motion.direction){
 					case "MoveUp":
-						world.pivot.y -= speed * deltaTime;break;
+						world.pivot.y -= player_speed * deltaTime;break;
 					case "MoveDown":
-						world.pivot.y += speed * deltaTime;break;
+						world.pivot.y += player_speed * deltaTime;break;
 					case "MoveLeft":
-						world.pivot.x -= speed * deltaTime;break;
+						world.pivot.x -= player_speed * deltaTime;break;
 					case "MoveRight":
-						world.pivot.x += speed * deltaTime;break;
+						world.pivot.x += player_speed * deltaTime;break;
 					case "MoveUpRight":
-						world.pivot.x += speed * deltaTime * invr2;
-						world.pivot.y -= speed * deltaTime * invr2;
+						world.pivot.x += player_speed * deltaTime * invr2;
+						world.pivot.y -= player_speed * deltaTime * invr2;
 						break;
 					case "MoveDownRight":
-						world.pivot.x += speed * deltaTime * invr2;
-						world.pivot.y += speed * deltaTime * invr2;
+						world.pivot.x += player_speed * deltaTime * invr2;
+						world.pivot.y += player_speed * deltaTime * invr2;
 						break;
 					case "MoveDownLeft":
-						world.pivot.x -= speed * deltaTime * invr2;
-						world.pivot.y += speed * deltaTime * invr2;
+						world.pivot.x -= player_speed * deltaTime * invr2;
+						world.pivot.y += player_speed * deltaTime * invr2;
 						break;
 					case "MoveUpLeft":
-						world.pivot.x -= speed * deltaTime * invr2;
-						world.pivot.y -= speed * deltaTime * invr2;
+						world.pivot.x -= player_speed * deltaTime * invr2;
+						world.pivot.y -= player_speed * deltaTime * invr2;
 						break;
 				}			
 			} else {
 				switch (player.p.motion.direction){
 					case "MoveUp":
-						player.graphics.y -= speed * deltaTime;break;
+						player.graphics.y -= player_speed * deltaTime;break;
 					case "MoveDown":
-						player.graphics.y += speed * deltaTime;break;
+						player.graphics.y += player_speed * deltaTime;break;
 					case "MoveLeft":
-						player.graphics.x -= speed * deltaTime;break;
+						player.graphics.x -= player_speed * deltaTime;break;
 					case "MoveRight":
-						player.graphics.x += speed * deltaTime;break;
+						player.graphics.x += player_speed * deltaTime;break;
 					case "MoveUpRight":
-						player.graphics.x += speed * deltaTime * invr2;
-						player.graphics.y -= speed * deltaTime * invr2;
+						player.graphics.x += player_speed * deltaTime * invr2;
+						player.graphics.y -= player_speed * deltaTime * invr2;
 						break;
 					case "MoveDownRight":
-						player.graphics.x += speed * deltaTime * invr2;
-						player.graphics.y += speed * deltaTime * invr2;
+						player.graphics.x += player_speed * deltaTime * invr2;
+						player.graphics.y += player_speed * deltaTime * invr2;
 						break;
 					case "MoveDownLeft":
-						player.graphics.x -= speed * deltaTime * invr2;
-						player.graphics.y += speed * deltaTime * invr2;
+						player.graphics.x -= player_speed * deltaTime * invr2;
+						player.graphics.y += player_speed * deltaTime * invr2;
 						break;
 					case "MoveUpLeft":
-						player.graphics.x -= speed * deltaTime * invr2;
-						player.graphics.y -= speed * deltaTime * invr2;
+						player.graphics.x -= player_speed * deltaTime * invr2;
+						player.graphics.y -= player_speed * deltaTime * invr2;
 						break;
 				}
 			}
-		})
+		});
+
+		for (var i = 0; i < bullets_container.children.length; ++i){
+			bullets_container.children[i].scale.x = Math.max(
+				0,
+				bullets_container.children[i].scale.x-fadeRate*deltaTime
+			);
+		}
 	});
 
 	ticker.speed = 1;
