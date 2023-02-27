@@ -10,10 +10,12 @@ use std::time::Instant;
 use std::f32::consts::FRAC_1_SQRT_2;
 use std::f32::consts::PI;
 use xxhash_rust::xxh3::xxh3_64;
+use num_traits::Pow;
 
-const UNITS_PER_SECOND: f32 = 200.0;
-const RADIANS_PER_SECOND: f32 = PI;
-const PLAYER_RADIUS: f32 = 25.0;
+const UNITS_PER_SECOND: f32 = 200.0; //player movement
+const RADIANS_PER_SECOND: f32 = PI; //player rotation
+const PLAYER_RADIUS: f32 = 25.0; //players have circular hitbox
+const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 
 #[derive(Serialize, Debug, Clone)]
 pub struct Color{
@@ -31,6 +33,7 @@ pub struct Weapon{
 #[derive(Debug, Clone, Serialize)]
 pub enum WeaponType{
 	Pistol,
+	Grenade,
 	FlameThrower,
 }
 
@@ -164,6 +167,26 @@ pub async fn broadcast(msg: &ServerMessage, clients: &Clients){
 	}
 }
 
+fn line_circle_intersect(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> bool{
+	//shift everything to make line start from origin
+	let a = xc - xp;
+	let b = yc - yp;
+	let rot_90 = rot - PI/2f32;
+
+	println!("a={},b={},r={}",a,b,rot_90);
+
+	//compute the quadratic's 'b' coefficient (for variable r in polar form)
+	let qb = -(2f32*a*rot_90.cos() + 2f32*b*rot_90.sin());
+	let discriminant: f32 = qb.pow(2) - 4f32*(a.pow(2) + b.pow(2) - PLAYER_RADIUS.pow(2));
+	if discriminant < 0f32{ //no real roots (no line-circle intersection)
+		return false;
+	}
+
+	let root = discriminant.sqrt();
+
+	(root - qb).abs().min((-root - qb).abs()) / 2f32 < PISTOL_REACH //true if a solution for 'r' exists less than the reach
+}
+
 fn live_pos(pstate: &PlayerState) -> (f32, f32){
 	let mult = checked_pow(10, 9).unwrap();
 	let now = Instant::now();
@@ -290,7 +313,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				let client = readlock.get(private_id).cloned();
 				client.unwrap().sender.unwrap().send(Ok(Message::text(res))).unwrap();
 			},
-			ClientMessage::ChangeSlot { slot } => {
+			ClientMessage::ChangeSlot { slot } => { //TODO consider also changing trigger_pressed to false both on client and server when changeslot
 				match clients.read().await.get(private_id){
 					Some(v) => {
 						let cl = v.state.read().await.clone();
@@ -312,14 +335,42 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 						let weapon_type = cl.inventory.weapons.get( //TODO since we are not using .read() it might be outdated
 							&cl.inventory.selection
 						).unwrap().weptype.clone();
+
+						//TODO we don't care if pistol trigger is released
+						//TODO check ammo > 0
+
 						broadcast(
 							&ServerMessage::TrigUpdate {
 								by: public_id,
-								weptype: weapon_type,
+								weptype: weapon_type.clone(),
 								pressed: pressed,
 							},
 							clients
 						).await;
+
+						//TODO decrement ammo
+
+						//Update healths
+						match weapon_type { //TODO important idea: have the client tell server which opponent the bullet hits, server only checks it its true.
+							WeaponType::Pistol => {
+								let rr = live_rot(&cl);
+								let (sx, sy) = live_pos(&cl);
+
+								//boring linear search
+								for (key, value) in clients.read().await.clone().iter() { //TODO try using for_each
+									if key == private_id{ //Can't shoot yourself
+										continue;
+									}
+									let (px, py) = live_pos(&value.state.read().await.clone());
+									let hit = line_circle_intersect(sx, sy, px, py, rr);
+									if !hit{
+										continue;
+									}
+									println!("hit!");
+								};
+							},
+							_=>{}
+						}
 					},
 					None => eprintln!("Can't find client in clients")
 				}
