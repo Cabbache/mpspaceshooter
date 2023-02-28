@@ -19,7 +19,6 @@
 	var socket = null;
 	var opened = false;
 	var public_id = null;
-	var selfSprite = null;
 	var keymap = {
 		"ArrowUp": false,
 		"ArrowDown": false,
@@ -35,6 +34,7 @@
 
 	const bullet_distance = 500;
 	const player_speed = 200;
+	const player_radius = 25;
 	const fadeRate = 8;
 	const rotation_speed = PI;
 
@@ -54,6 +54,37 @@
 	world.addChild(bullets_container);
 
 	app.stage.addChild(world);
+
+	//TODO r must be > 0
+	//false if not hit, distance to hit point otherwise
+	function line_circle_intersect(xp, yp, xc, yc, rot){
+		//shift everything to make line start from origin
+		let a = xc - xp;
+		let b = yc - yp;
+		let rot_90 = rot - PI/2;
+
+		//compute the quadratic's 'b' coefficient (for variable r in polar form)
+		let qb = -(2*a*Math.cos(rot_90) + 2*b*Math.sin(rot_90));
+		let discriminant = qb*qb - 4*(a*a + b*b - player_radius*player_radius);
+		if (discriminant < 0){ //no real roots (no line-circle intersection)
+			return false;
+		}
+
+		let root = Math.sqrt(discriminant);
+
+		//the actual solutions
+		const r1 = (root - qb)/2;
+		const r2 = (-root - qb)/2;
+
+		//the solution with smallest magnitude
+		const sml_r = Math.abs(r1) > Math.abs(r2) ? r2:r1;
+		
+		//if the smallest mag is greater than pistol reach then no hit
+		if (Math.abs(sml_r) > bullet_distance)
+			return false;
+
+		return sml_r;
+	}
 
 	const openWebSocket = function(){
 		fetch(`http://${window.location.hostname}/register`, {
@@ -137,15 +168,34 @@
 		if (!isTriggered) //temporary
 			return;
 		if (weapon == "Pistol"){
-			const bullet_line = new PIXI.Graphics();
-			bullet_line.lineStyle(4, 0xffff00, 1);
 			const line_start_x = public_id == updater ? world.pivot.x:gameState[updater].graphics.x;
 			const line_start_y = public_id == updater ? world.pivot.y:gameState[updater].graphics.y;
+
+			console.log(`sx: ${line_start_x}, xy: ${line_start_y}`);
+
+			const line_rotation = gameState[updater].graphics.rotation;
+			let shortest_line = bullet_distance;
+			Object.entries(gameState).forEach(([pubid, item]) => {
+				if (pubid == updater) //if you're checking if the shooter (updater) has shot itself, skip it
+					return;
+
+				const check_x = pubid == public_id ? world.pivot.x:item.graphics.x;
+				const check_y = pubid == public_id ? world.pivot.y:item.graphics.y;
+
+				const hit = line_circle_intersect(line_start_x, line_start_y, check_x, check_y, line_rotation);
+				if (hit === false)
+					return;
+				if (hit < shortest_line)
+					shortest_line = hit;
+			});
+
+			//draw the actual line
+			const bullet_line = new PIXI.Graphics();
+			bullet_line.lineStyle(4, 0xffff00, 1);
 			bullet_line.position.set(line_start_x, line_start_y);
-			bullet_line.lineTo(0, -bullet_distance);
-			bullet_line.rotation = gameState[updater].graphics.rotation;
+			bullet_line.lineTo(0, -shortest_line);
+			bullet_line.rotation = line_rotation;
 			bullets_container.addChild(bullet_line);
-			//TODO check if line intersects with player
 		}
 	}
 
@@ -160,6 +210,11 @@
 			graphics: square,
 			p: content
 		};
+	}
+
+	const handle_healthUpdate = function(content){
+		const newHealth = content.health;
+		gameState[content.from].p.health = newHealth;
 	}
 
 	const handle_playerleave = function(public_id){
@@ -179,7 +234,8 @@
 			case "PlayerJoin": handle_playerjoin(content); break;
 			case "PlayerLeave": handle_playerleave(content); break;
 			case "TrigUpdate": handle_trigUpdate(content); break;
-			default: console.error("received uknown server message");break;
+			case "HealthUpdate": handle_healthUpdate(content); break;
+			default: console.error(`received unknown server message: ${JSON.stringify(content)}`);break;
 		}
 		//console.log("gamestate: " + gameState.map((f) => JSON.stringify(f.p)));
 	};

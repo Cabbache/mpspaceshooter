@@ -150,7 +150,7 @@ pub enum ServerMessage{
 	MotionUpdate {direction: PlayerMotion, from: String, x: f32, y: f32},
 	RotationUpdate {direction: PlayerRotation, from: String, r: f32},
 	TrigUpdate {by: String, weptype: WeaponType, pressed: bool},
-	HealthUpdate {value: f32},
+	HealthUpdate {value: f32, from: String},
 }
 
 pub async fn broadcast(msg: &ServerMessage, clients: &Clients){
@@ -336,7 +336,11 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 							&cl.inventory.selection
 						).unwrap().weptype.clone();
 
-						//TODO we don't care if pistol trigger is released
+						//TODO since we don't care if pistol released, we should make the client not event send it
+						if !pressed{ //this is temporary?
+							return;
+						}
+
 						//TODO check ammo > 0
 
 						broadcast(
@@ -351,11 +355,12 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 						//TODO decrement ammo
 
 						//Update healths
-						match weapon_type { //TODO important idea: have the client tell server which opponent the bullet hits, server only checks it its true.
+						match weapon_type { 
 							WeaponType::Pistol => {
 								let rr = live_rot(&cl);
 								let (sx, sy) = live_pos(&cl);
 
+								//TODO important idea: have the client tell server which opponent the bullet hits, server only checks it its true.
 								//boring linear search
 								for (key, value) in clients.read().await.clone().iter() { //TODO try using for_each
 									if key == private_id{ //Can't shoot yourself
@@ -366,7 +371,20 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 									if !hit{
 										continue;
 									}
-									println!("hit!");
+
+									let new_health = {
+										let mut writeable = value.state.write().await;
+										writeable.health -= 10f32; //hard coded pistol damage to 10
+										writeable.health
+									};
+
+									broadcast(
+										&ServerMessage::HealthUpdate {
+											value: new_health,
+											from: format!("{:x}", xxh3_64(key.as_bytes()))
+										},
+										clients
+									).await;
 								};
 							},
 							_=>{}
