@@ -184,7 +184,13 @@ fn line_circle_intersect(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> bool{
 
 	let root = discriminant.sqrt();
 
-	(root - qb).abs().min((-root - qb).abs()) / 2f32 < PISTOL_REACH //true if a solution for 'r' exists less than the reach
+	let r1 = (root - qb)/2f32;
+	let r2 = (-root - qb)/2f32;
+
+	let r1Good = PISTOL_REACH > r1 && r1 > 0f32;
+	let r2Good = PISTOL_REACH > r2 && r2 > 0f32;
+
+	r1Good || r2Good
 }
 
 fn live_pos(pstate: &PlayerState) -> (f32, f32){

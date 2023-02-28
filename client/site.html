@@ -76,14 +76,19 @@
 		const r1 = (root - qb)/2;
 		const r2 = (-root - qb)/2;
 
-		//the solution with smallest magnitude
-		const sml_r = Math.abs(r1) > Math.abs(r2) ? r2:r1;
-		
-		//if the smallest mag is greater than pistol reach then no hit
-		if (Math.abs(sml_r) > bullet_distance)
-			return false;
+		const r1Good = bullet_distance > r1 && r1 > 0;
+		const r2Good = bullet_distance > r2 && r2 > 0;
 
-		return sml_r;
+		if (!r1Good && !r2Good)
+			return false;
+		else if (r1Good != r2Good){
+			if (r1Good)
+				return r1;
+			else
+				return r2;
+		} else if (r1Good && r2Good){
+			return Math.min(r1, r2);
+		}
 	}
 
 	const openWebSocket = function(){
@@ -213,8 +218,10 @@
 	}
 
 	const handle_healthUpdate = function(content){
-		const newHealth = content.health;
+		const newHealth = content.value;
 		gameState[content.from].p.health = newHealth;
+
+		console.log("updated health to " + newHealth);
 	}
 
 	const handle_playerleave = function(public_id){
