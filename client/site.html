@@ -16,7 +16,96 @@
 </head>
 <body>
 <script>
+	var bulletHitEmitterJSON = {
+        lifetime: { //lifetime of particle
+            min: 0.15,
+            max: 0.25
+        },
+        frequency: 0.008,
+        spawnChance: 1,
+        particlesPerWave: 1,
+        emitterLifetime: 0.2, //how long to emit for
+        maxParticles: 1000,
+        pos: {
+            x: 0,
+            y: 0
+        },
+        addAtBack: false,
+        behaviors: [
+            {
+                type: 'alpha',
+                config: {
+                    alpha: {
+                        list: [
+                            {
+                                value: 1,
+                                time: 0
+                            },
+                            {
+                                value: 0,
+                                time: 1
+                            }
+                        ],
+                    },
+                }
+            },
+            {
+                type: 'scale',
+                config: {
+                    scale: {
+                        list: [
+                            {
+                                value: 1,
+                                time: 0
+                            },
+                            {
+                                value: 0,
+                                time: 1
+                            }
+                        ],
+                    },
+                }
+            },
+            {
+                type: 'color',
+                config: {
+                    color: {
+                        list: [
+                            {
+                                value: "ffff00",
+                                time: 0
+                            },
+                            {
+                                value: "ff8000",
+                                time: 1
+                            }
+                        ],
+                    },
+                }
+            },
+            {
+                type: 'moveSpeed',
+                config: {
+                    speed: {
+                        list: [
+                            {
+                                value: 600,
+                                time: 0
+                            },
+                            {
+                                value: 400,
+                                time: 1
+                            }
+                        ],
+                        isStepped: false
+                    },
+                }
+            },
+        ],
+    };
+
 	var gameState = {};
+	var emissions = [];
 	var socket = null;
 	var opened = false;
 	var public_id = null;
@@ -55,123 +144,6 @@
 	world.addChild(bullets_container);
 
 	app.stage.addChild(world);
-
-	var emitter = new PIXI.particles.Emitter(
-    world,
-    {
-        lifetime: { //lifetime of particle
-            min: 5,
-            max: 5
-        },
-        frequency: 0.008,
-        spawnChance: 1,
-        particlesPerWave: 1,
-        emitterLifetime: 1, //how long to emit for
-        maxParticles: 1000,
-        pos: {
-            x: 0,
-            y: 0
-        },
-        addAtBack: false,
-        behaviors: [
-            {
-                type: 'alpha',
-                config: {
-                    alpha: {
-                        list: [
-                            {
-                                value: 0.8,
-                                time: 0
-                            },
-                            {
-                                value: 0.1,
-                                time: 1
-                            }
-                        ],
-                    },
-                }
-            },
-            {
-                type: 'scale',
-                config: {
-                    scale: {
-                        list: [
-                            {
-                                value: 1,
-                                time: 0
-                            },
-                            {
-                                value: 0.3,
-                                time: 1
-                            }
-                        ],
-                    },
-                }
-            },
-            {
-                type: 'color',
-                config: {
-                    color: {
-                        list: [
-                            {
-                                value: "fb1010",
-                                time: 0
-                            },
-                            {
-                                value: "f5b830",
-                                time: 1
-                            }
-                        ],
-                    },
-                }
-            },
-            {
-                type: 'moveSpeed',
-                config: {
-                    speed: {
-                        list: [
-                            {
-                                value: 200,
-                                time: 0
-                            },
-                            {
-                                value: 100,
-                                time: 1
-                            }
-                        ],
-                        isStepped: false
-                    },
-                }
-            },
-            {
-                type: 'rotationStatic', //the direction towards which particles get emitted
-                config: {
-                    min: 180,
-                    max: 360
-                }
-            },
-            {
-                type: 'spawnShape',
-                config: {
-                    type: 'torus',
-                    data: {
-                        x: 0,
-                        y: 0,
-                        radius: 10
-                    }
-                }
-            },
-            {
-                type: 'textureSingle',
-                config: {
-                    texture: PIXI.Texture.WHITE
-                }
-            }
-        ],
-    }
-	);
-
-	emitter.emit = true;
 
 	//false if not hit, distance to hit point otherwise
 	function line_circle_intersect(xp, yp, xc, yc, rot){
@@ -296,7 +268,12 @@
 			console.log(`sx: ${line_start_x}, xy: ${line_start_y}`);
 
 			const line_rotation = gameState[updater].graphics.rotation;
-			let shortest_line = bullet_distance;
+			let hitInfo = {
+				hit: false,
+				shortest_line: bullet_distance,
+				x: 0,
+				y: 0
+			};
 			Object.entries(gameState).forEach(([pubid, item]) => {
 				if (pubid == updater) //if you're checking if the shooter (updater) has shot itself, skip it
 					return;
@@ -307,17 +284,55 @@
 				const hit = line_circle_intersect(line_start_x, line_start_y, check_x, check_y, line_rotation);
 				if (hit === false)
 					return;
-				if (hit < shortest_line)
-					shortest_line = hit;
+
+				hitInfo.hit = true;
+				if (hit >= hitInfo.shortest_line)
+					return;
+
+				hitInfo.shortest_line = hit;
+				hitInfo.x = check_x;
+				hitInfo.y = check_y;
 			});
 
 			//draw the actual line
 			const bullet_line = new PIXI.Graphics();
 			bullet_line.lineStyle(4, 0xffff00, 1);
 			bullet_line.position.set(line_start_x, line_start_y);
-			bullet_line.lineTo(0, -shortest_line);
+			bullet_line.lineTo(0, -hitInfo.shortest_line);
 			bullet_line.rotation = line_rotation;
 			bullets_container.addChild(bullet_line);
+			
+			if (hitInfo.hit){
+				let emitJSON = JSON.parse(JSON.stringify(bulletHitEmitterJSON)); //careful here
+				emitJSON.pos = {
+					x: hitInfo.x,
+					y: hitInfo.y
+				};
+				emitJSON.behaviors.push(
+					{
+							type: 'rotationStatic',
+							config: {
+									min: (180/PI)*line_rotation+90 -30,
+									max: (180/PI)*line_rotation+90 +30
+							}
+					}
+				);
+				emitJSON.behaviors.push(
+					{
+						type: 'textureSingle',
+						config: {
+								texture: PIXI.Texture.WHITE
+							}
+					}
+				);
+
+				let emitter = new PIXI.particles.Emitter(
+					world,
+					emitJSON
+				);
+				emitter.emit = true;
+				emissions.push(emitter);
+			}
 		}
 	}
 
@@ -441,7 +456,6 @@
 
 	const ticker = PIXI.Ticker.shared.add(delta => {
 		const deltaTime = delta / (1000*PIXI.settings.TARGET_FPMS);
-		emitter.update(deltaTime);
 		Object.values(gameState).forEach(player => {
 			//apply rotations
 			switch (player.p.rotation_motion.direction){
@@ -509,12 +523,19 @@
 			}
 		});
 
-		for (var i = 0; i < bullets_container.children.length; ++i){
+		for (let i = 0; i < bullets_container.children.length; ++i){
 			bullets_container.children[i].scale.x = Math.max(
 				0,
 				bullets_container.children[i].scale.x-fadeRate*deltaTime
 			);
 		}
+
+		emissions.forEach(emitter => {
+			if (!emitter.emit)
+				emitter.destroy();
+		});
+		emissions = emissions.filter(emitter => emitter.emit);
+		emissions.forEach(emitter => emitter.update(deltaTime));
 	});
 
 	ticker.speed = 1;
