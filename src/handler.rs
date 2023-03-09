@@ -1,5 +1,5 @@
 use crate::{ws, Client, Clients, Result};
-use serde::{Serialize};
+use serde::{Serialize, Deserialize};
 use serde_json::Value;
 use uuid::Uuid;
 use xxhash_rust::xxh3::xxh3_64;
@@ -27,21 +27,33 @@ pub struct RegisterResponse {
 	private: String,
 }
 
-pub async fn register_handler(_body: Value, clients: Clients) -> Result<impl Reply> {
-	let private_uuid = Uuid::new_v4().as_simple().to_string();
-	let public_id = format!("{:x}", xxh3_64(private_uuid.as_bytes()));
-	eprintln!("pub uuid: {}", public_id);
+#[derive(Deserialize)]
+pub struct UserSelections {
+	nick: String,
+	color: String
+}
 
-	println!("got reg");
-	register_client(
-		private_uuid.clone(),
-		public_id.clone(),
-		clients,
-	).await;
-	Ok(json(&RegisterResponse {
-		public: public_id,
-		private: private_uuid,
-	}))
+pub async fn register_handler(body: Value, clients: Clients) -> Result<impl Reply> {
+	println!("{}", body);
+	let selection_result = serde_json::from_value(body);
+	match selection_result {
+		Ok(selections) => {
+			let private_uuid = Uuid::new_v4().as_simple().to_string();
+			let public_id = format!("{:x}", xxh3_64(private_uuid.as_bytes()));
+			println!("Registering client {}", public_id);
+			register_client(
+				private_uuid.clone(),
+				public_id.clone(),
+				selections,
+				clients,
+			).await;
+			Ok(json(&RegisterResponse {
+				public: public_id,
+				private: private_uuid,
+			}))
+		},
+		Err(_) => Ok(json(&"meow")) //TODO write this in an acceptable manner
+	}
 }
 
 pub async fn serve_page() -> Result<impl Reply> {
@@ -49,22 +61,24 @@ pub async fn serve_page() -> Result<impl Reply> {
 	Ok(warp::reply::html(html))
 }
 
-async fn register_client(private_id: String, public_id: String, clients: Clients) {
+async fn register_client(private_id: String, public_id: String, selections: UserSelections, clients: Clients) {
 	clients.write().await.insert(
 		private_id,
 		Client {
 			state: Arc::new(RwLock::new(
 				PlayerState{
-					name: "Bob".to_string(),
+					name: selections.nick,
 					public_id: public_id,
 					x:0.0,
 					y:0.0,
 					rotation: 0.0,
 					health: 100.0,
-					color: Color{
-						r: rand::thread_rng().gen_range(50..255),
-						g: rand::thread_rng().gen_range(50..255),
-						b: rand::thread_rng().gen_range(50..255),
+					color: match selections.color.as_str() {
+						"red" => Color{r:255,g:0,b:0},
+						"blue" => Color{r:0,g:0,b:255},
+						"green" => Color{r:0,g:255,b:0},
+						"yellow" => Color{r:255,g:255,b:0},
+						_ => Color{r:255,g:255,b:255}
 					},
 					inventory: Inventory{
 						selection: 0,

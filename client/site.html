@@ -2,6 +2,7 @@
 <html>
 <head>
 	<title>cche</title>
+	<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 	<style>
 		body {
 			margin: 0;
@@ -9,547 +10,733 @@
 			overflow: hidden;
 			background-color: #000000;
 		}
+
+		.modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 9999;
+      background-color: rgba(50,50,50,0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-dialog {
+      width: 500px;
+      background-color: #f0f0f0;
+      padding: 20px;
+      border-radius: 10px;
+    }
+
+    .modal-header h2 {
+      margin-top: 0;
+    }
+
+		.modal-body input[type="text"] {
+			display: block;
+			width: 100%;
+			padding: 10px;
+			margin-bottom: 20px;
+			font-size: 18px;
+			border-radius: 8px;
+			border: 1px solid gray;
+			box-shadow: 0px 6px 6px rgba(0, 0, 0, 0.4);
+			box-sizing: border-box;
+		}
+
+    /* Custom button styles */
+    .color-selector {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .color-selector label {
+      display: inline-block;
+      width: 50px;
+      height: 50px;
+      margin-right: 10px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      cursor: pointer;
+      transition: transform 0.2s ease-in-out;
+    }
+
+    .color-selector label:hover {
+      transform: scale(1.1);
+    }
+
+    .color-selector input[type="radio"] {
+      display: none;
+    }
+
+    .color-selector input[type="radio"]:checked + label {
+      border-width: 4px;
+			outline: 2px dotted black;
+    }
+
+    .modal-body input[type="submit"] {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin: 20px 0;
+      font-size: 18px;
+      color: #fff;
+      background-color: #333;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+		.modal-body input[type="submit"]:enabled {
+			background-color: rgb(50,50,50);
+		}
+
+		.modal-body input[type="submit"]:enabled:hover {
+			background-color: rgb(100,50,50);
+		}
+
+		.modal-body input[type="submit"]:disabled {
+			background-color: rgb(130,130,130);
+		}
+
 	</style>
 	
 	<script src="static/pixi.js"></script>
 	<script src="static/pe.min.js"></script>
 </head>
 <body>
+  <div class="modal" id="modal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2>Hello!</h2>
+      </div>
+      <div class="modal-body">
+        <form>
+          <input type="text" id="nick" name="nick" placeholder="What is your name?" autocomplete="off">
+
+          <div class="color-selector">
+						<input type="radio" id="color-red" name="color" value="red">
+						<label for="color-red" style="background-color: rgb(200, 0, 0);"></label>
+
+						<input type="radio" id="color-orange" name="color" value="orange">
+						<label for="color-orange" style="background-color: rgb(255, 150, 0);"></label>
+
+						<input type="radio" id="color-yellow" name="color" value="yellow">
+						<label for="color-yellow" style="background-color: rgb(255, 255, 0);"></label>
+
+						<input type="radio" id="color-green" name="color" value="green">
+						<label for="color-green" style="background-color: rgb(0, 150, 0);"></label>
+
+						<input type="radio" id="color-blue" name="color" value="blue">
+						<label for="color-blue" style="background-color: rgb(0, 0, 150);"></label>
+          </div>
+
+					<input type="submit" value="Play">
+        </form>
+      </div>
+    </div>
+  </div>
+
 <script>
-	var bulletHitEmitterJSON = {
-        lifetime: { //lifetime of particle
-            min: 0.15,
-            max: 0.25
-        },
-        frequency: 0.008,
-        spawnChance: 1,
-        particlesPerWave: 1,
-        emitterLifetime: 0.2, //how long to emit for
-        maxParticles: 1000,
-        pos: {
-            x: 0,
-            y: 0
-        },
-        addAtBack: false,
-        behaviors: [
-            {
-                type: 'alpha',
-                config: {
-                    alpha: {
-                        list: [
-                            {
-                                value: 1,
-                                time: 0
-                            },
-                            {
-                                value: 0,
-                                time: 1
-                            }
-                        ],
-                    },
-                }
-            },
-            {
-                type: 'scale',
-                config: {
-                    scale: {
-                        list: [
-                            {
-                                value: 1,
-                                time: 0
-                            },
-                            {
-                                value: 0,
-                                time: 1
-                            }
-                        ],
-                    },
-                }
-            },
-            {
-                type: 'color',
-                config: {
-                    color: {
-                        list: [
-                            {
-                                value: "ffff00",
-                                time: 0
-                            },
-                            {
-                                value: "ff8000",
-                                time: 1
-                            }
-                        ],
-                    },
-                }
-            },
-            {
-                type: 'moveSpeed',
-                config: {
-                    speed: {
-                        list: [
-                            {
-                                value: 600,
-                                time: 0
-                            },
-                            {
-                                value: 400,
-                                time: 1
-                            }
-                        ],
-                        isStepped: false
-                    },
-                }
-            },
-        ],
-    };
+	// Get the modal
+	const modal = document.getElementById("modal");
+	const form = document.querySelector('form');
+	const submitButton = document.querySelector('input[type="submit"]');
+	submitButton.disabled = true;
 
-	var gameState = {};
-	var emissions = [];
-	var socket = null;
-	var opened = false;
-	var public_id = null;
-	var keymap = {
-		"ArrowUp": false,
-		"ArrowDown": false,
-		"ArrowLeft": false,
-		"ArrowRight": false,
-		"A": false,
-		"D": false,
-		" ": false,
-	};
-
-	const invr2 = 0.7071067811865475;
-	const PI = 3.14159265358979323;
-
-	const bullet_distance = 500;
-	const player_speed = 200;
-	const player_radius = 25;
-	const fadeRate = 8;
-	const rotation_speed = PI;
-
-	const app = new PIXI.Application({
-			width: window.innerWidth,
-			height: window.innerHeight,
-			backgroundColor: 0x101510
+	// Add event listeners for the nickname input field and color radio buttons
+	const nicknameInput = document.getElementById('nick');
+	const colorRadios = document.querySelectorAll('input[name="color"]');
+	nicknameInput.addEventListener('input', updateSubmitButtonState);
+	colorRadios.forEach(radio => {
+		radio.addEventListener('change', updateSubmitButtonState);
 	});
 
-	const world = new PIXI.Container();
-	world.position.set(app.screen.width/2, app.screen.height/2);
+	// Function to update the state of the submit button based on the input values
+	function updateSubmitButtonState() {
+		const nickname = nicknameInput.value.trim();
+		const color = document.querySelector('input[name="color"]:checked');
 
-	const players_container = new PIXI.Container();
-	const bullets_container = new PIXI.Container();
-
-	world.addChild(players_container);
-	world.addChild(bullets_container);
-
-	app.stage.addChild(world);
-
-	//false if not hit, distance to hit point otherwise
-	function line_circle_intersect(xp, yp, xc, yc, rot){
-		//shift everything to make line start from origin
-		let a = xc - xp;
-		let b = yc - yp;
-		let rot_90 = rot - PI/2;
-
-		//compute the quadratic's 'b' coefficient (for variable r in polar form)
-		let qb = -(2*a*Math.cos(rot_90) + 2*b*Math.sin(rot_90));
-		let discriminant = qb*qb - 4*(a*a + b*b - player_radius*player_radius);
-		if (discriminant < 0){ //no real roots (no line-circle intersection)
-			return false;
-		}
-
-		let root = Math.sqrt(discriminant);
-
-		//the actual solutions
-		const r1 = (root - qb)/2;
-		const r2 = (-root - qb)/2;
-
-		const r1Good = bullet_distance > r1 && r1 > 0;
-		const r2Good = bullet_distance > r2 && r2 > 0;
-
-		if (!r1Good && !r2Good)
-			return false;
-		else if (r1Good != r2Good){
-			if (r1Good)
-				return r1;
-			else
-				return r2;
-		} else if (r1Good && r2Good){
-			return Math.min(r1, r2);
-		}
-	}
-
-	const openWebSocket = function(){
-		fetch(`http://${window.location.hostname}/register`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: "{}"
-		})
-		.then(response => response.json())
-		.then(result => {
-			public_id = result['public'];
-			socket = new WebSocket(`ws://${window.location.hostname}/ws/`+result['private']);
-			socket.onmessage = recvFn;
-			socket.onopen = () => {
-				opened=true;
-				socket.send(JSON.stringify({"t":"StateQuery"}));
-			};
-			socket.onclose = (event)=>{
-				opened=false;
-				console.log(event.wasClean ? "closed cleanly":"connection died");
-			}
-		});
-	};
-
-	const getPlayerSprite = function(player){
-		var square = new PIXI.Sprite(PIXI.Texture.WHITE);
-		square.anchor.set(0.5);
-		square.width = 50;
-		square.height = 50;
-		square.tint = player.color.r << 16 | player.color.g << 8 | player.color.b;
-		square.position.set(player.x, player.y);
-		square.rotation = player.rotation;
-		return square;
-	}
-
-	const handle_gamestate = function(state){
-		
-		//remove all other sprites
-		for (var i = world.children.length - 1; i >= 0; i--)
-			players_container.removeChild(world.children[i]);
-
-		gameState = {};
-		state.forEach((p) => {
-			const square = getPlayerSprite(p);
-			if (p.public_id == public_id){
-				square.x = app.screen.width/2;
-				square.y = app.screen.height/2;
-				app.stage.addChild(square);
-			} else
-				players_container.addChild(square);
-			gameState[p.public_id] = {
-				graphics: square,
-				p: p
-			};
-		});	
-	};
-
-	const handle_motionupdate = function(content){
-		let broadcaster = content["from"];
-		gameState[broadcaster].p.motion.direction = content.direction;
-		if (broadcaster == public_id){
-			world.pivot.x = content.x;
-			world.pivot.y = content.y;
+		if (nickname.length >= 3 && color !== null) {
+			submitButton.disabled = false;
 		} else {
-			gameState[broadcaster].graphics.x = content.x;
-			gameState[broadcaster].graphics.y = content.y;
+			submitButton.disabled = true;
 		}
 	}
 
-	const handle_rotationupdate = function(content){
-		let broadcaster = content["from"];
-		gameState[broadcaster].p.rotation_motion.direction = content.direction;
-		gameState[broadcaster].graphics.rotation = content.r;
-	}
+	form.addEventListener('submit', function(event) {
+		event.preventDefault();
 
-	const handle_trigUpdate = function(content){
-		const weapon = content.weptype;
-		const updater = content.by;
-		const isTriggered = content.pressed;
-		if (!isTriggered) //temporary
-			return;
-		if (weapon == "Pistol"){
-			const line_start_x = public_id == updater ? world.pivot.x:gameState[updater].graphics.x;
-			const line_start_y = public_id == updater ? world.pivot.y:gameState[updater].graphics.y;
+		const nick = document.getElementById("nick").value;
+		const color = document.querySelector('input[name="color"]:checked').value;
 
-			console.log(`sx: ${line_start_x}, xy: ${line_start_y}`);
+		console.log("Username: " + nick);
+		console.log("Color: " + color);
 
-			const line_rotation = gameState[updater].graphics.rotation;
-			let hitInfo = {
-				hit: false,
-				shortest_line: bullet_distance,
-				x: 0,
-				y: 0
+		modal.style.display = "none";
+		form.reset();
+		runClient(nick, color);
+	});
+
+	function runClient(player_nick, player_color){
+		var bulletHitEmitterJSON = {
+					lifetime: { //lifetime of particle
+							min: 0.15,
+							max: 0.25
+					},
+					frequency: 0.008,
+					spawnChance: 1,
+					particlesPerWave: 1,
+					emitterLifetime: 0.2, //how long to emit for
+					maxParticles: 1000,
+					pos: {
+							x: 0,
+							y: 0
+					},
+					addAtBack: false,
+					behaviors: [
+							{
+									type: 'alpha',
+									config: {
+											alpha: {
+													list: [
+															{
+																	value: 1,
+																	time: 0
+															},
+															{
+																	value: 0,
+																	time: 1
+															}
+													],
+											},
+									}
+							},
+							{
+									type: 'scale',
+									config: {
+											scale: {
+													list: [
+															{
+																	value: 1,
+																	time: 0
+															},
+															{
+																	value: 0,
+																	time: 1
+															}
+													],
+											},
+									}
+							},
+							{
+									type: 'color',
+									config: {
+											color: {
+													list: [
+															{
+																	value: "ffff00",
+																	time: 0
+															},
+															{
+																	value: "ff8000",
+																	time: 1
+															}
+													],
+											},
+									}
+							},
+							{
+									type: 'moveSpeed',
+									config: {
+											speed: {
+													list: [
+															{
+																	value: 600,
+																	time: 0
+															},
+															{
+																	value: 400,
+																	time: 1
+															}
+													],
+													isStepped: false
+											},
+									}
+							},
+					],
 			};
-			Object.entries(gameState).forEach(([pubid, item]) => {
-				if (pubid == updater) //if you're checking if the shooter (updater) has shot itself, skip it
-					return;
 
-				const check_x = pubid == public_id ? world.pivot.x:item.graphics.x;
-				const check_y = pubid == public_id ? world.pivot.y:item.graphics.y;
-
-				const hit = line_circle_intersect(line_start_x, line_start_y, check_x, check_y, line_rotation);
-				if (hit === false)
-					return;
-
-				hitInfo.hit = true;
-				if (hit >= hitInfo.shortest_line)
-					return;
-
-				hitInfo.shortest_line = hit;
-				hitInfo.x = check_x;
-				hitInfo.y = check_y;
-			});
-
-			//draw the actual line
-			const bullet_line = new PIXI.Graphics();
-			bullet_line.lineStyle(4, 0xffff00, 1);
-			bullet_line.position.set(line_start_x, line_start_y);
-			bullet_line.lineTo(0, -hitInfo.shortest_line);
-			bullet_line.rotation = line_rotation;
-			bullets_container.addChild(bullet_line);
-			
-			if (hitInfo.hit){
-				let emitJSON = JSON.parse(JSON.stringify(bulletHitEmitterJSON)); //careful here
-				emitJSON.pos = {
-					x: hitInfo.x,
-					y: hitInfo.y
-				};
-				emitJSON.behaviors.push(
-					{
-							type: 'rotationStatic',
-							config: {
-									min: (180/PI)*line_rotation+90 -30,
-									max: (180/PI)*line_rotation+90 +30
-							}
-					}
-				);
-				emitJSON.behaviors.push(
-					{
-						type: 'textureSingle',
-						config: {
-								texture: PIXI.Texture.WHITE
-							}
-					}
-				);
-
-				let emitter = new PIXI.particles.Emitter(
-					world,
-					emitJSON
-				);
-				emitter.emit = true;
-				emissions.push(emitter);
-			}
-		}
-	}
-
-	const handle_playerjoin = function(content){
-		const square = getPlayerSprite(content);
-		if (content.public_id == public_id){
-			console.log("got playerjoin for self, ignoring");
-			return;
-		}
-		players_container.addChild(square);
-		gameState[content.public_id] = {
-			graphics: square,
-			p: content
+		var gameState = {};
+		var emissions = [];
+		var socket = null;
+		var opened = false;
+		var public_id = null;
+		var keymap = {
+			"ArrowUp": false,
+			"ArrowDown": false,
+			"ArrowLeft": false,
+			"ArrowRight": false,
+			"A": false,
+			"D": false,
+			" ": false,
 		};
-	}
 
-	const handle_healthUpdate = function(content){
-		const newHealth = content.value;
-		gameState[content.from].p.health = newHealth;
+		const invr2 = 0.7071067811865475;
+		const PI = 3.14159265358979323;
 
-		console.log("updated health to " + newHealth);
-	}
+		const bullet_distance = 500;
+		const player_speed = 200;
+		const player_radius = 25;
+		const fadeRate = 8;
+		const rotation_speed = PI;
 
-	const handle_playerleave = function(public_id){
-		players_container.removeChild(gameState[public_id].graphics);
-		delete gameState[public_id];
-	}
+		const healthbar_maxwidth = 0.15; //This gets multiplied by the  screen width
 
-	const recvFn = function(event) {
-		//console.log("receive: " + event.data);
-		let data = JSON.parse(event.data);
-		let datatype = data["t"];
-		let content = data["c"];
-		switch (datatype){
-			case "GameState": handle_gamestate(content); break;
-			case "MotionUpdate": handle_motionupdate(content); break;
-			case "RotationUpdate": handle_rotationupdate(content); break;
-			case "PlayerJoin": handle_playerjoin(content); break;
-			case "PlayerLeave": handle_playerleave(content); break;
-			case "TrigUpdate": handle_trigUpdate(content); break;
-			case "HealthUpdate": handle_healthUpdate(content); break;
-			default: console.error(`received unknown server message: ${JSON.stringify(content)}`);break;
+		const app = new PIXI.Application({
+				width: window.innerWidth,
+				height: window.innerHeight,
+				backgroundColor: 0x101510
+		});
+
+		const world = new PIXI.Container();
+		world.position.set(app.screen.width/2, app.screen.height/2);
+
+		const players_container = new PIXI.Container();
+		const bullets_container = new PIXI.Container();
+
+		world.addChild(players_container);
+		world.addChild(bullets_container);
+
+		app.stage.addChild(world);
+
+		//Add the healthbar
+		var healthbar = new PIXI.Sprite(PIXI.Texture.WHITE);
+		healthbar.width = app.screen.width * healthbar_maxwidth;
+		healthbar.height = 20;
+		healthbar.tint = 0x00ff00;
+		healthbar.position.set(app.screen.width*0.02, app.screen.height*0.98 - 20);
+		app.stage.addChild(healthbar);
+
+		//false if not hit, distance to hit point otherwise
+		function line_circle_intersect(xp, yp, xc, yc, rot){
+			//shift everything to make line start from origin
+			let a = xc - xp;
+			let b = yc - yp;
+			let rot_90 = rot - PI/2;
+
+			//compute the quadratic's 'b' coefficient (for variable r in polar form)
+			let qb = -(2*a*Math.cos(rot_90) + 2*b*Math.sin(rot_90));
+			let discriminant = qb*qb - 4*(a*a + b*b - player_radius*player_radius);
+			if (discriminant < 0){ //no real roots (no line-circle intersection)
+				return false;
+			}
+
+			let root = Math.sqrt(discriminant);
+
+			//the actual solutions
+			const r1 = (root - qb)/2;
+			const r2 = (-root - qb)/2;
+
+			const r1Good = bullet_distance > r1 && r1 > 0;
+			const r2Good = bullet_distance > r2 && r2 > 0;
+
+			if (!r1Good && !r2Good)
+				return false;
+			else if (r1Good != r2Good){
+				if (r1Good)
+					return r1;
+				else
+					return r2;
+			} else if (r1Good && r2Good){
+				return Math.min(r1, r2);
+			}
 		}
-		//console.log("gamestate: " + gameState.map((f) => JSON.stringify(f.p)));
-	};
 
-	const keyAction = function (repeated, name, up){
-		//console.log(name);
-		if (!opened || repeated) return;
+		const openWebSocket = function(){
+			fetch(`http://${window.location.hostname}/register`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(
+					{
+						nick: player_nick,
+						color: player_color
+					}
+				)
+			})
+			.then(response => response.json())
+			.then(result => {
+				public_id = result['public'];
+				socket = new WebSocket(`ws://${window.location.hostname}/ws/`+result['private']);
+				socket.onmessage = recvFn;
+				socket.onopen = () => {
+					opened=true;
+					socket.send(JSON.stringify({"t":"StateQuery"}));
+				};
+				socket.onclose = (event)=>{
+					opened=false;
+					console.log(event.wasClean ? "closed cleanly":"connection died");
+				}
+			});
+		};
 
-		let translation_keys = ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"];
-		let rotation_keys = ["a","d"]; //case sensitive (todo make this insensitive)
-		let misc_keys = [" "];
+		const getPlayerSprite = function(player){
+			var square = new PIXI.Sprite(PIXI.Texture.WHITE);
+			square.anchor.set(0.5);
+			square.width = 50;
+			square.height = 50;
+			square.tint = player.color.r << 16 | player.color.g << 8 | player.color.b;
+			square.position.set(player.x, player.y);
+			square.rotation = player.rotation;
+			return square;
+		}
 
-		keymap[name] = !up;
+		const handle_gamestate = function(state){
+			
+			//remove all other sprites
+			for (var i = world.children.length - 1; i >= 0; i--)
+				players_container.removeChild(world.children[i]);
 
-		if (translation_keys.includes(name)){
-			let response = "";
-			if (keymap["ArrowUp"] && keymap["ArrowRight"]){
-				response = "MoveUpRight";
-			} else if (keymap["ArrowUp"] && keymap["ArrowLeft"]){
-				response = "MoveUpLeft";
-			} else if (keymap["ArrowUp"]){
-				response = "MoveUp";
-			}else if (keymap["ArrowDown"] && keymap["ArrowRight"]){
-				response = "MoveDownRight";
-			} else if (keymap["ArrowDown"] && keymap["ArrowLeft"]){
-				response = "MoveDownLeft";
-			} else if (keymap["ArrowDown"]){
-				response = "MoveDown";
-			} else if (keymap["ArrowLeft"]){
-				response = "MoveLeft";
-			} else if (keymap["ArrowRight"]){
-				response = "MoveRight";
+			gameState = {};
+			state.forEach((p) => {
+				const square = getPlayerSprite(p);
+				if (p.public_id == public_id){
+					square.x = app.screen.width/2;
+					square.y = app.screen.height/2;
+					app.stage.addChild(square);
+				} else
+					players_container.addChild(square);
+				gameState[p.public_id] = {
+					graphics: square,
+					p: p
+				};
+			});	
+		};
+
+		const handle_motionupdate = function(content){
+			let broadcaster = content["from"];
+			gameState[broadcaster].p.motion.direction = content.direction;
+			if (broadcaster == public_id){
+				world.pivot.x = content.x;
+				world.pivot.y = content.y;
 			} else {
-				response = "Stopped";
+				gameState[broadcaster].graphics.x = content.x;
+				gameState[broadcaster].graphics.y = content.y;
 			}
-			//console.log("sending " + response);
-			socket.send(
-				JSON.stringify({
-					"t":"MotionUpdate",
-					"c":{
-						"motion": response,
-					 }
-				})
-			);
-		} else if (rotation_keys.includes(name)) {
-			let response = "";
-			if (keymap["a"]){
-				response = "AntiClockwise";
-			} else if (keymap["d"]){
-				response = "Clockwise";
-			} else {
-				response = "Stopped";
+		}
+
+		const handle_rotationupdate = function(content){
+			let broadcaster = content["from"];
+			gameState[broadcaster].p.rotation_motion.direction = content.direction;
+			gameState[broadcaster].graphics.rotation = content.r;
+		}
+
+		const handle_trigUpdate = function(content){
+			const weapon = content.weptype;
+			const updater = content.by;
+			const isTriggered = content.pressed;
+			if (!isTriggered) //temporary
+				return;
+			if (weapon == "Pistol"){
+				const line_start_x = public_id == updater ? world.pivot.x:gameState[updater].graphics.x;
+				const line_start_y = public_id == updater ? world.pivot.y:gameState[updater].graphics.y;
+
+				console.log(`sx: ${line_start_x}, xy: ${line_start_y}`);
+
+				const line_rotation = gameState[updater].graphics.rotation;
+				let hitInfo = {
+					hit: false,
+					shortest_line: bullet_distance,
+					x: 0,
+					y: 0
+				};
+				Object.entries(gameState).forEach(([pubid, item]) => {
+					if (pubid == updater) //if you're checking if the shooter (updater) has shot itself, skip it
+						return;
+
+					const check_x = pubid == public_id ? world.pivot.x:item.graphics.x;
+					const check_y = pubid == public_id ? world.pivot.y:item.graphics.y;
+
+					const hit = line_circle_intersect(line_start_x, line_start_y, check_x, check_y, line_rotation);
+					if (hit === false)
+						return;
+
+					hitInfo.hit = true;
+					if (hit >= hitInfo.shortest_line)
+						return;
+
+					hitInfo.shortest_line = hit;
+					hitInfo.x = check_x;
+					hitInfo.y = check_y;
+				});
+
+				//draw the actual line
+				const bullet_line = new PIXI.Graphics();
+				bullet_line.lineStyle(4, 0xffff00, 1);
+				bullet_line.position.set(line_start_x, line_start_y);
+				bullet_line.lineTo(0, -hitInfo.shortest_line);
+				bullet_line.rotation = line_rotation;
+				bullets_container.addChild(bullet_line);
+				
+				if (hitInfo.hit){
+					let emitJSON = JSON.parse(JSON.stringify(bulletHitEmitterJSON)); //careful here
+					emitJSON.pos = {
+						x: hitInfo.x,
+						y: hitInfo.y
+					};
+					emitJSON.behaviors.push(
+						{
+								type: 'rotationStatic',
+								config: {
+										min: (180/PI)*line_rotation+90 -30,
+										max: (180/PI)*line_rotation+90 +30
+								}
+						}
+					);
+					emitJSON.behaviors.push(
+						{
+							type: 'textureSingle',
+							config: {
+									texture: PIXI.Texture.WHITE
+								}
+						}
+					);
+
+					let emitter = new PIXI.particles.Emitter(
+						world,
+						emitJSON
+					);
+					emitter.emit = true;
+					emissions.push(emitter);
+				}
 			}
-			//console.log("sending " + response);
-			socket.send(
-				JSON.stringify({
-					"t":"RotationUpdate",
-					"c":{
-						"direction": response,
-					 }
-				})
-			);
-		} else if (misc_keys.includes(name)) {
-			if (name == " "){
+		}
+
+		const handle_playerjoin = function(content){
+			const square = getPlayerSprite(content);
+			if (content.public_id == public_id){
+				console.log("got playerjoin for self, ignoring");
+				return;
+			}
+			players_container.addChild(square);
+			gameState[content.public_id] = {
+				graphics: square,
+				p: content
+			};
+		}
+
+		const handle_healthUpdate = function(content){
+			const newHealth = content.value;
+			gameState[content.from].p.health = newHealth;
+
+			console.log("updated health to " + newHealth);
+			if (content.from === public_id){ //If this user got hit
+				healthbar.width = Math.max(0, app.screen.width * healthbar_maxwidth * newHealth / 100);
+			}
+		}
+
+		const handle_playerleave = function(public_id){
+			players_container.removeChild(gameState[public_id].graphics);
+			delete gameState[public_id];
+		}
+
+		const recvFn = function(event) {
+			//console.log("receive: " + event.data);
+			let data = JSON.parse(event.data);
+			let datatype = data["t"];
+			let content = data["c"];
+			switch (datatype){
+				case "GameState": handle_gamestate(content); break;
+				case "MotionUpdate": handle_motionupdate(content); break;
+				case "RotationUpdate": handle_rotationupdate(content); break;
+				case "PlayerJoin": handle_playerjoin(content); break;
+				case "PlayerLeave": handle_playerleave(content); break;
+				case "TrigUpdate": handle_trigUpdate(content); break;
+				case "HealthUpdate": handle_healthUpdate(content); break;
+				default: console.error(`received unknown server message: ${JSON.stringify(content)}`);break;
+			}
+			//console.log("gamestate: " + gameState.map((f) => JSON.stringify(f.p)));
+		};
+
+		const keyAction = function (repeated, name, up){
+			//console.log(name);
+			if (!opened || repeated) return;
+
+			let translation_keys = ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"];
+			let rotation_keys = ["a","d"]; //case sensitive (todo make this insensitive)
+			let misc_keys = [" "];
+
+			keymap[name] = !up;
+
+			if (translation_keys.includes(name)){
+				let response = "";
+				if (keymap["ArrowUp"] && keymap["ArrowRight"]){
+					response = "MoveUpRight";
+				} else if (keymap["ArrowUp"] && keymap["ArrowLeft"]){
+					response = "MoveUpLeft";
+				} else if (keymap["ArrowUp"]){
+					response = "MoveUp";
+				}else if (keymap["ArrowDown"] && keymap["ArrowRight"]){
+					response = "MoveDownRight";
+				} else if (keymap["ArrowDown"] && keymap["ArrowLeft"]){
+					response = "MoveDownLeft";
+				} else if (keymap["ArrowDown"]){
+					response = "MoveDown";
+				} else if (keymap["ArrowLeft"]){
+					response = "MoveLeft";
+				} else if (keymap["ArrowRight"]){
+					response = "MoveRight";
+				} else {
+					response = "Stopped";
+				}
+				//console.log("sending " + response);
 				socket.send(
 					JSON.stringify({
-						"t":"TrigUpdate",
+						"t":"MotionUpdate",
 						"c":{
-							"pressed": keymap[name],
+							"motion": response,
 						 }
 					})
 				);
-			}
-		}
-	};
-
-	document.body.appendChild(app.view);
-	openWebSocket();
-
-	const ticker = PIXI.Ticker.shared.add(delta => {
-		const deltaTime = delta / (1000*PIXI.settings.TARGET_FPMS);
-		Object.values(gameState).forEach(player => {
-			//apply rotations
-			switch (player.p.rotation_motion.direction){
-				case "Clockwise":
-					player.graphics.rotation += rotation_speed * deltaTime;break;
-				case "AntiClockwise":
-					player.graphics.rotation += -rotation_speed * deltaTime;break;
-			}
-			
-			//apply translations
-			if (player.p.public_id == public_id){
-				switch (player.p.motion.direction){
-					case "MoveUp":
-						world.pivot.y -= player_speed * deltaTime;break;
-					case "MoveDown":
-						world.pivot.y += player_speed * deltaTime;break;
-					case "MoveLeft":
-						world.pivot.x -= player_speed * deltaTime;break;
-					case "MoveRight":
-						world.pivot.x += player_speed * deltaTime;break;
-					case "MoveUpRight":
-						world.pivot.x += player_speed * deltaTime * invr2;
-						world.pivot.y -= player_speed * deltaTime * invr2;
-						break;
-					case "MoveDownRight":
-						world.pivot.x += player_speed * deltaTime * invr2;
-						world.pivot.y += player_speed * deltaTime * invr2;
-						break;
-					case "MoveDownLeft":
-						world.pivot.x -= player_speed * deltaTime * invr2;
-						world.pivot.y += player_speed * deltaTime * invr2;
-						break;
-					case "MoveUpLeft":
-						world.pivot.x -= player_speed * deltaTime * invr2;
-						world.pivot.y -= player_speed * deltaTime * invr2;
-						break;
-				}			
-			} else {
-				switch (player.p.motion.direction){
-					case "MoveUp":
-						player.graphics.y -= player_speed * deltaTime;break;
-					case "MoveDown":
-						player.graphics.y += player_speed * deltaTime;break;
-					case "MoveLeft":
-						player.graphics.x -= player_speed * deltaTime;break;
-					case "MoveRight":
-						player.graphics.x += player_speed * deltaTime;break;
-					case "MoveUpRight":
-						player.graphics.x += player_speed * deltaTime * invr2;
-						player.graphics.y -= player_speed * deltaTime * invr2;
-						break;
-					case "MoveDownRight":
-						player.graphics.x += player_speed * deltaTime * invr2;
-						player.graphics.y += player_speed * deltaTime * invr2;
-						break;
-					case "MoveDownLeft":
-						player.graphics.x -= player_speed * deltaTime * invr2;
-						player.graphics.y += player_speed * deltaTime * invr2;
-						break;
-					case "MoveUpLeft":
-						player.graphics.x -= player_speed * deltaTime * invr2;
-						player.graphics.y -= player_speed * deltaTime * invr2;
-						break;
+			} else if (rotation_keys.includes(name)) {
+				let response = "";
+				if (keymap["a"]){
+					response = "AntiClockwise";
+				} else if (keymap["d"]){
+					response = "Clockwise";
+				} else {
+					response = "Stopped";
+				}
+				//console.log("sending " + response);
+				socket.send(
+					JSON.stringify({
+						"t":"RotationUpdate",
+						"c":{
+							"direction": response,
+						 }
+					})
+				);
+			} else if (misc_keys.includes(name)) {
+				if (name == " "){
+					socket.send(
+						JSON.stringify({
+							"t":"TrigUpdate",
+							"c":{
+								"pressed": keymap[name],
+							 }
+						})
+					);
 				}
 			}
+		};
+
+		document.body.appendChild(app.view);
+		openWebSocket();
+
+		const ticker = PIXI.Ticker.shared.add(delta => {
+			const deltaTime = delta / (1000*PIXI.settings.TARGET_FPMS);
+			Object.values(gameState).forEach(player => {
+				//apply rotations
+				switch (player.p.rotation_motion.direction){
+					case "Clockwise":
+						player.graphics.rotation += rotation_speed * deltaTime;break;
+					case "AntiClockwise":
+						player.graphics.rotation += -rotation_speed * deltaTime;break;
+				}
+				
+				//apply translations
+				if (player.p.public_id == public_id){
+					switch (player.p.motion.direction){
+						case "MoveUp":
+							world.pivot.y -= player_speed * deltaTime;break;
+						case "MoveDown":
+							world.pivot.y += player_speed * deltaTime;break;
+						case "MoveLeft":
+							world.pivot.x -= player_speed * deltaTime;break;
+						case "MoveRight":
+							world.pivot.x += player_speed * deltaTime;break;
+						case "MoveUpRight":
+							world.pivot.x += player_speed * deltaTime * invr2;
+							world.pivot.y -= player_speed * deltaTime * invr2;
+							break;
+						case "MoveDownRight":
+							world.pivot.x += player_speed * deltaTime * invr2;
+							world.pivot.y += player_speed * deltaTime * invr2;
+							break;
+						case "MoveDownLeft":
+							world.pivot.x -= player_speed * deltaTime * invr2;
+							world.pivot.y += player_speed * deltaTime * invr2;
+							break;
+						case "MoveUpLeft":
+							world.pivot.x -= player_speed * deltaTime * invr2;
+							world.pivot.y -= player_speed * deltaTime * invr2;
+							break;
+					}			
+				} else {
+					switch (player.p.motion.direction){
+						case "MoveUp":
+							player.graphics.y -= player_speed * deltaTime;break;
+						case "MoveDown":
+							player.graphics.y += player_speed * deltaTime;break;
+						case "MoveLeft":
+							player.graphics.x -= player_speed * deltaTime;break;
+						case "MoveRight":
+							player.graphics.x += player_speed * deltaTime;break;
+						case "MoveUpRight":
+							player.graphics.x += player_speed * deltaTime * invr2;
+							player.graphics.y -= player_speed * deltaTime * invr2;
+							break;
+						case "MoveDownRight":
+							player.graphics.x += player_speed * deltaTime * invr2;
+							player.graphics.y += player_speed * deltaTime * invr2;
+							break;
+						case "MoveDownLeft":
+							player.graphics.x -= player_speed * deltaTime * invr2;
+							player.graphics.y += player_speed * deltaTime * invr2;
+							break;
+						case "MoveUpLeft":
+							player.graphics.x -= player_speed * deltaTime * invr2;
+							player.graphics.y -= player_speed * deltaTime * invr2;
+							break;
+					}
+				}
+			});
+
+			for (let i = 0; i < bullets_container.children.length; ++i){
+				bullets_container.children[i].scale.x = Math.max(
+					0,
+					bullets_container.children[i].scale.x-fadeRate*deltaTime
+				);
+			}
+
+			emissions.forEach(emitter => {
+				if (!emitter.emit)
+					emitter.destroy();
+			});
+			emissions = emissions.filter(emitter => emitter.emit);
+			emissions.forEach(emitter => emitter.update(deltaTime));
 		});
 
-		for (let i = 0; i < bullets_container.children.length; ++i){
-			bullets_container.children[i].scale.x = Math.max(
-				0,
-				bullets_container.children[i].scale.x-fadeRate*deltaTime
-			);
-		}
+		ticker.speed = 1;
+		ticker.minFPS = 30;
+		ticker.maxFPS = 60;
+		ticker.start();
 
-		emissions.forEach(emitter => {
-			if (!emitter.emit)
-				emitter.destroy();
+		window.addEventListener("resize", function(){
+			app.renderer.resize(window.innerWidth, window.innerHeight);
 		});
-		emissions = emissions.filter(emitter => emitter.emit);
-		emissions.forEach(emitter => emitter.update(deltaTime));
-	});
 
-	ticker.speed = 1;
-	ticker.minFPS = 30;
-	ticker.maxFPS = 60;
-	ticker.start();
-
-	window.addEventListener("resize", function(){
-    app.renderer.resize(window.innerWidth, window.innerHeight);
-	});
-
-	window.addEventListener('keydown', (event) => keyAction(event.repeat, event.key, false));
-	window.addEventListener('keyup', (event) => keyAction(event.repeat, event.key, true));
-
+		window.addEventListener('keydown', (event) => keyAction(event.repeat, event.key, false));
+		window.addEventListener('keyup', (event) => keyAction(event.repeat, event.key, true));
+	}
 </script>
 </body>
 </html>
