@@ -411,7 +411,10 @@
 				if (p.public_id == public_id){
 					square.x = app.screen.width/2;
 					square.y = app.screen.height/2;
+					world.pivot.x = p.x;
+					world.pivot.y = p.y;
 					app.stage.addChild(square);
+					console.log("state contains self");
 				} else
 					players_container.addChild(square);
 				gameState[p.public_id] = {
