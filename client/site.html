@@ -389,14 +389,25 @@
 		};
 
 		const getPlayerSprite = function(player){
+			//TODO return
+			var player_container = new PIXI.Container();
+			player_container.position.set(player.x, player.y);
+			player_container.rotation = player.rotation;
 			var square = new PIXI.Sprite(PIXI.Texture.WHITE);
 			square.anchor.set(0.5);
 			square.width = 50;
 			square.height = 50;
+			square.anchor.set(0.5);
 			square.tint = player.color.r << 16 | player.color.g << 8 | player.color.b;
-			square.position.set(player.x, player.y);
-			square.rotation = player.rotation;
-			return square;
+			console.log(player);
+			var text = new PIXI.Text(player.name, { fontFamily: "Arial", fontSize: 16, fill: 0xffffff });
+			text.position.set(-10, -20);
+			player_container.addChild(square);
+			player_container.addChild(text);
+			//square.position.set(player.x, player.y);
+			//square.rotation = player.rotation;
+			//return square;
+			return player_container;
 		}
 
 		const handle_gamestate = function(state){
