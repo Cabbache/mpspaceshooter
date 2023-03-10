@@ -35,9 +35,13 @@ pub struct UserSelections {
 
 pub async fn register_handler(body: Value, clients: Clients) -> Result<impl Reply> {
 	println!("{}", body);
-	let selection_result = serde_json::from_value(body);
+	let selection_result = serde_json::from_value::<UserSelections>(body);
 	match selection_result {
 		Ok(selections) => {
+			if selections.nick.len() > 10 {
+				return Ok(json(&"meow"))
+			}
+
 			let private_uuid = Uuid::new_v4().as_simple().to_string();
 			let public_id = format!("{:x}", xxh3_64(private_uuid.as_bytes()));
 			println!("Registering client {}", public_id);
@@ -71,15 +75,14 @@ async fn register_client(private_id: String, public_id: String, selections: User
 					public_id: public_id,
 					x: rand::thread_rng().gen_range(-300f32..300f32),
 					y: rand::thread_rng().gen_range(-300f32..300f32),
-					//x: 0f32,
-					//y: 0f32,
 					rotation: 0.0,
 					health: 100.0,
 					color: match selections.color.as_str() {
 						"red" => Color{r:255,g:0,b:0},
-						"blue" => Color{r:0,g:0,b:255},
-						"green" => Color{r:0,g:255,b:0},
+						"orange" => Color{r:255,g:165,b:0},
 						"yellow" => Color{r:255,g:255,b:0},
+						"green" => Color{r:0,g:255,b:0},
+						"blue" => Color{r:0,g:0,b:255},
 						_ => Color{r:255,g:255,b:255}
 					},
 					inventory: Inventory{
