@@ -573,29 +573,30 @@
 			//console.log(name);
 			if (!opened || repeated) return;
 
-			let translation_keys = ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"];
-			let rotation_keys = ["a","d"]; //case sensitive (todo make this insensitive)
+			let rotation_keys = ["arrowleft","arrowright"];
+			let translation_keys = ["w", "a", "s", "d"]; //case sensitive (todo make this insensitive)
 			let misc_keys = [" "];
-
+			
+			name = name.toLowerCase();
 			keymap[name] = !up;
 
 			if (translation_keys.includes(name)){
 				let response = "";
-				if (keymap["ArrowUp"] && keymap["ArrowRight"]){
+				if (keymap["w"] && keymap["d"]){
 					response = "MoveUpRight";
-				} else if (keymap["ArrowUp"] && keymap["ArrowLeft"]){
+				} else if (keymap["w"] && keymap["a"]){
 					response = "MoveUpLeft";
-				} else if (keymap["ArrowUp"]){
+				} else if (keymap["w"]){
 					response = "MoveUp";
-				}else if (keymap["ArrowDown"] && keymap["ArrowRight"]){
+				}else if (keymap["s"] && keymap["d"]){
 					response = "MoveDownRight";
-				} else if (keymap["ArrowDown"] && keymap["ArrowLeft"]){
+				} else if (keymap["s"] && keymap["a"]){
 					response = "MoveDownLeft";
-				} else if (keymap["ArrowDown"]){
+				} else if (keymap["s"]){
 					response = "MoveDown";
-				} else if (keymap["ArrowLeft"]){
+				} else if (keymap["a"]){
 					response = "MoveLeft";
-				} else if (keymap["ArrowRight"]){
+				} else if (keymap["d"]){
 					response = "MoveRight";
 				} else {
 					response = "Stopped";
@@ -611,9 +612,9 @@
 				);
 			} else if (rotation_keys.includes(name)) {
 				let response = "";
-				if (keymap["a"]){
+				if (keymap["arrowleft"]){
 					response = "AntiClockwise";
-				} else if (keymap["d"]){
+				} else if (keymap["arrowright"]){
 					response = "Clockwise";
 				} else {
 					response = "Stopped";
