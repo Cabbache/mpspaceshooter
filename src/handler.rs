@@ -73,8 +73,8 @@ async fn register_client(private_id: String, public_id: String, selections: User
 				PlayerState{
 					name: selections.nick,
 					public_id: public_id,
-					x: rand::thread_rng().gen_range(-300f32..300f32),
-					y: rand::thread_rng().gen_range(-300f32..300f32),
+					x: rand::thread_rng().gen_range(-150f32..150f32),
+					y: rand::thread_rng().gen_range(-150f32..150f32),
 					rotation: 0.0,
 					health: 100.0,
 					color: match selections.color.as_str() {

@@ -401,12 +401,10 @@
 			square.tint = player.color.r << 16 | player.color.g << 8 | player.color.b;
 			console.log(player);
 			var text = new PIXI.Text(player.name, { fontFamily: "Arial", fontSize: 16, fill: 0xffffff });
-			text.position.set(-10, -20);
+			text.anchor.set(0.5);
+			text.position.set(0, -40);
 			player_container.addChild(square);
 			player_container.addChild(text);
-			//square.position.set(player.x, player.y);
-			//square.rotation = player.rotation;
-			//return square;
 			return player_container;
 		}
 
