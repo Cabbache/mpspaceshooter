@@ -342,7 +342,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 							&cl.inventory.selection
 						).unwrap().weptype.clone();
 
-						//TODO since we don't care if pistol released, we should make the client not event send it
+						//TODO since we don't care if pistol released, we should make the client not even send it
 						if !pressed{ //this is temporary?
 							return;
 						}

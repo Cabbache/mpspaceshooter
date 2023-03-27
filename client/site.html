@@ -308,8 +308,15 @@
 		const world = new PIXI.Container();
 		world.position.set(app.screen.width/2, app.screen.height/2);
 
+		//tells pixijs to consider the zindex of the children
+		world.sortableChildren = true;
+
 		const players_container = new PIXI.Container();
 		const bullets_container = new PIXI.Container();
+
+		//higher zindex makes it appear on top
+		bullets_container.zIndex = 1;
+		players_container.zIndex = 2;
 
 		world.addChild(players_container);
 		world.addChild(bullets_container);
