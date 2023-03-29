@@ -176,9 +176,6 @@
 		const nick = document.getElementById("nick").value;
 		const color = document.querySelector('input[name="color"]:checked').value;
 
-		console.log("Username: " + nick);
-		console.log("Color: " + color);
-
 		modal.style.display = "none";
 		form.reset();
 		runClient(nick, color);
@@ -406,7 +403,7 @@
 			square.height = 50;
 			square.anchor.set(0.5);
 			square.tint = player.color.r << 16 | player.color.g << 8 | player.color.b;
-			console.log(player);
+
 			var text = new PIXI.Text(player.name, { fontFamily: "Arial", fontSize: 16, fill: 0xffffff });
 			text.anchor.set(0.5);
 			text.position.set(0, -40);
@@ -468,8 +465,6 @@
 				const line_start_x = public_id == updater ? world.pivot.x:gameState[updater].graphics.x;
 				const line_start_y = public_id == updater ? world.pivot.y:gameState[updater].graphics.y;
 
-				console.log(`sx: ${line_start_x}, xy: ${line_start_y}`);
-
 				const line_rotation = gameState[updater].graphics.rotation;
 				let hitInfo = {
 					hit: false,
@@ -478,7 +473,7 @@
 					y: 0
 				};
 				Object.entries(gameState).forEach(([pubid, item]) => {
-					if (pubid == updater) //if you're checking if the shooter (updater) has shot itself, skip it
+					if (pubid == updater) //don't check if the shooter is shooting themselves
 						return;
 
 					const check_x = pubid == public_id ? world.pivot.x:item.graphics.x;
@@ -542,7 +537,7 @@
 		const handle_playerjoin = function(content){
 			const square = getPlayerSprite(content);
 			if (content.public_id == public_id){
-				console.log("got playerjoin for self, ignoring");
+				console.log("if you never see this then this is a useless branch");
 				return;
 			}
 			players_container.addChild(square);
@@ -556,9 +551,20 @@
 			const newHealth = content.value;
 			gameState[content.from].p.health = newHealth;
 
-			console.log("updated health to " + newHealth);
-			if (content.from === public_id){ //If this user got hit
+			const is_self = content.from === public_id;
+
+			if (is_self){ //If this user got hit, update healthbar
 				healthbar.width = Math.max(0, app.screen.width * healthbar_maxwidth * newHealth / 100);
+			}
+
+			//if not fatal, do nothing
+			if (newHealth > 0)
+				return;
+			
+			if (is_self){
+				alert("You died!");
+			} else {
+				handle_playerleave(content.from);
 			}
 		}
 
