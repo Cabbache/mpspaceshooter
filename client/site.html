@@ -554,7 +554,9 @@
 			const is_self = content.from === public_id;
 
 			if (is_self){ //If this user got hit, update healthbar
-				healthbar.width = Math.max(0, app.screen.width * healthbar_maxwidth * newHealth / 100);
+				const prcnt = newHealth / 100;
+				healthbar.width = Math.max(0, app.screen.width * healthbar_maxwidth * prcnt);
+				healthbar.tint = Math.round(0xff * prcnt) << 8 | Math.round((1-prcnt) * 0xff) << 16;
 			}
 
 			//if not fatal, do nothing
