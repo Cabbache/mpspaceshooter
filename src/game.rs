@@ -225,181 +225,156 @@ fn live_rot(pstate: &PlayerState) -> f32 {
 }
 
 pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clients){
-	match from_str(message){
-		Ok(v) => match v{
-			ClientMessage::MotionUpdate { motion } => {
-				eprintln!("got keyupdate from {}: {:?}", private_id, motion);
-				let (mut nx, mut ny) = (0.0,0.0);
-				let action_required = match clients.read().await.get(private_id){
-					Some(v) => {
-						let cl = v.state.read().await.clone();
-						(nx, ny) = live_pos(&cl);
-						cl.motion.direction != motion
-					},
-					_ => {
-						eprintln!("Can't find client in hashmap");
-						false
-					}
-				};
-				if action_required{
-					match clients.read().await.get(private_id){
-						Some(v) => {
-							let mut writeable = v.state.write().await;
-							writeable.x = nx;
-							writeable.y = ny;
-							writeable.motion = MotionStart{
-								direction: motion,
-								time: Instant::now()
-							};
-						},
-						_ => {
-							eprintln!("Can't get write lock on clients in motionupdate");
-						}
-					};
+	let message: ClientMessage = match from_str(message) {
+		Ok(v) => v,
+		Err(m) => {
+			eprintln!("Can't deserialize message: {}", m);
+			return;
+		}
+	};
 
-					let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
-					let msg = ServerMessage::MotionUpdate {
-						direction: motion,
-						from: public_id,
-						x: nx,
-						y: ny,
-					};
-					broadcast(&msg, clients).await;
-				}
-			},
-			ClientMessage::RotationUpdate { direction } => { //TODO remove action_required variable since now we have locks within the hashmap, instead handle things inside the first match statement
-				eprintln!("got rotation update from {}: {:?}", private_id, direction);
-				let mut nr = 0.0;
-				let action_required = match clients.read().await.get(private_id){
-					Some(v) => {
-						let cl = v.state.read().await.clone();
-						nr = live_rot(&cl);
-						cl.rotation_motion.direction != direction
-					},
-					_ => {
-						eprintln!("Can't find client in hashmap");
-						false
-					}
-				};
-				if action_required{
-					match clients.read().await.get(private_id){
-						Some(v) => {
-							let mut writeable = v.state.write().await;
-							writeable.rotation = nr;
-							writeable.rotation_motion = RotationStart{
-								direction: direction,
-								time: Instant::now()
-							};
-						},
-						_ => {
-							eprintln!("Can't find client in clients (rotation update)");
-						}
-					};
+	let clr = clients.read().await;
+	let sender_state = match clr.get(private_id) {
+		Some(v) => &v.state,
+		None => {
+			eprintln!("Can't find sender in clients: {}", private_id);
+			return;
+		}
+	};
 
-					let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
-					let msg = ServerMessage::RotationUpdate {
-						direction: direction,
-						from: public_id,
-						r: nr
-					};
-					broadcast(&msg, clients).await;
-				}
-			},
-			ClientMessage::StateQuery => {
-				eprintln!("Got statequery");
-				let mut players: Vec<PlayerState> = vec![];
-				let readlock = clients.read().await;
-				for (_, value) in readlock.iter(){
-					let cl = value.state.read().await.clone();
-					players.push(cl);
-				}
-				let res = to_string(
-					&ServerMessage::GameState(players)
-				).unwrap();
-				let client = readlock.get(private_id).cloned();
-				client.unwrap().sender.unwrap().send(Ok(Message::text(res))).unwrap();
-			},
-			ClientMessage::ChangeSlot { slot } => { //TODO consider also changing trigger_pressed to false both on client and server when changeslot
-				match clients.read().await.get(private_id){
-					Some(v) => {
-						let cl = v.state.read().await.clone();
-						if cl.inventory.selection != slot
-							{ v.state.write().await.inventory.selection = slot; }
-					},
-					None => eprintln!("Can't find client in clients")
-				}
-			},
-			ClientMessage::TrigUpdate { pressed } => {
-				match clients.read().await.get(private_id){
-					Some(v) => {
-						let cl = v.state.read().await.clone();
-						if cl.trigger_pressed == pressed {
-							return;
-						}
-						let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
-						v.state.write().await.trigger_pressed = pressed;
-						let weapon_type = cl.inventory.weapons.get( //TODO since we are not using .read() it might be outdated
-							&cl.inventory.selection
-						).unwrap().weptype.clone();
+	match message {
+		ClientMessage::MotionUpdate { motion } => {
+			if sender_state.read().await.clone().motion.direction == motion { //nothing changed - this should be impossible with unmodded client
+				eprintln!("potentially modded client detected");
+				return;
+			}
+			let (nx, ny) = live_pos(&sender_state.read().await.clone());
 
-						//TODO since we don't care if pistol released, we should make the client not even send it
-						if !pressed{ //this is temporary?
-							return;
+			let mut writeable = sender_state.write().await;
+			writeable.x = nx;
+			writeable.y = ny;
+			writeable.motion = MotionStart{
+				direction: motion,
+				time: Instant::now()
+			};
+
+			let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
+			let msg = ServerMessage::MotionUpdate {
+				direction: motion,
+				from: public_id,
+				x: nx,
+				y: ny,
+			};
+			broadcast(&msg, clients).await;
+		},
+		ClientMessage::RotationUpdate { direction } => { //TODO remove action_required variable since now we have locks within the hashmap, instead handle things inside the first match statement
+			if sender_state.read().await.clone().rotation_motion.direction == direction {
+				return;
+			}
+			let nr = live_rot(&sender_state.read().await.clone());
+
+			let mut writeable = sender_state.write().await;
+			writeable.rotation = nr;
+			writeable.rotation_motion = RotationStart{
+				direction: direction,
+				time: Instant::now()
+			};
+
+			let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
+			let msg = ServerMessage::RotationUpdate {
+				direction: direction,
+				from: public_id,
+				r: nr
+			};
+			broadcast(&msg, clients).await;
+		},
+		ClientMessage::StateQuery => { //TODO rate limit this
+			eprintln!("Got statequery");
+			let mut players: Vec<PlayerState> = vec![];
+			for (_, value) in clr.iter(){
+				let cl = value.state.read().await.clone();
+				players.push(cl);
+			}
+
+			let res = to_string(
+				&ServerMessage::GameState(players)
+			).unwrap();
+
+			//very ugly
+			match clr.get(private_id) {
+				Some(v) => v.sender.as_ref().unwrap().send(Ok(Message::text(res))).unwrap(),
+				None => eprintln!("Can't find client")
+			}
+		},
+		ClientMessage::ChangeSlot { slot } => { //TODO consider also changing trigger_pressed to false both on client and server when changeslot
+			if sender_state.read().await.clone().inventory.selection != slot
+				{ sender_state.write().await.inventory.selection = slot; }
+		},
+		ClientMessage::TrigUpdate { pressed } => {
+			let cl = sender_state.read().await.clone();
+			if cl.trigger_pressed == pressed {
+				return;
+			}
+			let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
+			sender_state.write().await.trigger_pressed = pressed;
+			let weapon_type = cl.inventory.weapons.get( //TODO since we are not using .read() it might be outdated
+				&cl.inventory.selection
+			).unwrap().weptype.clone();
+
+			//TODO since we don't care if pistol released, we should make the client not even send it
+			if !pressed{ //this is temporary?
+				return;
+			}
+
+			//TODO check ammo > 0
+
+			broadcast(
+				&ServerMessage::TrigUpdate {
+					by: public_id,
+					weptype: weapon_type.clone(),
+					pressed: pressed,
+				},
+				clients
+			).await;
+
+			//TODO decrement ammo
+
+			//Update healths
+			match weapon_type {
+				WeaponType::Pistol => {
+					let rr = live_rot(&cl);
+					let (sx, sy) = live_pos(&cl);
+
+					//TODO important idea: have the client tell server which opponent the bullet hits, server only checks if its true.
+					//flaw: client can lie and say it hit someone who is behind actual hit
+					//boring linear search
+					for (key, value) in clients.read().await.clone().iter() { //TODO try using for_each
+						if key == private_id{ //Can't shoot yourself
+							continue;
+						}
+						let (px, py) = live_pos(&value.state.read().await.clone());
+						let hit = line_circle_intersect(sx, sy, px, py, rr);
+						if !hit{
+							continue;
 						}
 
-						//TODO check ammo > 0
+						let new_health = {
+							let mut writeable = value.state.write().await;
+							writeable.health -= 10f32; //hard coded pistol damage to 10
+							writeable.health
+						};
 
 						broadcast(
-							&ServerMessage::TrigUpdate {
-								by: public_id,
-								weptype: weapon_type.clone(),
-								pressed: pressed,
+							&ServerMessage::HealthUpdate {
+								value: new_health,
+								from: format!("{:x}", xxh3_64(key.as_bytes()))
 							},
 							clients
 						).await;
-
-						//TODO decrement ammo
-
-						//Update healths
-						match weapon_type { 
-							WeaponType::Pistol => {
-								let rr = live_rot(&cl);
-								let (sx, sy) = live_pos(&cl);
-
-								//TODO important idea: have the client tell server which opponent the bullet hits, server only checks it its true.
-								//boring linear search
-								for (key, value) in clients.read().await.clone().iter() { //TODO try using for_each
-									if key == private_id{ //Can't shoot yourself
-										continue;
-									}
-									let (px, py) = live_pos(&value.state.read().await.clone());
-									let hit = line_circle_intersect(sx, sy, px, py, rr);
-									if !hit{
-										continue;
-									}
-
-									let new_health = {
-										let mut writeable = value.state.write().await;
-										writeable.health -= 10f32; //hard coded pistol damage to 10
-										writeable.health
-									};
-
-									broadcast(
-										&ServerMessage::HealthUpdate {
-											value: new_health,
-											from: format!("{:x}", xxh3_64(key.as_bytes()))
-										},
-										clients
-									).await;
-								};
-							},
-							_=>{}
-						}
-					},
-					None => eprintln!("Can't find client in clients")
-				}
-			},
+					};
+				},
+				_=>{}
+			}
 		}
-		_ => eprintln!("got something weird: {}", message),
-	};
+	}
 }
