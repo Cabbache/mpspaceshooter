@@ -12,6 +12,8 @@ use std::f32::consts::PI;
 use xxhash_rust::xxh3::xxh3_64;
 use num_traits::Pow;
 
+use crate::handler::spawn_from_prev;
+
 const UNITS_PER_SECOND: f32 = 200.0; //player movement
 const RADIANS_PER_SECOND: f32 = PI; //player rotation
 const PLAYER_RADIUS: f32 = 25.0; //players have circular hitbox
@@ -139,6 +141,7 @@ pub enum ClientMessage{
 	ChangeSlot {slot: u8},
 	TrigUpdate {pressed: bool},
 	StateQuery,
+	Spawn,
 }
 
 #[derive(Serialize, Debug)]
@@ -242,10 +245,25 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 		}
 	};
 
+	let health = sender_state.read().await.clone().health;
+	let is_allowed = match message {
+		ClientMessage::StateQuery => true, //dead or alive, this is allowed
+		ClientMessage::Spawn => health <= 0f32, //You have to be dead to call spawn
+		_ => health > 0f32, //You have to be alive to call the rest
+	};
+
+	if !is_allowed {
+		eprintln!("modded client detected (action doesn't match vital status)");
+		return;
+	}
+
 	match message {
+		ClientMessage::Spawn => {
+			spawn_from_prev(&mut *sender_state.write().await);
+		},
 		ClientMessage::MotionUpdate { motion } => {
-			if sender_state.read().await.clone().motion.direction == motion { //nothing changed - this should be impossible with unmodded client
-				eprintln!("potentially modded client detected");
+			if sender_state.read().await.clone().motion.direction == motion { //nothing changed
+				eprintln!("modded client detected (redundant motion update)");
 				return;
 			}
 			let (nx, ny) = live_pos(&sender_state.read().await.clone());
@@ -352,6 +370,12 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 						if key == private_id{ //Can't shoot yourself
 							continue;
 						}
+
+						//ignore dead players
+						if value.state.read().await.clone().health <= 0f32 {
+							continue;
+						}
+
 						let (px, py) = live_pos(&value.state.read().await.clone());
 						let hit = line_circle_intersect(sx, sy, px, py, rr);
 						if !hit{
@@ -371,6 +395,8 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 							},
 							clients
 						).await;
+						
+						break; //important! you can only hit one player at one time
 					};
 				},
 				_=>{}

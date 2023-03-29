@@ -47,7 +47,7 @@ pub async fn register_handler(body: Value, clients: Clients) -> Result<impl Repl
 			println!("Registering client {}", public_id);
 			register_client(
 				private_uuid.clone(),
-				public_id.clone(),
+				&public_id,
 				selections,
 				clients,
 			).await;
@@ -65,38 +65,58 @@ pub async fn serve_page() -> Result<impl Reply> {
 	Ok(warp::reply::html(html))
 }
 
-async fn register_client(private_id: String, public_id: String, selections: UserSelections, clients: Clients) {
+fn default_state() -> PlayerState {
+	return PlayerState {
+		name: "".to_string(),
+		public_id: "".to_string(),
+		x: rand::thread_rng().gen_range(-150f32..150f32),
+		y: rand::thread_rng().gen_range(-150f32..150f32),
+		rotation: 0.0,
+		health: 100.0,
+		color: Color{r:255,g:255,b:255},
+		inventory: Inventory{
+			selection: 0,
+			weapons: HashMap::from([
+				(0, Weapon{ weptype: WeaponType::Pistol, ammo: 10 }),
+				(1, Weapon{ weptype: WeaponType::FlameThrower, ammo: 100 }),
+			])
+		},
+		trigger_pressed: false,
+		motion: MotionStart{direction: PlayerMotion::Stopped, time: Instant::now()},
+		rotation_motion: RotationStart{direction: PlayerRotation::Stopped, time: Instant::now()}	
+	}
+}
+
+pub fn spawn_with_select(selections: &UserSelections, public_id: &String) -> PlayerState {
+	PlayerState{
+		name: selections.nick.clone(),
+		public_id: public_id.clone(),
+		color: match selections.color.as_str() {
+			"red" => Color{r:255,g:0,b:0},
+			"orange" => Color{r:255,g:165,b:0},
+			"yellow" => Color{r:255,g:255,b:0},
+			"green" => Color{r:0,g:255,b:0},
+			"blue" => Color{r:0,g:0,b:255},
+			_ => Color{r:255,g:255,b:255}
+		},
+		..default_state()
+	}
+}
+
+pub fn spawn_from_prev(prev_state: &mut PlayerState) {
+	*prev_state = PlayerState {
+		name: prev_state.name.clone(),
+		public_id: prev_state.public_id.clone(),
+		color: prev_state.color.clone(),
+		..default_state()
+	}
+}
+
+async fn register_client(private_id: String, public_id: &String, selections: UserSelections, clients: Clients) {
 	clients.write().await.insert(
 		private_id,
 		Client {
-			state: Arc::new(RwLock::new(
-				PlayerState{
-					name: selections.nick,
-					public_id: public_id,
-					x: rand::thread_rng().gen_range(-150f32..150f32),
-					y: rand::thread_rng().gen_range(-150f32..150f32),
-					rotation: 0.0,
-					health: 100.0,
-					color: match selections.color.as_str() {
-						"red" => Color{r:255,g:0,b:0},
-						"orange" => Color{r:255,g:165,b:0},
-						"yellow" => Color{r:255,g:255,b:0},
-						"green" => Color{r:0,g:255,b:0},
-						"blue" => Color{r:0,g:0,b:255},
-						_ => Color{r:255,g:255,b:255}
-					},
-					inventory: Inventory{
-						selection: 0,
-						weapons: HashMap::from([
-							(0, Weapon{ weptype: WeaponType::Pistol, ammo: 10 }),
-							(1, Weapon{ weptype: WeaponType::FlameThrower, ammo: 100 }),
-						])
-					},
-					trigger_pressed: false,
-					motion: MotionStart{direction: PlayerMotion::Stopped, time: Instant::now()},
-					rotation_motion: RotationStart{direction: PlayerRotation::Stopped, time: Instant::now()}
-				}
-			)),
+			state: Arc::new(RwLock::new(spawn_with_select(&selections, &public_id))),
 			sender: None,
 		},
 	);
