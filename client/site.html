@@ -199,6 +199,8 @@
 				backgroundColor: 0x101510
 		});
 
+		const gunshot_texture = PIXI.Texture.from("static/textures/gunshot.png");
+
 		const world = new PIXI.Container();
 		world.position.set(app.screen.width/2, app.screen.height/2);
 
@@ -226,6 +228,7 @@
 		app.stage.addChild(healthbar);
 
 		//false if not hit, distance to hit point otherwise
+		//TODO wasm
 		function line_circle_intersect(xp, yp, xc, yc, rot){
 			//shift everything to make line start from origin
 			let a = xc - xp;
@@ -389,13 +392,22 @@
 					hitInfo.y = check_y;
 				});
 
-				//draw the actual line
-				const bullet_line = new PIXI.Graphics();
-				bullet_line.lineStyle(4, 0xffff00, 1);
-				bullet_line.position.set(line_start_x, line_start_y);
-				bullet_line.lineTo(0, -hitInfo.shortest_line);
-				bullet_line.rotation = line_rotation;
-				bullets_container.addChild(bullet_line);
+				//draws a line instead of gunshot
+				//const bullet_line = new PIXI.Graphics();
+				//bullet_line.lineStyle(4, 0xffff00, 1);
+				//bullet_line.position.set(line_start_x, line_start_y);
+				//bullet_line.lineTo(0, -hitInfo.shortest_line);
+				//bullet_line.rotation = line_rotation;
+				//bullets_container.addChild(bullet_line);
+
+				const gunshot_sprite = new PIXI.Sprite(gunshot_texture);
+				gunshot_sprite.position.set(line_start_x, line_start_y);
+				gunshot_sprite.rotation = line_rotation;
+				gunshot_sprite.anchor.set(0.5, 1.2); //this affects the gunshot position relative to the shooter
+				gunshot_sprite.scale.set(0.25, 0.25); //This depends on the png size
+				bullets_container.addChild(gunshot_sprite);
+
+				console.log(bullets_container.children.length);
 				
 				if (hitInfo.hit){
 					let emitJSON = JSON.parse(JSON.stringify(bulletHitEmitterJSON)); //careful here
@@ -641,6 +653,8 @@
 					bullets_container.children[i].scale.x-fadeRate*deltaTime
 				);
 			}
+			//remove the gunshots from memory
+			bullets_container.children = bullets_container.children.filter(child => child.scale.x > 0.01);
 
 			emissions.forEach(emitter => {
 				if (!emitter.emit)
