@@ -1,15 +1,15 @@
 use crate::{ws, Client, Clients, Result};
 use serde::{Serialize, Deserialize};
-use serde_json::Value;
-use uuid::Uuid;
-use xxhash_rust::xxh3::xxh3_64;
 use warp::{http::StatusCode, reply::json, Reply};
-use std::fs;
+use rand_distr::{Normal, Distribution};
+use xxhash_rust::xxh3::xxh3_64;
+use uuid::Uuid;
+use serde_json::Value;
 use std::sync::Arc;
 use std::time::Instant;
 use std::collections::HashMap;
 use tokio::sync::RwLock;
-use rand::Rng;
+use std::fs;
 
 use crate::PlayerState;
 use crate::game::Color;
@@ -38,7 +38,7 @@ pub async fn register_handler(body: Value, clients: Clients) -> Result<impl Repl
 	let selection_result = serde_json::from_value::<UserSelections>(body);
 	match selection_result {
 		Ok(selections) => {
-			if selections.nick.len() > 10 {
+			if selections.nick.len() > 24 {
 				return Ok(json(&"meow"))
 			}
 
@@ -66,11 +66,16 @@ pub async fn serve_page() -> Result<impl Reply> {
 }
 
 fn default_state() -> PlayerState {
+	let normal = Normal::new(0.0, 100.0).unwrap();
+	let pos_x = normal.sample(&mut rand::thread_rng());
+	let pos_y = normal.sample(&mut rand::thread_rng());
+	println!("x: {}", pos_x);
+	println!("y: {}", pos_y);
 	return PlayerState {
 		name: "".to_string(),
 		public_id: "".to_string(),
-		x: rand::thread_rng().gen_range(-150f32..150f32),
-		y: rand::thread_rng().gen_range(-150f32..150f32),
+		x: pos_x,
+		y: pos_y,
 		rotation: 0.0,
 		health: 100.0,
 		color: Color{r:255,g:255,b:255},

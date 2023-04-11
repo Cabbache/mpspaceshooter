@@ -15,7 +15,7 @@
       </div>
       <div class="modal-body">
         <form>
-          <input type="text" id="nick" name="nick" placeholder="What is your name?" autocomplete="off">
+          <input type="text" id="nick" name="nick" placeholder="What is your name? (3 to 24 characters)" autocomplete="off">
 
           <div class="color-selector">
 						<input type="radio" id="color-red" name="color" value="red">
@@ -60,7 +60,7 @@
 		const nickname = nicknameInput.value.trim();
 		const color = document.querySelector('input[name="color"]:checked');
 
-		if (nickname.length >= 3 && color !== null) {
+		if (nickname.length >= 3 && color !== null && nickname.length <= 24) {
 			submitButton.disabled = false;
 		} else {
 			submitButton.disabled = true;
