@@ -13,6 +13,7 @@ use xxhash_rust::xxh3::xxh3_64;
 use num_traits::Pow;
 
 use crate::handler::spawn_from_prev;
+use crate::Client;
 
 const UNITS_PER_SECOND: f32 = 200.0; //player movement
 const RADIANS_PER_SECOND: f32 = PI; //player rotation
@@ -156,9 +157,11 @@ pub enum ServerMessage{
 	HealthUpdate {value: f32, from: String},
 }
 
-pub async fn broadcast(msg: &ServerMessage, clients: &Clients){
+pub async fn broadcast(msg: &ServerMessage, clients_readlock: &tokio::sync::RwLockReadGuard<'_, HashMap<std::string::String, Client>>){
 	let serialized_msg = to_string(msg).unwrap();
-	for (_, player) in clients.read().await.iter(){
+	println!("broadcast: fetching readlock on all clients");
+	//for (_, player) in clients.read().await.iter(){
+	for (_, player) in clients_readlock.iter(){
 		let ch = player.sender.as_ref();
 		match ch{
 			Some(sender) => match sender.send(Ok(Message::text(serialized_msg.clone()))){
@@ -168,6 +171,7 @@ pub async fn broadcast(msg: &ServerMessage, clients: &Clients){
 			None => {}
 		}
 	}
+	println!("broadcast: released readlock on all clients");
 }
 
 fn line_circle_intersect(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> bool{
@@ -175,8 +179,6 @@ fn line_circle_intersect(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> bool{
 	let a = xc - xp;
 	let b = yc - yp;
 	let rot_90 = rot - PI/2f32;
-
-	println!("a={},b={},r={}",a,b,rot_90);
 
 	//compute the quadratic's 'b' coefficient (for variable r in polar form)
 	let qb = -(2f32*a*rot_90.cos() + 2f32*b*rot_90.sin());
@@ -236,7 +238,9 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 		}
 	};
 
+	println!("fetching read on all (enter handler) {}", private_id);
 	let clr = clients.read().await;
+	println!("fetched read on all (still acquired) {}", private_id);
 	let sender_state = match clr.get(private_id) {
 		Some(v) => &v.state,
 		None => {
@@ -245,7 +249,9 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 		}
 	};
 
+	println!("fetching read on sender {}", private_id);
 	let health = sender_state.read().await.clone().health;
+	println!("fetched and released read on sender, {}", private_id);
 	let is_allowed = match message {
 		ClientMessage::StateQuery => true, //dead or alive, this is allowed
 		ClientMessage::Spawn => health <= 0f32, //You have to be dead to call spawn
@@ -262,19 +268,26 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			spawn_from_prev(&mut *sender_state.write().await);
 		},
 		ClientMessage::MotionUpdate { motion } => {
+			println!("reading sender {}", private_id);
 			if sender_state.read().await.clone().motion.direction == motion { //nothing changed
 				eprintln!("modded client detected (redundant motion update)");
 				return;
 			}
+			println!("read sender ok {}", private_id);
 			let (nx, ny) = live_pos(&sender_state.read().await.clone());
+			println!("read sender ok (2) {}", private_id);
 
-			let mut writeable = sender_state.write().await;
-			writeable.x = nx;
-			writeable.y = ny;
-			writeable.motion = MotionStart{
-				direction: motion,
-				time: Instant::now()
-			};
+			println!("writing sender {}", private_id);
+			{
+				let mut writeable = sender_state.write().await;
+				writeable.x = nx;
+				writeable.y = ny;
+				writeable.motion = MotionStart{
+					direction: motion,
+					time: Instant::now()
+				};
+			} //This makes writable out of scope, so the write lock is released
+			println!("write sender ok {}", private_id);
 
 			let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
 			let msg = ServerMessage::MotionUpdate {
@@ -283,7 +296,8 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				x: nx,
 				y: ny,
 			};
-			broadcast(&msg, clients).await;
+			//broadcast(&msg, clients).await;
+			broadcast(&msg, &clr).await;
 		},
 		ClientMessage::RotationUpdate { direction } => { //TODO remove action_required variable since now we have locks within the hashmap, instead handle things inside the first match statement
 			if sender_state.read().await.clone().rotation_motion.direction == direction {
@@ -304,7 +318,8 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				from: public_id,
 				r: nr
 			};
-			broadcast(&msg, clients).await;
+			//broadcast(&msg, clients).await;
+			broadcast(&msg, &clr).await;
 		},
 		ClientMessage::StateQuery => { //TODO rate limit this
 			eprintln!("Got statequery");
@@ -329,12 +344,16 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				{ sender_state.write().await.inventory.selection = slot; }
 		},
 		ClientMessage::TrigUpdate { pressed } => {
+			println!("reading client state {}", private_id);
 			let cl = sender_state.read().await.clone();
+			println!("read ok {}", private_id);
 			if cl.trigger_pressed == pressed {
 				return;
 			}
 			let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
+			println!("writing client state {}", private_id);
 			sender_state.write().await.trigger_pressed = pressed;
+			println!("write ok {}", private_id);
 			let weapon_type = cl.inventory.weapons.get( //TODO since we are not using .read() it might be outdated
 				&cl.inventory.selection
 			).unwrap().weptype.clone();
@@ -346,13 +365,15 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 
 			//TODO check ammo > 0
 
+			println!("broadcasting {}", private_id);
 			broadcast(
 				&ServerMessage::TrigUpdate {
 					by: public_id,
 					weptype: weapon_type.clone(),
 					pressed: pressed,
 				},
-				clients
+				//clients
+				&clr
 			).await;
 
 			//TODO decrement ammo
@@ -366,41 +387,51 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 					//TODO important idea: have the client tell server which opponent the bullet hits, server only checks if its true.
 					//flaw: client can lie and say it hit someone who is behind actual hit
 					//boring linear search
-					for (key, value) in clients.read().await.clone().iter() { //TODO try using for_each
+					for (key, value) in clr.iter() { //TODO try using for_each
 						if key == private_id{ //Can't shoot yourself
 							continue;
 						}
 
+						println!("copying player state for testing collision");
+						let playerstate = value.state.read().await.clone();
+						println!("collision copy ok");
+
 						//ignore dead players
-						if value.state.read().await.clone().health <= 0f32 {
+						if playerstate.health <= 0f32 {
 							continue;
 						}
-
-						let (px, py) = live_pos(&value.state.read().await.clone());
+						let (px, py) = live_pos(&playerstate);
 						let hit = line_circle_intersect(sx, sy, px, py, rr);
 						if !hit{
 							continue;
 						}
 
+						println!("writing health {} (for {})", private_id, key);
 						let new_health = {
 							let mut writeable = value.state.write().await;
 							writeable.health -= 10f32; //hard coded pistol damage to 10
+							//playerstate.health -= 10f32; //update the copy too
 							writeable.health
 						};
+						println!("written health {}", private_id);
 
+						println!("broadcasting health {}", private_id);
 						broadcast(
 							&ServerMessage::HealthUpdate {
 								value: new_health,
 								from: format!("{:x}", xxh3_64(key.as_bytes()))
 							},
-							clients
+							//clients
+							&clr
 						).await;
+						println!("broadcasted health{}", private_id);
 						
 						break; //important! you can only hit one player at one time
 					};
 				},
 				_=>{}
 			}
+			println!("updated healths, {}", private_id);
 		}
 	}
 }

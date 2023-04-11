@@ -44,7 +44,7 @@ pub async fn register_handler(body: Value, clients: Clients) -> Result<impl Repl
 
 			let private_uuid = Uuid::new_v4().as_simple().to_string();
 			let public_id = format!("{:x}", xxh3_64(private_uuid.as_bytes()));
-			println!("Registering client {}", public_id);
+			println!("Registering client {}", private_uuid);
 			register_client(
 				private_uuid.clone(),
 				&public_id,
@@ -113,6 +113,7 @@ pub fn spawn_from_prev(prev_state: &mut PlayerState) {
 }
 
 async fn register_client(private_id: String, public_id: &String, selections: UserSelections, clients: Clients) {
+	println!("inserting new client");
 	clients.write().await.insert(
 		private_id,
 		Client {
@@ -120,15 +121,20 @@ async fn register_client(private_id: String, public_id: &String, selections: Use
 			sender: None,
 		},
 	);
+	println!("inserted")
 }
 
 pub async fn unregister_handler(private_id: String, clients: Clients) -> Result<impl Reply> {
+	println!("removing client");
 	clients.write().await.remove(&private_id);
+	println!("removed");
 	Ok(StatusCode::OK)
 }
 
 pub async fn ws_handler(ws: warp::ws::Ws, private_id: String, clients: Clients) -> Result<impl Reply> {
+	println!("received websocket, ws_handler (reading all)");
 	let client = clients.read().await.get(&private_id).cloned();
+	println!("(read all ok)");
 	match client {
 		Some(c) => Ok(ws.on_upgrade(move |socket| ws::client_connection(socket, private_id, clients, c))),
 		None => Err(warp::reject::not_found()),
