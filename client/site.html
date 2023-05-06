@@ -227,6 +227,11 @@
 		healthbar.position.set(app.screen.width*0.02, app.screen.height*0.98 - 20);
 		app.stage.addChild(healthbar);
 
+		var coords_text = new PIXI.Text("x: -, y: -", { fontFamily: "Arial", fontSize: 18, fill: 0x88ff88 });
+		coords_text.anchor.set(0.5);
+		coords_text.position.set(app.screen.width * 0.9, app.screen.height*0.98 - 20);
+		app.stage.addChild(coords_text);
+
 		//false if not hit, distance to hit point otherwise
 		//TODO wasm
 		function line_circle_intersect(xp, yp, xc, yc, rot){
@@ -617,6 +622,7 @@
 							world.pivot.y -= player_speed * deltaTime * invr2;
 							break;
 					}			
+					coords_text.text = `x: ${Math.round(world.pivot.x)}, y: ${-Math.round(world.pivot.y)}`;
 				} else {
 					switch (player.p.motion.direction){
 						case "MoveUp":
