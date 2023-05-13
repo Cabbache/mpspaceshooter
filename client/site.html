@@ -200,6 +200,13 @@
 		});
 
 		const gunshot_texture = PIXI.Texture.from("static/textures/gunshot.png");
+		const seamless_texture = PIXI.Texture.from("static/textures/seamless.jpg");
+
+		const background = new PIXI.TilingSprite(
+			seamless_texture,
+			app.screen.width*3,
+			app.screen.height*3
+		);
 
 		const world = new PIXI.Container();
 		world.position.set(app.screen.width/2, app.screen.height/2);
@@ -216,6 +223,7 @@
 
 		world.addChild(players_container);
 		world.addChild(bullets_container);
+		world.addChild(background);
 
 		app.stage.addChild(world);
 
@@ -621,7 +629,11 @@
 							world.pivot.x -= player_speed * deltaTime * invr2;
 							world.pivot.y -= player_speed * deltaTime * invr2;
 							break;
-					}			
+					}
+					const tile_x = Math.floor(world.pivot.x / app.screen.width);
+					const tile_y = Math.floor(world.pivot.y / app.screen.height);
+					background.x = tile_x*app.screen.width - background.width/2;
+					background.y = tile_y*app.screen.height - background.height/2;
 					coords_text.text = `x: ${Math.round(world.pivot.x)}, y: ${-Math.round(world.pivot.y)}`;
 				} else {
 					switch (player.p.motion.direction){
