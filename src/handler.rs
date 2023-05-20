@@ -82,8 +82,8 @@ fn default_state() -> PlayerState {
 		inventory: Inventory{
 			selection: 0,
 			weapons: HashMap::from([
-				(0, Weapon{ weptype: WeaponType::Pistol, ammo: 10 }),
-				(1, Weapon{ weptype: WeaponType::FlameThrower, ammo: 100 }),
+				(0, Weapon{ weptype: WeaponType::Pistol, ammo: 50 }),
+				(1, Weapon{ weptype: WeaponType::Grenade {press_time: Instant::now()}, ammo: 2 }),
 			])
 		},
 		trigger_pressed: false,

@@ -11,6 +11,7 @@ use std::f32::consts::FRAC_1_SQRT_2;
 use std::f32::consts::PI;
 use xxhash_rust::xxh3::xxh3_64;
 use num_traits::Pow;
+use futures::future::join_all;
 
 use crate::handler::spawn_from_prev;
 use crate::Client;
@@ -33,11 +34,22 @@ pub struct Weapon{
 	pub ammo: u32,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub enum WeaponType{
 	Pistol,
-	Grenade,
-	FlameThrower,
+	Grenade {press_time: Instant}
+}
+
+impl Serialize for WeaponType {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: Serializer,
+	{
+		match self {
+			WeaponType::Pistol => serializer.serialize_str("Pistol"),
+			WeaponType::Grenade{ press_time: _ } => serializer.serialize_str("Grenade"),
+		}
+	}
 }
 
 #[derive(Debug, Clone)]
@@ -305,12 +317,14 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			}
 			let nr = live_rot(&sender_state.read().await.clone());
 
-			let mut writeable = sender_state.write().await;
-			writeable.rotation = nr;
-			writeable.rotation_motion = RotationStart{
-				direction: direction,
-				time: Instant::now()
-			};
+			{
+				let mut writeable = sender_state.write().await;
+				writeable.rotation = nr;
+				writeable.rotation_motion = RotationStart{
+					direction: direction,
+					time: Instant::now()
+				};
+			} //This puts 'writeable' out of scope, freeing the resource
 
 			let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
 			let msg = ServerMessage::RotationUpdate {
@@ -323,20 +337,29 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 		},
 		ClientMessage::StateQuery => { //TODO rate limit this
 			eprintln!("Got statequery");
-			let mut players: Vec<PlayerState> = vec![];
-			for (_, value) in clr.iter(){
-				let cl = value.state.read().await.clone();
-				players.push(cl);
-			}
+
+			//gpt-4 did this
+			// Use futures::future::join_all to wait for all tasks to complete.
+			let players_futures: Vec<_> = clr.iter()
+					.map(|(_, value)| value.state.read())
+					.collect();
+
+			let players: Vec<_> = join_all(players_futures).await
+					.into_iter()
+					.map(|lock| lock.clone())
+					.collect();
 
 			let res = to_string(
-				&ServerMessage::GameState(players)
+					&ServerMessage::GameState(players)
 			).unwrap();
 
-			//very ugly
-			match clr.get(private_id) {
-				Some(v) => v.sender.as_ref().unwrap().send(Ok(Message::text(res))).unwrap(),
-				None => eprintln!("Can't find client")
+			// Send the response to the client.
+			if let Some(client) = clr.get(private_id) {
+					if let Some(sender) = &client.sender {
+							let _ = sender.send(Ok(Message::text(res)));
+					}
+			} else {
+					eprintln!("Can't find client")
 			}
 		},
 		ClientMessage::ChangeSlot { slot } => { //TODO consider also changing trigger_pressed to false both on client and server when changeslot
@@ -347,45 +370,62 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			println!("reading client state {}", private_id);
 			let cl = sender_state.read().await.clone();
 			println!("read ok {}", private_id);
+
+			//This would require a modded client
 			if cl.trigger_pressed == pressed {
+				eprintln!("trigger press identical");
 				return;
 			}
+
 			let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
-			println!("writing client state {}", private_id);
 			sender_state.write().await.trigger_pressed = pressed;
-			println!("write ok {}", private_id);
-			let weapon_type = cl.inventory.weapons.get( //TODO since we are not using .read() it might be outdated
+			let weapon_selected = cl.inventory.weapons.get(
 				&cl.inventory.selection
-			).unwrap().weptype.clone();
+			).unwrap().clone();
 
-			//TODO since we don't care if pistol released, we should make the client not even send it
-			if !pressed{ //this is temporary?
+			//check if there is even ammo
+			if weapon_selected.ammo <= 0 {
 				return;
 			}
 
-			//TODO check ammo > 0
+			//check if ammo needs to be decremented
+			match (weapon_selected.weptype.clone(), pressed) {
+				(WeaponType::Pistol, false) => {},
+				(WeaponType::Grenade {press_time: _}, true) => {},
+				_ => {
+					let mut writeable = sender_state.write().await;
+					writeable.inventory.weapons.get_mut(
+							&cl.inventory.selection
+					).unwrap().ammo -= 1;
+				}
+			};
 
-			println!("broadcasting {}", private_id);
-			broadcast(
-				&ServerMessage::TrigUpdate {
-					by: public_id,
-					weptype: weapon_type.clone(),
-					pressed: pressed,
-				},
-				//clients
-				&clr
-			).await;
-
-			//TODO decrement ammo
+			//check if client needs to know
+			match (weapon_selected.weptype.clone(), pressed) {
+				(WeaponType::Pistol, false) => {},
+				_ => {
+					println!("broadcasting from {}", private_id);
+					broadcast(
+						&ServerMessage::TrigUpdate {
+							by: public_id,
+							weptype: weapon_selected.weptype.clone(),
+							pressed: pressed,
+						},
+						&clr
+					).await;				
+				}
+			};
 
 			//Update healths
-			match weapon_type {
+			match weapon_selected.weptype {
+				//TODO since we don't care if pistol released, we should make the client not even send it
 				WeaponType::Pistol => {
+					if !pressed {
+						return;
+					}
 					let rr = live_rot(&cl);
 					let (sx, sy) = live_pos(&cl);
 
-					//TODO important idea: have the client tell server which opponent the bullet hits, server only checks if its true.
-					//flaw: client can lie and say it hit someone who is behind actual hit
 					//boring linear search
 					for (key, value) in clr.iter() { //TODO try using for_each
 						if key == private_id{ //Can't shoot yourself
@@ -429,7 +469,11 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 						break; //important! you can only hit one player at one time
 					};
 				},
-				_=>{}
+				WeaponType::Grenade { press_time: _ } => {
+					if pressed {
+						
+					}
+				}
 			}
 			println!("updated healths, {}", private_id);
 		}
