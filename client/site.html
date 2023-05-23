@@ -487,6 +487,11 @@
 			
 			if (is_self){
 				alert("You died!");
+				socket.send(
+					JSON.stringify({
+						"t":"Spawn"
+					})
+				);
 			} else {
 				handle_playerleave(content.from);
 			}
