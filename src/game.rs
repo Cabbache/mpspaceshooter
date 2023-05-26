@@ -277,7 +277,11 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 
 	match message {
 		ClientMessage::Spawn => {
-			spawn_from_prev(&mut *sender_state.write().await);
+			spawn_from_prev(&mut *sender_state.write().await); //reset health and position
+			broadcast(
+				&ServerMessage::PlayerJoin(sender_state.read().await.clone()),
+				&clr
+			).await; //broadcast playerjoin
 		},
 		ClientMessage::MotionUpdate { motion } => {
 			println!("reading sender {}", private_id);

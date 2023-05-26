@@ -325,8 +325,13 @@
 			return player_container;
 		}
 
+		const update_healthbar = function(healthvalue){
+			const prcnt = healthvalue / 100;
+			healthbar.width = Math.max(0, app.screen.width * healthbar_maxwidth * prcnt);
+			healthbar.tint = Math.round(0xff * prcnt) << 8 | Math.round((1-prcnt) * 0xff) << 16;
+		}
+
 		const handle_gamestate = function(state){
-			
 			//remove all other sprites
 			for (var i = world.children.length - 1; i >= 0; i--)
 				players_container.removeChild(world.children[i]);
@@ -457,16 +462,20 @@
 		}
 
 		const handle_playerjoin = function(content){
-			const square = getPlayerSprite(content);
-			if (content.public_id == public_id){
-				console.log("if you never see this then this is a useless branch");
-				return;
+			if (content.public_id == public_id){ //this happens when spawning
+				console.log(content);
+				world.pivot.x = content.x;
+				world.pivot.y = content.y;
+				gameState[public_id].p.health = content.health;
+				gameState[public_id].graphics.rotation = content.rotation;
+			} else {
+				const square = getPlayerSprite(content);
+				players_container.addChild(square);
+				gameState[content.public_id] = {
+					graphics: square,
+					p: content
+				};
 			}
-			players_container.addChild(square);
-			gameState[content.public_id] = {
-				graphics: square,
-				p: content
-			};
 		}
 
 		const handle_healthUpdate = function(content){
@@ -475,11 +484,8 @@
 
 			const is_self = content.from === public_id;
 
-			if (is_self){ //If this user got hit, update healthbar
-				const prcnt = newHealth / 100;
-				healthbar.width = Math.max(0, app.screen.width * healthbar_maxwidth * prcnt);
-				healthbar.tint = Math.round(0xff * prcnt) << 8 | Math.round((1-prcnt) * 0xff) << 16;
-			}
+			if (is_self)
+				update_healthbar(newHealth);
 
 			//if not fatal, do nothing
 			if (newHealth > 0)
@@ -635,6 +641,7 @@
 							world.pivot.y -= player_speed * deltaTime * invr2;
 							break;
 					}
+
 					const tile_x = Math.floor(world.pivot.x / seamless_texture.width);
 					const tile_y = Math.floor(world.pivot.y / seamless_texture.height);
 					background.x = tile_x*seamless_texture.width - background.width/2;
