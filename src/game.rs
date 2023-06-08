@@ -1,20 +1,17 @@
-use crate::Clients;
-use serde::{Deserialize, Serialize, Serializer};
-use serde::ser::SerializeStruct;
-use serde_json::to_string;
-use serde_json::from_str;
-use warp::ws::Message;
-use num_traits::checked_pow;
 use std::collections::HashMap;
+use std::f32::consts::{FRAC_1_SQRT_2, PI};
 use std::time::Instant;
-use std::f32::consts::FRAC_1_SQRT_2;
-use std::f32::consts::PI;
-use xxhash_rust::xxh3::xxh3_64;
-use num_traits::Pow;
-use futures::future::join_all;
 
-use crate::handler::spawn_from_prev;
+use futures::future::join_all;
+use num_traits::{checked_pow, Pow};
+use serde::{Deserialize, Serialize, Serializer, ser::SerializeStruct};
+use serde_json::{from_str, json, to_string, Value};
+use warp::ws::Message;
+use xxhash_rust::xxh3::xxh3_64;
+
+use crate::Clients;
 use crate::Client;
+use crate::handler::spawn_from_prev;
 
 const UNITS_PER_SECOND: f32 = 200.0; //player movement
 const RADIANS_PER_SECOND: f32 = PI; //player rotation
@@ -28,7 +25,7 @@ pub struct Color{
 	pub b: i32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct Weapon{
 	pub weptype: WeaponType,
 	pub ammo: u32,
@@ -52,7 +49,7 @@ impl Serialize for WeaponType {
 	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct Inventory{
 	pub selection: u8,
 	pub weapons: HashMap<u8, Weapon>,
@@ -71,6 +68,76 @@ pub struct PlayerState {
 	pub motion: MotionStart,
 	pub rotation_motion: RotationStart,
 	pub trigger_pressed: bool,
+}
+
+impl PlayerState {
+	pub fn encode_other(&self) -> Value{
+		let (x,y) = live_pos(self);
+		let r = live_rot(self);
+		return json!({
+			"name": &self.name,
+			"public_id": &self.public_id,
+			"color": &self.color,
+			"motion": &self.motion,
+			"rotation_motion": &self.rotation_motion,
+			"x": x,
+			"y": y,
+			"rotation": r,
+		});
+	}
+
+	pub fn encode(&self, as_self: bool) -> Value{
+		if !as_self {
+			return self.encode_other();
+		}
+		let mut result = self.encode_other();
+		let additional = json!({
+			"inventory": &self.inventory,
+			"health": &self.health,
+		});
+		result.as_object_mut().unwrap().extend(additional.as_object().unwrap().clone());
+		return result;
+	}
+}
+
+impl Client {
+	pub fn transmit(&self, msg: &ServerMessage, public_id: Option<String>){
+		let ch = self.sender.as_ref();
+		if ch.is_none(){
+			return;
+		}
+		let ch = ch.unwrap();
+		let serialized_msg = match msg {
+			ServerMessage::GameState(_) |
+			ServerMessage::PlayerJoin(_) => {
+				let public_id = public_id.unwrap_or_else(|| {
+					"some other value".to_string()
+				});
+				match msg {
+					ServerMessage::GameState(pstates) => {
+						let encoded_states: Vec<Value> = pstates.iter().map(|state| {
+							state.encode(public_id == state.public_id)
+						}).collect();
+						to_string(
+							&json!({
+								"t": "GameState",
+								"c": encoded_states,
+							})
+						).unwrap()
+					},
+					ServerMessage::PlayerJoin(pstate) => {
+						to_string(&json!({
+							"t": "PlayerJoin",
+							"c": pstate.encode(pstate.public_id == public_id),
+						})).unwrap()
+					},
+					_ => String::new()
+				}
+			},
+			_ => to_string(msg).unwrap()
+		};
+		ch.send(Ok(Message::text(serialized_msg)));
+	}
 }
 
 impl Serialize for PlayerState {
@@ -170,20 +237,10 @@ pub enum ServerMessage{
 }
 
 pub async fn broadcast(msg: &ServerMessage, clients_readlock: &tokio::sync::RwLockReadGuard<'_, HashMap<std::string::String, Client>>){
-	let serialized_msg = to_string(msg).unwrap();
-	println!("broadcast: fetching readlock on all clients");
-	//for (_, player) in clients.read().await.iter(){
-	for (_, player) in clients_readlock.iter(){
-		let ch = player.sender.as_ref();
-		match ch{
-			Some(sender) => match sender.send(Ok(Message::text(serialized_msg.clone()))){
-				Err(e) => eprintln!("Sending failed: {}", e),
-				_ => {}
-			},
-			None => {}
-		}
+	for (private_id, client) in clients_readlock.iter(){
+		let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
+		client.transmit(msg, Some(public_id));
 	}
-	println!("broadcast: released readlock on all clients");
 }
 
 fn line_circle_intersect(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> bool{
@@ -250,9 +307,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 		}
 	};
 
-	println!("fetching read on all (enter handler) {}", private_id);
 	let clr = clients.read().await;
-	println!("fetched read on all (still acquired) {}", private_id);
 	let sender_state = match clr.get(private_id) {
 		Some(v) => &v.state,
 		None => {
@@ -261,9 +316,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 		}
 	};
 
-	println!("fetching read on sender {}", private_id);
 	let health = sender_state.read().await.clone().health;
-	println!("fetched and released read on sender, {}", private_id);
 	let is_allowed = match message {
 		ClientMessage::StateQuery => true, //dead or alive, this is allowed
 		ClientMessage::Spawn => health <= 0f32, //You have to be dead to call spawn
@@ -284,16 +337,11 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			).await; //broadcast playerjoin
 		},
 		ClientMessage::MotionUpdate { motion } => {
-			println!("reading sender {}", private_id);
 			if sender_state.read().await.clone().motion.direction == motion { //nothing changed
 				eprintln!("modded client detected (redundant motion update)");
 				return;
 			}
-			println!("read sender ok {}", private_id);
 			let (nx, ny) = live_pos(&sender_state.read().await.clone());
-			println!("read sender ok (2) {}", private_id);
-
-			println!("writing sender {}", private_id);
 			{
 				let mut writeable = sender_state.write().await;
 				writeable.x = nx;
@@ -303,8 +351,6 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 					time: Instant::now()
 				};
 			} //This makes writable out of scope, so the write lock is released
-			println!("write sender ok {}", private_id);
-
 			let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
 			let msg = ServerMessage::MotionUpdate {
 				direction: motion,
@@ -353,15 +399,10 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 					.map(|lock| lock.clone())
 					.collect();
 
-			let res = to_string(
-					&ServerMessage::GameState(players)
-			).unwrap();
-
 			// Send the response to the client.
 			if let Some(client) = clr.get(private_id) {
-					if let Some(sender) = &client.sender {
-							let _ = sender.send(Ok(Message::text(res)));
-					}
+				let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
+				client.transmit(&ServerMessage::GameState(players), Some(public_id));
 			} else {
 					eprintln!("Can't find client")
 			}
@@ -371,9 +412,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				{ sender_state.write().await.inventory.selection = slot; }
 		},
 		ClientMessage::TrigUpdate { pressed } => {
-			println!("reading client state {}", private_id);
 			let cl = sender_state.read().await.clone();
-			println!("read ok {}", private_id);
 
 			//This would require a modded client
 			if cl.trigger_pressed == pressed {
@@ -408,7 +447,6 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			match (weapon_selected.weptype.clone(), pressed) {
 				(WeaponType::Pistol, false) => {},
 				_ => {
-					println!("broadcasting from {}", private_id);
 					broadcast(
 						&ServerMessage::TrigUpdate {
 							by: public_id,
@@ -436,9 +474,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 							continue;
 						}
 
-						println!("copying player state for testing collision");
 						let playerstate = value.state.read().await.clone();
-						println!("collision copy ok");
 
 						//ignore dead players
 						if playerstate.health <= 0f32 {
@@ -450,16 +486,13 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 							continue;
 						}
 
-						println!("writing health {} (for {})", private_id, key);
 						let new_health = {
 							let mut writeable = value.state.write().await;
 							writeable.health -= 10f32; //hard coded pistol damage to 10
 							//playerstate.health -= 10f32; //update the copy too
 							writeable.health
 						};
-						println!("written health {}", private_id);
 
-						println!("broadcasting health {}", private_id);
 						broadcast(
 							&ServerMessage::HealthUpdate {
 								value: new_health,
@@ -468,7 +501,6 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 							//clients
 							&clr
 						).await;
-						println!("broadcasted health{}", private_id);
 						
 						break; //important! you can only hit one player at one time
 					};
@@ -479,7 +511,6 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 					}
 				}
 			}
-			println!("updated healths, {}", private_id);
 		}
 	}
 }
