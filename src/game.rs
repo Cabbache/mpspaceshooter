@@ -101,7 +101,7 @@ impl PlayerState {
 }
 
 impl Client {
-	pub fn transmit(&self, msg: &ServerMessage, public_id: Option<String>){
+	pub async fn transmit(&self, msg: &ServerMessage, public_id: Option<String>){
 		let ch = self.sender.as_ref();
 		if ch.is_none(){
 			return;
@@ -110,9 +110,10 @@ impl Client {
 		let serialized_msg = match msg {
 			ServerMessage::GameState(_) |
 			ServerMessage::PlayerJoin(_) => {
-				let public_id = public_id.unwrap_or_else(|| {
-					"some other value".to_string()
-				});
+				let public_id = match public_id {
+					Some(id) => id,
+					None => self.state.read().await.public_id.clone()
+				};
 				match msg {
 					ServerMessage::GameState(pstates) => {
 						let encoded_states: Vec<Value> = pstates.iter().map(|state| {
@@ -218,7 +219,7 @@ pub enum ServerMessage{
 pub async fn broadcast(msg: &ServerMessage, clients_readlock: &tokio::sync::RwLockReadGuard<'_, HashMap<std::string::String, Client>>){
 	for (private_id, client) in clients_readlock.iter(){
 		let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
-		client.transmit(msg, Some(public_id));
+		client.transmit(msg, Some(public_id)).await;
 	}
 }
 
@@ -381,7 +382,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			// Send the response to the client.
 			if let Some(client) = clr.get(private_id) {
 				let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
-				client.transmit(&ServerMessage::GameState(players), Some(public_id));
+				client.transmit(&ServerMessage::GameState(players), Some(public_id)).await;
 			} else {
 					eprintln!("Can't find client")
 			}
