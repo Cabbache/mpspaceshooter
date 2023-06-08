@@ -55,7 +55,7 @@ pub struct Inventory{
 	pub weapons: HashMap<u8, Weapon>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct PlayerState {
 	pub name: String,
 	pub public_id: String,
@@ -137,27 +137,6 @@ impl Client {
 			_ => to_string(msg).unwrap()
 		};
 		ch.send(Ok(Message::text(serialized_msg)));
-	}
-}
-
-impl Serialize for PlayerState {
-	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where S: Serializer,
-	{
-		let mut state = serializer.serialize_struct("PlayerState", 9)?;
-		state.serialize_field("name", &self.name)?;
-		state.serialize_field("public_id", &self.public_id)?;
-		state.serialize_field("color", &self.color)?;
-		state.serialize_field("motion", &self.motion)?;
-		state.serialize_field("health", &self.health)?;
-		state.serialize_field("rotation_motion", &self.rotation_motion)?;
-
-		let (x,y) = live_pos(self);
-		let r = live_rot(self);
-		state.serialize_field("x", &x)?;
-		state.serialize_field("y", &y)?;
-		state.serialize_field("rotation", &r)?;
-		state.end()
 	}
 }
 

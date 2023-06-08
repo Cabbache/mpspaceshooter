@@ -237,7 +237,7 @@
 
 		var coords_text = new PIXI.Text("x: -, y: -", { fontFamily: "Arial", fontSize: 18, fill: 0x88ff88 });
 		coords_text.anchor.set(0.5);
-		coords_text.position.set(app.screen.width * 0.9, app.screen.height*0.98 - 20);
+		coords_text.position.set(app.screen.width * 0.9, app.screen.height*0.02 + 20);
 		app.stage.addChild(coords_text);
 
 		//false if not hit, distance to hit point otherwise
@@ -277,6 +277,7 @@
 		}
 
 		const openWebSocket = function(){
+			//fetch(`https://${window.location.hostname}/register`, {
 			fetch(`http://${window.location.hostname}/register`, {
 				method: 'POST',
 				headers: {
@@ -292,6 +293,7 @@
 			.then(response => response.json())
 			.then(result => {
 				public_id = result['public'];
+				//socket = new WebSocket(`wss://${window.location.hostname}/ws/`+result['private']);
 				socket = new WebSocket(`ws://${window.location.hostname}/ws/`+result['private']);
 				socket.onmessage = recvFn;
 				socket.onopen = () => {
@@ -300,13 +302,11 @@
 				};
 				socket.onclose = (event)=>{
 					opened=false;
-					console.log(event.wasClean ? "closed cleanly":"connection died");
 				}
 			});
 		};
 
 		const getPlayerSprite = function(player){
-			//TODO return
 			var player_container = new PIXI.Container();
 			player_container.position.set(player.x, player.y);
 			player_container.rotation = player.rotation;
@@ -345,7 +345,6 @@
 					world.pivot.x = p.x;
 					world.pivot.y = p.y;
 					app.stage.addChild(square);
-					console.log("state contains self");
 				} else
 					players_container.addChild(square);
 				gameState[p.public_id] = {
@@ -425,8 +424,6 @@
 				gunshot_sprite.scale.set(0.25, 0.25); //This depends on the png size
 				bullets_container.addChild(gunshot_sprite);
 
-				console.log(bullets_container.children.length);
-				
 				if (hitInfo.hit){
 					let emitJSON = JSON.parse(JSON.stringify(bulletHitEmitterJSON)); //careful here
 					emitJSON.pos = {
@@ -463,11 +460,12 @@
 
 		const handle_playerjoin = function(content){
 			if (content.public_id == public_id){ //this happens when spawning
-				console.log(content);
 				world.pivot.x = content.x;
 				world.pivot.y = content.y;
 				gameState[public_id].p.health = content.health;
 				gameState[public_id].graphics.rotation = content.rotation;
+				coords_text.text = `x: ${Math.round(world.pivot.x)}, y: ${-Math.round(world.pivot.y)}`;
+				update_healthbar(content.health);
 			} else {
 				const square = getPlayerSprite(content);
 				players_container.addChild(square);
@@ -509,21 +507,24 @@
 		}
 
 		const recvFn = function(event) {
-			//console.log("receive: " + event.data);
 			let data = JSON.parse(event.data);
+			console.log(data);
 			let datatype = data["t"];
 			let content = data["c"];
-			switch (datatype){
-				case "GameState": handle_gamestate(content); break;
-				case "MotionUpdate": handle_motionupdate(content); break;
-				case "RotationUpdate": handle_rotationupdate(content); break;
-				case "PlayerJoin": handle_playerjoin(content); break;
-				case "PlayerLeave": handle_playerleave(content); break;
-				case "TrigUpdate": handle_trigUpdate(content); break;
-				case "HealthUpdate": handle_healthUpdate(content); break;
-				default: console.error(`received unknown server message: ${JSON.stringify(content)}`);break;
+			const fmap = {
+				"GameState": handle_gamestate,
+				"MotionUpdate": handle_motionupdate,
+				"RotationUpdate": handle_rotationupdate,
+				"PlayerJoin": handle_playerjoin,
+				"PlayerLeave": handle_playerleave,
+				"TrigUpdate": handle_trigUpdate,
+				"HealthUpdate": handle_healthUpdate
+			};
+			if (!(datatype in fmap)){
+				console.error(`received unknown server message: ${JSON.stringify(content)}`);
+				return;
 			}
-			//console.log("gamestate: " + gameState.map((f) => JSON.stringify(f.p)));
+			fmap[datatype](content);
 		};
 
 		const keyAction = function (repeated, name, up){
