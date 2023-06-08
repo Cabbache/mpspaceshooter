@@ -74,6 +74,8 @@ async fn client_msg(private_id: &str, msg: Message, clients: &Clients) {
 		}
 	};
 
-	handle_game_message(private_id, message, clients).await;
+	if let Err(e) = handle_game_message(private_id, message, clients).await {
+		eprintln!("Error handling game message: {}", e);
+	}
 	println!("exit handler {}", private_id);
 }

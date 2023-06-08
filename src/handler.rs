@@ -78,6 +78,7 @@ fn default_state() -> PlayerState {
 		y: pos_y,
 		rotation: 0.0,
 		health: 100.0,
+		cash: 20,
 		color: Color{r:255,g:255,b:255},
 		inventory: Inventory{
 			selection: 0,

@@ -63,6 +63,7 @@ pub struct PlayerState {
 	pub health: f32,
 	pub x: f32,
 	pub y: f32,
+	pub cash: u32,
 	pub rotation: f32,
 	pub color: Color,
 	pub inventory: Inventory,
@@ -95,6 +96,7 @@ impl PlayerState {
 		let additional = json!({
 			"inventory": &self.inventory,
 			"health": &self.health,
+			"cash": &self.cash,
 		});
 		result.as_object_mut().unwrap().extend(additional.as_object().unwrap().clone());
 		return result;
@@ -211,13 +213,16 @@ pub enum ServerMessage{
 	MotionUpdate {direction: PlayerMotion, from: String, x: f32, y: f32},
 	RotationUpdate {direction: PlayerRotation, from: String, r: f32},
 	TrigUpdate {by: String, weptype: WeaponType, pressed: bool},
-	HealthUpdate {value: f32, from: String},
+	HealthUpdate(f32),
+	PlayerDeath {loot: u32, from: String},
 }
 
 pub async fn broadcast(msg: &ServerMessage, clients_readlock: &tokio::sync::RwLockReadGuard<'_, HashMap<std::string::String, Client>>){
 	for (private_id, client) in clients_readlock.iter(){
 		let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
-		client.transmit(msg, Some(public_id)).await;
+		if let Err(e) = client.transmit(msg, Some(public_id)).await {
+			eprintln!("Error transmitting message: {}", e);
+		}
 	}
 }
 
@@ -276,12 +281,12 @@ fn live_rot(pstate: &PlayerState) -> f32 {
 	pstate.rotation + dr
 }
 
-pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clients){
+pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clients) -> Result<(), Box<dyn Error>>{
 	let message: ClientMessage = match from_str(message) {
 		Ok(v) => v,
 		Err(m) => {
 			eprintln!("Can't deserialize message: {}", m);
-			return;
+			return Ok(());
 		}
 	};
 
@@ -290,7 +295,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 		Some(v) => &v.state,
 		None => {
 			eprintln!("Can't find sender in clients: {}", private_id);
-			return;
+			return Ok(());
 		}
 	};
 
@@ -303,7 +308,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 
 	if !is_allowed {
 		eprintln!("modded client detected (action doesn't match vital status)");
-		return;
+		return Ok(());
 	}
 
 	match message {
@@ -317,7 +322,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 		ClientMessage::MotionUpdate { motion } => {
 			if sender_state.read().await.clone().motion.direction == motion { //nothing changed
 				eprintln!("modded client detected (redundant motion update)");
-				return;
+				return Ok(());
 			}
 			let (nx, ny) = live_pos(&sender_state.read().await.clone());
 			{
@@ -341,7 +346,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 		},
 		ClientMessage::RotationUpdate { direction } => { //TODO remove action_required variable since now we have locks within the hashmap, instead handle things inside the first match statement
 			if sender_state.read().await.clone().rotation_motion.direction == direction {
-				return;
+				return Ok(());
 			}
 			let nr = live_rot(&sender_state.read().await.clone());
 
@@ -380,7 +385,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			// Send the response to the client.
 			if let Some(client) = clr.get(private_id) {
 				let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
-				client.transmit(&ServerMessage::GameState(players), Some(public_id)).await;
+				client.transmit(&ServerMessage::GameState(players), Some(public_id)).await?;
 			} else {
 					eprintln!("Can't find client")
 			}
@@ -395,7 +400,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			//This would require a modded client
 			if cl.trigger_pressed == pressed {
 				eprintln!("trigger press identical");
-				return;
+				return Ok(());
 			}
 
 			let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
@@ -406,7 +411,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 
 			//check if there is even ammo
 			if weapon_selected.ammo <= 0 {
-				return;
+				return Ok(());
 			}
 
 			//check if ammo needs to be decremented
@@ -441,7 +446,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				//TODO since we don't care if pistol released, we should make the client not even send it
 				WeaponType::Pistol => {
 					if !pressed {
-						return;
+						return Ok(());
 					}
 					let rr = live_rot(&cl);
 					let (sx, sy) = live_pos(&cl);
@@ -471,15 +476,20 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 							writeable.health
 						};
 
-						broadcast(
-							&ServerMessage::HealthUpdate {
-								value: new_health,
-								from: format!("{:x}", xxh3_64(key.as_bytes()))
-							},
-							//clients
-							&clr
-						).await;
-						
+						if new_health > 0f32 {
+							value.transmit(
+								&ServerMessage::HealthUpdate(new_health),
+								Some(playerstate.public_id)
+							).await?; //tell the player that lost the health their new health
+						} else {
+							broadcast( //tell everyone that the player died
+								&ServerMessage::PlayerDeath{
+									loot: playerstate.cash / 2,
+									from: playerstate.public_id,
+								},
+								&clr
+							).await;
+						}
 						break; //important! you can only hit one player at one time
 					};
 				},
@@ -491,4 +501,5 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			}
 		}
 	}
+	Ok(())
 }
