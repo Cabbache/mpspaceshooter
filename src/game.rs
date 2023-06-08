@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::f32::consts::{FRAC_1_SQRT_2, PI};
 use std::time::Instant;
+use std::error::Error;
 
 use futures::future::join_all;
 use num_traits::{checked_pow, Pow};
@@ -101,45 +102,42 @@ impl PlayerState {
 }
 
 impl Client {
-	pub async fn transmit(&self, msg: &ServerMessage, public_id: Option<String>){
-		let ch = self.sender.as_ref();
-		if ch.is_none(){
-			return;
-		}
-		let ch = ch.unwrap();
-		let serialized_msg = match msg {
-			ServerMessage::GameState(_) |
-			ServerMessage::PlayerJoin(_) => {
-				let public_id = match public_id {
-					Some(id) => id,
-					None => self.state.read().await.public_id.clone()
-				};
-				match msg {
-					ServerMessage::GameState(pstates) => {
-						let encoded_states: Vec<Value> = pstates.iter().map(|state| {
-							state.encode(public_id == state.public_id)
-						}).collect();
-						to_string(
-							&json!({
+	pub async fn transmit(&self, msg: &ServerMessage, public_id: Option<String>) -> Result<(), Box<dyn Error>> {
+		if let Some(ch) = self.sender.as_ref() {
+			let public_id = match public_id {
+				Some(id) => id, 
+				None => self.state.read().await.public_id.clone(),
+			};
+			let serialized_msg = match msg {
+				ServerMessage::GameState(_) |
+				ServerMessage::PlayerJoin(_) => {
+					match msg {
+						ServerMessage::GameState(pstates) => {
+							let encoded_states: Vec<Value> = pstates.iter().map(|state| {
+								state.encode(public_id == state.public_id)
+							}).collect();
+							to_string(&json!({
 								"t": "GameState",
 								"c": encoded_states,
-							})
-						).unwrap()
-					},
-					ServerMessage::PlayerJoin(pstate) => {
-						to_string(&json!({
-							"t": "PlayerJoin",
-							"c": pstate.encode(pstate.public_id == public_id),
-						})).unwrap()
-					},
-					_ => String::new()
-				}
-			},
-			_ => to_string(msg).unwrap()
-		};
-		ch.send(Ok(Message::text(serialized_msg)));
+							}))?
+						},
+						ServerMessage::PlayerJoin(pstate) => {
+							to_string(&json!({
+								"t": "PlayerJoin",
+								"c": pstate.encode(pstate.public_id == public_id),
+							}))?
+						},
+						_ => String::new()
+					}
+				},  
+				_ => to_string(msg)?
+			};
+			ch.send(Ok(Message::text(serialized_msg))).map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
+		}
+		Ok(())
 	}
 }
+
 
 #[derive(Debug, Clone)]
 pub struct MotionStart{
