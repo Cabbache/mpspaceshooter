@@ -19,6 +19,65 @@ const RADIANS_PER_SECOND: f32 = PI; //player rotation
 const PLAYER_RADIUS: f32 = 25.0; //players have circular hitbox
 const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 
+pub enum LootContent{
+	Cash(u32),
+	Ammo(u32),
+}
+
+pub struct LootObject{
+	x: u32,
+	y: u32,
+	loot: LootContent,
+	players: HashMap<String, Option<Instant>>,
+}
+
+impl LootObject {
+	pub fn new(x: u32, y: u32, loot: LootContent) -> Self {
+		LootObject{x,y,loot,
+			players: Arc::new(RwLock::new(HashMap::new())),
+		}
+	}
+
+	pub async fn setPlayer(&self, state: &PlayerState){
+		self.players.write().await.insert(state.public_id, self.destiny(state));
+	}
+
+	fn destiny(&self, state: &PlayerState) -> Option<Instant>{
+		//compute time to collect, none if never
+		None
+	}
+}
+
+pub struct WorldLoot {
+	pub lootMap: HashMap<String, LootObject>,
+}
+
+impl WorldLoot {
+	pub fn setPlayer(&self, state: &PlayerState){
+		lootList.iter().map(|x| {
+			x.setPlayer(state)
+		});
+	}
+
+	pub fn addLoot(&self, loot: LootObject){
+		lootList.push(loot);
+	}
+
+	pub fn cycle(&self) {
+		self.lootList.iter_mut(|lootObj| {
+
+		});
+	}
+}
+
+impl LootObject {
+	pub fn addPlayer(&self, state: &PlayerState){
+		self.players.write().await.insert(state.public_id, )
+	}
+	let now = Instant::now();
+	let diff = ((now - pstate.motion.time).as_nanos() as f32) / (mult as f32);
+}
+
 #[derive(Serialize, Debug, Clone)]
 pub struct Color{
 	pub r: i32,
