@@ -12,6 +12,7 @@ use tokio::sync::RwLock;
 use std::fs;
 
 use crate::PlayerState;
+use crate::WorldLoot;
 use crate::game::Color;
 use crate::game::MotionStart;
 use crate::game::RotationStart;
@@ -137,12 +138,12 @@ pub async fn unregister_handler(private_id: String, clients: Clients) -> Result<
 	Ok(StatusCode::OK)
 }
 
-pub async fn ws_handler(ws: warp::ws::Ws, private_id: String, clients: Clients) -> Result<impl Reply> {
+pub async fn ws_handler(ws: warp::ws::Ws, private_id: String, clients: Clients, loot: WorldLoot) -> Result<impl Reply> {
 	println!("received websocket, ws_handler (reading all)");
 	let client = clients.read().await.get(&private_id).cloned();
 	println!("(read all ok)");
 	match client {
-		Some(c) => Ok(ws.on_upgrade(move |socket| ws::client_connection(socket, private_id, clients, c))),
+		Some(c) => Ok(ws.on_upgrade(move |socket| ws::client_connection(socket, private_id, clients, loot, c))),
 		None => Err(warp::reject::not_found()),
 	}
 }

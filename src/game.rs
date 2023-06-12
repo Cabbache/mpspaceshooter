@@ -12,71 +12,28 @@ use xxhash_rust::xxh3::xxh3_64;
 
 use crate::Clients;
 use crate::Client;
+use crate::WorldLoot;
 use crate::handler::spawn_from_prev;
 
-const UNITS_PER_SECOND: f32 = 200.0; //player movement
-const RADIANS_PER_SECOND: f32 = PI; //player rotation
+const UNITS_PER_SECOND: f32 = 200.0; //player movement speed
+const RADIANS_PER_SECOND: f32 = PI; //player rotation speed
 const PLAYER_RADIUS: f32 = 25.0; //players have circular hitbox
+const LOOT_RADIUS: f32 = 25.0; //players must be within this distance to claim
 const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 
+#[derive(Serialize, Debug)]
 pub enum LootContent{
 	Cash(u32),
 	Ammo(u32),
 }
 
 pub struct LootObject{
-	x: u32,
-	y: u32,
+	x: f32,
+	y: f32,
 	loot: LootContent,
-	players: HashMap<String, Option<Instant>>,
 }
 
-impl LootObject {
-	pub fn new(x: u32, y: u32, loot: LootContent) -> Self {
-		LootObject{x,y,loot,
-			players: Arc::new(RwLock::new(HashMap::new())),
-		}
-	}
-
-	pub async fn setPlayer(&self, state: &PlayerState){
-		self.players.write().await.insert(state.public_id, self.destiny(state));
-	}
-
-	fn destiny(&self, state: &PlayerState) -> Option<Instant>{
-		//compute time to collect, none if never
-		None
-	}
-}
-
-pub struct WorldLoot {
-	pub lootMap: HashMap<String, LootObject>,
-}
-
-impl WorldLoot {
-	pub fn setPlayer(&self, state: &PlayerState){
-		lootList.iter().map(|x| {
-			x.setPlayer(state)
-		});
-	}
-
-	pub fn addLoot(&self, loot: LootObject){
-		lootList.push(loot);
-	}
-
-	pub fn cycle(&self) {
-		self.lootList.iter_mut(|lootObj| {
-
-		});
-	}
-}
-
-impl LootObject {
-	pub fn addPlayer(&self, state: &PlayerState){
-		self.players.write().await.insert(state.public_id, )
-	}
-	let now = Instant::now();
-	let diff = ((now - pstate.motion.time).as_nanos() as f32) / (mult as f32);
-}
+//Arc<RwLock<HashMap<String, LootObject>>>
 
 #[derive(Serialize, Debug, Clone)]
 pub struct Color{
@@ -259,6 +216,7 @@ pub enum ClientMessage{
 	RotationUpdate {direction: PlayerRotation},
 	ChangeSlot {slot: u8},
 	TrigUpdate {pressed: bool},
+	ClaimLoot {loot_id: String},
 	StateQuery,
 	Spawn,
 }
@@ -269,11 +227,11 @@ pub enum ServerMessage{
 	GameState(Vec<PlayerState>),
 	PlayerJoin(PlayerState),
 	PlayerLeave(String),
+	HealthUpdate(f32),
 	MotionUpdate {direction: PlayerMotion, from: String, x: f32, y: f32},
 	RotationUpdate {direction: PlayerRotation, from: String, r: f32},
 	TrigUpdate {by: String, weptype: WeaponType, pressed: bool},
-	HealthUpdate(f32),
-	PlayerDeath {loot: u32, from: String},
+	PlayerDeath {loot: LootContent, from: String},
 }
 
 pub async fn broadcast(msg: &ServerMessage, clients_readlock: &tokio::sync::RwLockReadGuard<'_, HashMap<std::string::String, Client>>){
@@ -340,7 +298,9 @@ fn live_rot(pstate: &PlayerState) -> f32 {
 	pstate.rotation + dr
 }
 
-pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clients) -> Result<(), Box<dyn Error>>{
+//TODO capture the current time and pass it to live_pos and live_rot
+//This will improve accuracy due to lock acquire times
+pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clients, world_loot: &WorldLoot) -> Result<(), Box<dyn Error>>{
 	let message: ClientMessage = match from_str(message) {
 		Ok(v) => v,
 		Err(m) => {
@@ -543,7 +503,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 						} else {
 							broadcast( //tell everyone that the player died
 								&ServerMessage::PlayerDeath{
-									loot: playerstate.cash / 2,
+									loot: LootContent::Cash(playerstate.cash / 2),
 									from: playerstate.public_id,
 								},
 								&clr
@@ -558,6 +518,23 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 					}
 				}
 			}
+		},
+		ClientMessage::ClaimLoot { loot_id } => {
+			let has_claim_rights = match world_loot.read().await.get(&loot_id) {
+				Some(loot_obj) => {
+					let (px, py) = live_pos(&sender_state.read().await.clone());
+					(py - loot_obj.y).pow(2) + (px - loot_obj.x).pow(2) < LOOT_RADIUS.pow(2)
+				},
+				None => {
+					eprintln!("Can't find requested lootobject: {}", loot_id);
+					false
+				}
+			};
+			if !has_claim_rights{
+				return;
+			}
+			//sender_state.write()		
+			//world_loot.write()
 		}
 	}
 	Ok(())

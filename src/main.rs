@@ -9,9 +9,11 @@ mod game;
 mod ws;
 
 use crate::game::PlayerState;
+use crate::game::LootObject;
 
 type Result<T> = std::result::Result<T, Rejection>;
 type Clients = Arc<RwLock<HashMap<String, Client>>>;
+type WorldLoot = Arc<RwLock<HashMap<String, LootObject>>>;
 
 #[derive(Debug, Clone)]
 pub struct Client {
@@ -22,6 +24,7 @@ pub struct Client {
 #[tokio::main]
 async fn main() {
 	let clients: Clients = Arc::new(RwLock::new(HashMap::new()));
+	let world_loot: WorldLoot = Arc::new(RwLock::new(HashMap::new()));
 
 	let health_route = warp::path!("health").and_then(handler::health_handler);
 
@@ -48,6 +51,7 @@ async fn main() {
 		.and(warp::ws())
 		.and(warp::path::param())
 		.and(with_clients(clients.clone()))
+		.and(with_loot(world_loot.clone()))
 		.and_then(handler::ws_handler);
 
 	let routes = health_route
@@ -66,4 +70,8 @@ async fn main() {
 
 fn with_clients(clients: Clients) -> impl Filter<Extract = (Clients,), Error = Infallible> + Clone {
 	warp::any().map(move || clients.clone())
+}
+
+fn with_loot(loot: WorldLoot) -> impl Filter<Extract = (WorldLoot,), Error = Infallible> + Clone {
+	warp::any().map(move || loot.clone())
 }
