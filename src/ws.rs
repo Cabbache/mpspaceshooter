@@ -44,6 +44,8 @@ pub async fn client_connection(ws: WebSocket, private_id: String, clients: Clien
 				break;
 			}
 		};
+
+		//TODO make client_msg with a rate limiter or cheat detection, exit this loop if triggered
 		client_msg(&private_id, msg, &clients, &loot).await;
 	}
 

@@ -128,7 +128,8 @@ impl Client {
 			};
 			let serialized_msg = match msg {
 				ServerMessage::GameState(_) |
-				ServerMessage::PlayerJoin(_) => {
+				ServerMessage::PlayerJoin(_) |
+				ServerMessage::LootCollected{loot_id: _, collector: _} => {
 					match msg {
 						ServerMessage::GameState(pstates) => {
 							let encoded_states: Vec<Value> = pstates.iter().map(|state| {
@@ -145,6 +146,18 @@ impl Client {
 								"c": pstate.encode(pstate.public_id == public_id),
 							}))?
 						},
+						ServerMessage::LootCollected{ loot_id, collector } => {
+							let mut content: Value = json!({
+								"loot_id": loot_id
+							});
+							if *collector == public_id {
+								content["receiver"] = json!(1);
+							}
+							to_string(&json!({
+								"t": "LootCollected",
+								"c": content,
+							}))?
+						}
 						_ => String::new()
 					}
 				},  
@@ -155,7 +168,6 @@ impl Client {
 		Ok(())
 	}
 }
-
 
 #[derive(Debug, Clone)]
 pub struct MotionStart{
@@ -232,7 +244,7 @@ pub enum ServerMessage{
 	RotationUpdate {direction: PlayerRotation, from: String, r: f32},
 	TrigUpdate {by: String, weptype: WeaponType, pressed: bool},
 	PlayerDeath {loot: LootContent, from: String},
-	LootCollect(String), //the id of the loot
+	LootCollected {loot_id: String, collector: String},
 }
 
 pub async fn broadcast(msg: &ServerMessage, clients_readlock: &tokio::sync::RwLockReadGuard<'_, HashMap<std::string::String, Client>>){
@@ -545,8 +557,9 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 						}
 					}//locks are released
 
+					let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
 					broadcast(
-						&ServerMessage::LootCollect(loot_id),
+						&ServerMessage::LootCollected { loot_id: loot_id, collector: public_id },
 						&clr
 					).await; //broadcast that loot was collected
 				},
