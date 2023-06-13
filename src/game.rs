@@ -232,6 +232,7 @@ pub enum ServerMessage{
 	RotationUpdate {direction: PlayerRotation, from: String, r: f32},
 	TrigUpdate {by: String, weptype: WeaponType, pressed: bool},
 	PlayerDeath {loot: LootContent, from: String},
+	LootCollect(String), //the id of the loot
 }
 
 pub async fn broadcast(msg: &ServerMessage, clients_readlock: &tokio::sync::RwLockReadGuard<'_, HashMap<std::string::String, Client>>){
@@ -520,21 +521,39 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			}
 		},
 		ClientMessage::ClaimLoot { loot_id } => {
-			let has_claim_rights = match world_loot.read().await.get(&loot_id) {
+			match world_loot.read().await.get(&loot_id) {
 				Some(loot_obj) => {
 					let (px, py) = live_pos(&sender_state.read().await.clone());
-					(py - loot_obj.y).pow(2) + (px - loot_obj.x).pow(2) < LOOT_RADIUS.pow(2)
+					if (py - loot_obj.y).pow(2) + (px - loot_obj.x).pow(2) > LOOT_RADIUS.pow(2){
+						return Err("Too far for loot claim".into());
+					}
+
+					{
+						//make sure to acquire both locks before proceeding
+						let mut pstate_writer = sender_state.write().await;
+						let mut world_loot_writer = world_loot.write().await;
+
+						world_loot_writer.remove(&loot_id);
+						match loot_obj.loot {
+							LootContent::Cash(amount) => pstate_writer.cash += amount,
+							LootContent::Ammo(amount) => {
+								let selection = pstate_writer.inventory.selection;
+								if let Some(weapon) = pstate_writer.inventory.weapons.get_mut(&selection) {
+									weapon.ammo += amount;
+								}
+							}
+						}
+					}//locks are released
+
+					broadcast(
+						&ServerMessage::LootCollect(loot_id),
+						&clr
+					).await; //broadcast that loot was collected
 				},
 				None => {
-					eprintln!("Can't find requested lootobject: {}", loot_id);
-					false
+					return Err(format!("Can't find requested lootobject: {}", loot_id).into());
 				}
 			};
-			if !has_claim_rights{
-				return;
-			}
-			//sender_state.write()		
-			//world_loot.write()
 		}
 	}
 	Ok(())
