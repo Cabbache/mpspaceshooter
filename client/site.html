@@ -476,19 +476,18 @@
 			}
 		}
 
-		const handle_healthUpdate = function(content){
-			const newHealth = content.value;
-			gameState[content.from].p.health = newHealth;
+		const handle_healthUpdate = function(newHealth){
+			gameState[public_id].p.health = newHealth;
+			update_healthbar(newHealth);
+		}
 
-			const is_self = content.from === public_id;
+		const handle_playerleave = function(public_id){
+			players_container.removeChild(gameState[public_id].graphics);
+			delete gameState[public_id];
+		}
 
-			if (is_self)
-				update_healthbar(newHealth);
-
-			//if not fatal, do nothing
-			if (newHealth > 0)
-				return;
-			
+		const handle_playerdeath = function(content){
+			const is_self = content.from == public_id;
 			if (is_self){
 				alert("You died!");
 				socket.send(
@@ -501,9 +500,8 @@
 			}
 		}
 
-		const handle_playerleave = function(public_id){
-			players_container.removeChild(gameState[public_id].graphics);
-			delete gameState[public_id];
+		const handle_lootcollection = function(content){
+			console.log(content);
 		}
 
 		const recvFn = function(event) {
@@ -517,6 +515,8 @@
 				"RotationUpdate": handle_rotationupdate,
 				"PlayerJoin": handle_playerjoin,
 				"PlayerLeave": handle_playerleave,
+				"PlayerDeath": handle_playerdeath,
+				"LootCollceted": handle_lootcollection,
 				"TrigUpdate": handle_trigUpdate,
 				"HealthUpdate": handle_healthUpdate
 			};
