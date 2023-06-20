@@ -220,15 +220,13 @@
 		const loot_container = new PIXI.Container();
 		const bullets_container = new PIXI.Container();
 
-		loot_container.addChild(new PIXI.Sprite(coins_texture));
-
 		//higher zindex makes it appear on top
 		bullets_container.zIndex = 1;
-		loot_container.zIndex = 2;
-		players_container.zIndex = 3;
+		players_container.zIndex = 2;
+		loot_container.zIndex = 3;
 
-		world.addChild(loot_container);
 		world.addChild(players_container);
+		world.addChild(loot_container);
 		world.addChild(bullets_container);
 		world.addChild(background);
 
@@ -359,6 +357,8 @@
 			for (var i = world.children.length - 1; i >= 0; i--)
 				players_container.removeChild(world.children[i]);
 
+			//TODO also remove loot
+
 			gameState = {};
 			worldLoot = {};
 			state.players.forEach((p) => {
@@ -380,9 +380,13 @@
 				};
 			});	
 
-			worldLoot = state.loot;
 			Object.entries(state.loot).forEach(([loot_uuid, lootObj]) => {
-				loot_container.addChild(getLootSprite(lootObj));
+				const loot_sprite = getLootSprite(lootObj);
+				loot_container.addChild(loot_sprite);
+				worldLoot[loot_uuid] = {
+					graphics: loot_sprite,
+					l: lootObj,
+				};
 			})
 		};
 
@@ -534,6 +538,13 @@
 
 		const handle_lootcollection = function(content){
 			console.log(content);
+			if (!(content.loot_id in worldLoot))
+				return;
+			loot_container.removeChild(worldLoot[content.loot_id].graphics);
+			if (content.receiver){
+				console.log(`you are receiver: ${worldLoot[content.lood_id]}`);
+			}
+			delete worldLoot[content.loot_id];
 		}
 
 		const recvFn = function(event) {
@@ -732,6 +743,17 @@
 			});
 			emissions = emissions.filter(emitter => emitter.emit);
 			emissions.forEach(emitter => emitter.update(deltaTime));
+
+			Object.entries(worldLoot).forEach(([loot_id, lootObj]) => {
+				if (lootObj.claimed)
+					return;
+				const trig = Math.pow(lootObj.l.x - world.pivot.x, 2) + Math.pow(lootObj.l.y - world.pivot.y, 2) < 10*10;
+				if (!trig)
+					return;
+				lootObj.claimed = true;
+				socket.send(JSON.stringify({"t":"ClaimLoot","c":{"loot_id": loot_id}}));
+				console.log(`sent claim for ${loot_id}`);
+			});
 		});
 
 		ticker.speed = 1;

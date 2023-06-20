@@ -547,7 +547,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			}
 		},
 		ClientMessage::ClaimLoot { loot_id } => {
-			match world_loot.read().await.get(&loot_id) {
+			match world_loot.read().await.get(&loot_id).clone() {
 				Some(loot_obj) => {
 					let (px, py) = live_pos(&sender_state.read().await.clone());
 					if (py - loot_obj.y).pow(2) + (px - loot_obj.x).pow(2) > LOOT_RADIUS.pow(2){
