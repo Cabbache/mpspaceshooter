@@ -345,7 +345,7 @@
 				players_container.removeChild(world.children[i]);
 
 			gameState = {};
-			state.forEach((p) => {
+			state.players.forEach((p) => {
 				const square = getPlayerSprite(p);
 				if (p.public_id == public_id){
 					square.x = app.screen.width/2;

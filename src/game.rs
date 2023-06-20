@@ -21,12 +21,13 @@ const PLAYER_RADIUS: f32 = 25.0; //players have circular hitbox
 const LOOT_RADIUS: f32 = 25.0; //players must be within this distance to claim
 const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub enum LootContent{
 	Cash(u32),
 	Ammo(u32),
 }
 
+#[derive(Serialize, Debug, Clone)]
 pub struct LootObject{
 	x: f32,
 	y: f32,
@@ -127,17 +128,20 @@ impl Client {
 				None => self.state.read().await.public_id.clone(),
 			};
 			let serialized_msg = match msg {
-				ServerMessage::GameState(_) |
 				ServerMessage::PlayerJoin(_) |
+				ServerMessage::GameState{pstates: _, worldloot: _} |
 				ServerMessage::LootCollected{loot_id: _, collector: _} => {
 					match msg {
-						ServerMessage::GameState(pstates) => {
+						ServerMessage::GameState{ pstates, worldloot } => {
 							let encoded_states: Vec<Value> = pstates.iter().map(|state| {
 								state.encode(public_id == state.public_id)
 							}).collect();
 							to_string(&json!({
 								"t": "GameState",
-								"c": encoded_states,
+								"c": {
+									"players": encoded_states,
+									"loot": worldloot,
+								}
 							}))?
 						},
 						ServerMessage::PlayerJoin(pstate) => {
@@ -236,10 +240,10 @@ pub enum ClientMessage{
 #[derive(Serialize, Debug)]
 #[serde(tag = "t", content = "c")]
 pub enum ServerMessage{
-	GameState(Vec<PlayerState>),
 	PlayerJoin(PlayerState),
 	PlayerLeave(String),
 	HealthUpdate(f32),
+	GameState{ pstates: Vec<PlayerState>, worldloot: HashMap<String, LootObject>},
 	MotionUpdate {direction: PlayerMotion, from: String, x: f32, y: f32},
 	RotationUpdate {direction: PlayerRotation, from: String, r: f32},
 	TrigUpdate {by: String, weptype: WeaponType, pressed: bool},
@@ -417,7 +421,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			// Send the response to the client.
 			if let Some(client) = clr.get(private_id) {
 				let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
-				client.transmit(&ServerMessage::GameState(players), Some(public_id)).await?;
+				client.transmit(&ServerMessage::GameState{ pstates: players, worldloot: world_loot.read().await.clone() }, Some(public_id)).await?;
 			} else {
 					eprintln!("Can't find client")
 			}
