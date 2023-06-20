@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize, Serializer, ser::SerializeStruct};
 use serde_json::{from_str, json, to_string, Value};
 use warp::ws::Message;
 use xxhash_rust::xxh3::xxh3_64;
+use uuid::Uuid;
 
 use crate::Clients;
 use crate::Client;
@@ -518,9 +519,18 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 								Some(playerstate.public_id)
 							).await?; //tell the player that lost the health their new health
 						} else {
-							broadcast( //tell everyone that the player died
+							let loot_content = LootContent::Cash(playerstate.cash / 2);
+							world_loot.write().await.insert(
+								Uuid::new_v4().as_simple().to_string(),
+								LootObject{
+									x: px,
+									y: py,
+									loot: loot_content.clone()
+								},
+							);
+							broadcast( //tell everyone that the player died and what loot they dropped
 								&ServerMessage::PlayerDeath{
-									loot: LootContent::Cash(playerstate.cash / 2),
+									loot: loot_content,
 									from: playerstate.public_id,
 								},
 								&clr

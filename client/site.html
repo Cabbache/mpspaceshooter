@@ -201,6 +201,7 @@
 		});
 
 		const gunshot_texture = PIXI.Texture.from("static/textures/gunshot.png");
+		const coins_texture = await PIXI.Assets.load("static/textures/coins.png");
 		const seamless_texture = await PIXI.Assets.load("static/textures/seamless.jpg");
 
 		var background = new PIXI.TilingSprite(
@@ -216,12 +217,17 @@
 		world.sortableChildren = true;
 
 		const players_container = new PIXI.Container();
+		const loot_container = new PIXI.Container();
 		const bullets_container = new PIXI.Container();
+
+		loot_container.addChild(new PIXI.Sprite(coins_texture));
 
 		//higher zindex makes it appear on top
 		bullets_container.zIndex = 1;
-		players_container.zIndex = 2;
+		loot_container.zIndex = 2;
+		players_container.zIndex = 3;
 
+		world.addChild(loot_container);
 		world.addChild(players_container);
 		world.addChild(bullets_container);
 		world.addChild(background);
@@ -333,6 +339,15 @@
 			return player_container;
 		}
 
+		const getLootSprite = function(lootObj){
+			var loot_obj = new PIXI.Container();
+			loot_obj.position.set(lootObj.x, lootObj.y);
+			var loot_texture = new PIXI.Sprite(coins_texture);
+			loot_texture.anchor.set(0.5);
+			loot_obj.addChild(loot_texture);
+			return loot_obj;
+		}
+
 		const update_healthbar = function(healthvalue){
 			const prcnt = healthvalue / 100;
 			healthbar.width = Math.max(0, app.screen.width * healthbar_maxwidth * prcnt);
@@ -345,6 +360,7 @@
 				players_container.removeChild(world.children[i]);
 
 			gameState = {};
+			worldLoot = {};
 			state.players.forEach((p) => {
 				const square = getPlayerSprite(p);
 				if (p.public_id == public_id){
@@ -363,6 +379,11 @@
 					p: p
 				};
 			});	
+
+			worldLoot = state.loot;
+			Object.entries(state.loot).forEach(([loot_uuid, lootObj]) => {
+				loot_container.addChild(getLootSprite(lootObj));
+			})
 		};
 
 		const handle_motionupdate = function(content){
