@@ -200,8 +200,11 @@
 				backgroundColor: 0x101510
 		});
 
-		const gunshot_texture = PIXI.Texture.from("static/textures/gunshot.png");
+		const gunshot_texture = await PIXI.Texture.from("static/textures/gunshot.png");
+		const pistol_ammo_texture = await PIXI.Assets.load("static/textures/pistol_ammo.png");
 		const coins_texture = await PIXI.Assets.load("static/textures/coins.png");
+		const coins_label_texture = await PIXI.Assets.load("static/textures/coins_label.png");
+		const heart_texture = await PIXI.Assets.load("static/textures/heart.png");
 		const seamless_texture = await PIXI.Assets.load("static/textures/seamless.jpg");
 
 		var background = new PIXI.TilingSprite(
@@ -240,6 +243,15 @@
 		healthbar.position.set(app.screen.width*0.02, app.screen.height*0.98 - 20);
 		app.stage.addChild(healthbar);
 
+		//Add the hearth next to the healthbar TODO reduce the hard coded values and make a container for the healthbar and the heart
+		var heart_sprite = new PIXI.Sprite(heart_texture);
+		heart_sprite.scale.set(0.7,0.7);
+		heart_sprite.position.set(
+			app.screen.width * (healthbar_maxwidth+0.03),
+			app.screen.height*0.98 - 10 - heart_sprite.height/2
+		);
+		app.stage.addChild(heart_sprite);
+
 		//add the coords text
 		var coords_text = new PIXI.Text("x: -, y: -", { fontFamily: "Arial", fontSize: 18, fill: 0x88ff88 });
 		coords_text.anchor.set(0.5);
@@ -261,11 +273,19 @@
 		cash_text.position.set(app.screen.width * 0.02, app.screen.height*0.02 + 20);
 		app.stage.addChild(cash_text);
 
-		//add the selected weapon information
+		//Add the text that shows ammo left
 		var ammo_text = new PIXI.Text("20", { fontFamily: "\"Lucida Console\", Monaco, monospace", fontSize: 23, fill: 0xffee00 });
 		ammo_text.anchor.set(0.5);
-		ammo_text.position.set(app.screen.width * 0.9, app.screen.height*0.98 - 18);
+		ammo_text.position.set(app.screen.width * 0.9, app.screen.height*0.98 - 15);
 		app.stage.addChild(ammo_text);
+
+		var pistol_ammo_sprite = new PIXI.Sprite(pistol_ammo_texture);
+		//heart_sprite.scale.set(0.7,0.7);
+		pistol_ammo_sprite.position.set(
+			app.screen.width * 0.93,
+			app.screen.height*0.98 - 35
+		);
+		app.stage.addChild(pistol_ammo_sprite);
 
 		//false if not hit, distance to hit point otherwise
 		//TODO wasm
