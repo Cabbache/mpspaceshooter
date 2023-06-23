@@ -167,6 +167,113 @@
 					],
 			};
 
+			var explosionEmitterJSON = {
+				lifetime: { 
+					min: 0.2,
+					max: 0.5
+				},
+				frequency: 0.03,
+				spawnChance: 0.9,
+				particlesPerWave: 30,
+				emitterLifetime: 0.2,
+				maxParticles: 1000,
+				pos: {
+					x: 0,
+					y: 0
+				},
+				addAtBack: false,
+				radius: { // This describes how the particles will spread out
+					min: 0,
+					max: 360
+				},
+				speed: { // This describes the speed of the particles
+					min: 300,
+					max: 600
+				},
+				behaviors: [
+					{
+						type: 'alpha',
+						config: {
+							alpha: {
+								list: [
+									{
+										value: 1,
+										time: 0
+									},
+									{
+										value: 0,
+										time: 1
+									}
+								],
+							},
+						}
+					},
+					{
+						type: 'scale',
+						config: {
+							scale: {
+								list: [
+									{
+										value: 1,
+										time: 0
+									},
+									{
+										value: 0,
+										time: 1
+									}
+								],
+							},
+						}
+					},
+					{
+						type: 'color',
+						config: {
+							color: {
+								list: [
+									{
+										value: "ff0000",
+										time: 0
+									},
+									{
+										value: "ffff00",
+										time: 0.5
+									},
+									{
+										value: "ffffff",
+										time: 1
+									}
+								],
+							},
+						}
+					},
+					{
+							type: 'rotationStatic',
+							config: {
+									min: 0,
+									max: 360
+							}
+					},
+					{
+						type: 'moveSpeed',
+						config: {
+							speed: {
+								list: [
+									{
+										value: 600,
+										time: 0
+									},
+									{
+										value: 100,
+										time: 1
+									}
+								],
+								isStepped: false
+							},
+						}
+					},
+				],
+			};
+
 		var gameState = {};
 		var worldLoot = {};
 		var emissions = [];
@@ -579,8 +686,25 @@
 					})
 				);
 			} else {
-				handle_playerleave(content.from);
+				const emitJSON = JSON.parse(JSON.stringify(explosionEmitterJSON));
+				emitJSON.pos = {
+					x: gameState[content.from].p.x,
+					y: gameState[content.from].p.y
+				};
+				emitJSON.behaviors.push({
+					type: 'textureSingle',
+					config: {
+						texture: PIXI.Texture.WHITE
+					}
+				});
+				let emitter = new PIXI.particles.Emitter(
+					world,
+					emitJSON
+				);
+				emitter.emit = true;
+				emissions.push(emitter);
 				summon_loot(content.loot_uuid, content.loot);
+				handle_playerleave(content.from);
 			}
 		}
 
