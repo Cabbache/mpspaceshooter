@@ -248,7 +248,7 @@ pub enum ServerMessage{
 	MotionUpdate {direction: PlayerMotion, from: String, x: f32, y: f32},
 	RotationUpdate {direction: PlayerRotation, from: String, r: f32},
 	TrigUpdate {by: String, weptype: WeaponType, pressed: bool},
-	PlayerDeath {loot: LootContent, from: String},
+	PlayerDeath {loot: LootObject, loot_uuid: String, from: String},
 	LootCollected {loot_id: String, collector: String},
 }
 
@@ -411,13 +411,19 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			//gpt-4 did this
 			// Use futures::future::join_all to wait for all tasks to complete.
 			let players_futures: Vec<_> = clr.iter()
-					.map(|(_, value)| value.state.read())
-					.collect();
+				.map(|(_, value)| value.state.read())
+				.collect();
 
 			let players: Vec<_> = join_all(players_futures).await
-					.into_iter()
-					.map(|lock| lock.clone())
-					.collect();
+				.into_iter()
+				.filter_map(|lock| {
+					let clone = lock.clone();
+					match clone.health > 0.0 { //to only send the living ones
+						true => Some(clone),
+						false => None
+					}
+				})
+				.collect();
 
 			// Send the response to the client.
 			if let Some(client) = clr.get(private_id) {
@@ -519,18 +525,20 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 								Some(playerstate.public_id)
 							).await?; //tell the player that lost the health their new health
 						} else {
-							let loot_content = LootContent::Cash(playerstate.cash / 2);
+							let dropped_loot = LootObject{
+								x: px,
+								y: py,
+								loot: LootContent::Cash(playerstate.cash / 2)
+							};
+							let dropped_loot_uuid = Uuid::new_v4().as_simple().to_string();
 							world_loot.write().await.insert(
-								Uuid::new_v4().as_simple().to_string(),
-								LootObject{
-									x: px,
-									y: py,
-									loot: loot_content.clone()
-								},
+								dropped_loot_uuid.clone(),
+								dropped_loot.clone(),
 							);
 							broadcast( //tell everyone that the player died and what loot they dropped
 								&ServerMessage::PlayerDeath{
-									loot: loot_content,
+									loot: dropped_loot,
+									loot_uuid: dropped_loot_uuid,
 									from: playerstate.public_id,
 								},
 								&clr

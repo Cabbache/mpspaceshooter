@@ -416,14 +416,18 @@
 			});	
 
 			Object.entries(state.loot).forEach(([loot_uuid, lootObj]) => {
-				const loot_sprite = getLootSprite(lootObj);
-				loot_container.addChild(loot_sprite);
-				worldLoot[loot_uuid] = {
-					graphics: loot_sprite,
-					l: lootObj,
-				};
-			})
+				summon_loot(loot_uuid, lootObj);
+			});
 		};
+
+		const summon_loot = function(loot_uuid, lootObj){
+			const loot_sprite = getLootSprite(lootObj);
+			loot_container.addChild(loot_sprite);
+			worldLoot[loot_uuid] = {
+				graphics: loot_sprite,
+				l: lootObj,
+			};		
+		}
 
 		const handle_motionupdate = function(content){
 			let broadcaster = content["from"];
@@ -568,6 +572,7 @@
 				);
 			} else {
 				handle_playerleave(content.from);
+				summon_loot(content.loot_uuid, content.loot);
 			}
 		}
 
@@ -576,13 +581,14 @@
 			if (!(content.loot_id in worldLoot))
 				return;
 			loot_container.removeChild(worldLoot[content.loot_id].graphics);
-			const loot_content_clone = JSON.parse(JSON.stringify(worldLoot[content.loot_id].l));
+			const loot_content_clone = JSON.parse(JSON.stringify(worldLoot[content.loot_id].l.loot));
 			delete worldLoot[content.loot_id];
 			if (!content.receiver) return;
 
 			console.log(`you are receiver: ${JSON.stringify(loot_content_clone)}`);
 			if ("Cash" in loot_content_clone){
 				gameState[public_id].p.cash += loot_content_clone.Cash;
+				cash_text.text = gameState[public_id].p.cash;
 			}
 		}
 
