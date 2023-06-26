@@ -10,6 +10,9 @@ use serde_json::{from_str, json, to_string, Value};
 use warp::ws::Message;
 use xxhash_rust::xxh3::xxh3_64;
 use uuid::Uuid;
+use rand::Rng;
+use rand::rngs::StdRng;
+use rand::SeedableRng;
 
 use crate::Clients;
 use crate::Client;
@@ -25,7 +28,8 @@ const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 #[derive(Serialize, Debug, Clone)]
 pub enum LootContent{
 	Cash(u32),
-	Ammo(u32),
+	PistolAmmo(u32),
+	SpeedBoost,
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -81,6 +85,7 @@ pub struct PlayerState {
 	pub health: f32,
 	pub x: f32,
 	pub y: f32,
+	pub speed: f32,
 	pub cash: u32,
 	pub rotation: f32,
 	pub color: Color,
@@ -99,6 +104,7 @@ impl PlayerState {
 			"public_id": &self.public_id,
 			"color": &self.color,
 			"motion": &self.motion,
+			"speed": &self.speed,
 			"rotation_motion": &self.rotation_motion,
 			"x": x,
 			"y": y,
@@ -130,8 +136,9 @@ impl Client {
 			};
 			let serialized_msg = match msg {
 				ServerMessage::PlayerJoin(_) |
-				ServerMessage::GameState{pstates: _, worldloot: _} |
-				ServerMessage::LootCollected{loot_id: _, collector: _} => {
+				ServerMessage::GameState{pstates: _, worldloot: _} => {
+				//ServerMessage::GameState{pstates: _, worldloot: _} |
+				//ServerMessage::LootCollected{loot_id: _, collector: _} => {
 					match msg {
 						ServerMessage::GameState{ pstates, worldloot } => {
 							let encoded_states: Vec<Value> = pstates.iter().map(|state| {
@@ -151,18 +158,18 @@ impl Client {
 								"c": pstate.encode(pstate.public_id == public_id),
 							}))?
 						},
-						ServerMessage::LootCollected{ loot_id, collector } => {
-							let mut content: Value = json!({
-								"loot_id": loot_id
-							});
-							if *collector == public_id {
-								content["receiver"] = json!(1);
-							}
-							to_string(&json!({
-								"t": "LootCollected",
-								"c": content,
-							}))?
-						}
+//						ServerMessage::LootCollected{ loot_id, collector } => {
+//							let mut content: Value = json!({
+//								"loot_id": loot_id
+//							});
+//							if *collector == public_id {
+//								content["receiver"] = json!(1);
+//							}
+//							to_string(&json!({
+//								"t": "LootCollected",
+//								"c": content,
+//							}))?
+//						}
 						_ => String::new()
 					}
 				},  
@@ -288,7 +295,7 @@ fn line_circle_intersect(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> bool{
 fn live_pos(pstate: &PlayerState) -> (f32, f32){
 	let mult = checked_pow(10, 9).unwrap();
 	let now = Instant::now();
-	let diff = ((now - pstate.motion.time).as_nanos() as f32) / (mult as f32);
+	let diff = pstate.speed * ((now - pstate.motion.time).as_nanos() as f32) / (mult as f32);
 	let (dx,dy) = match pstate.motion.direction{
 		PlayerMotion::MoveUp => (0.0,-diff),
 		PlayerMotion::MoveDown => (0.0,diff),
@@ -525,10 +532,15 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 								Some(playerstate.public_id)
 							).await?; //tell the player that lost the health their new health
 						} else {
+							let mut rng = StdRng::from_entropy();
 							let dropped_loot = LootObject{
 								x: px,
 								y: py,
-								loot: LootContent::Cash(playerstate.cash / 2)
+								loot: match rng.gen_range(0..101){
+									0..=33 => LootContent::Cash(playerstate.cash / 2),
+									34..=67 => LootContent::PistolAmmo(5),
+									_ => LootContent::SpeedBoost,
+								}
 							};
 							let dropped_loot_uuid = Uuid::new_v4().as_simple().to_string();
 							world_loot.write().await.insert(
@@ -574,11 +586,14 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 						world_loot_writer.remove(&loot_id);
 						match loot_obj.loot {
 							LootContent::Cash(amount) => pstate_writer.cash += amount,
-							LootContent::Ammo(amount) => {
+							LootContent::PistolAmmo(amount) => {
 								let selection = pstate_writer.inventory.selection;
 								if let Some(weapon) = pstate_writer.inventory.weapons.get_mut(&selection) {
 									weapon.ammo += amount;
 								}
+							},
+							LootContent::SpeedBoost => {
+								pstate_writer.speed += 1.0;
 							}
 						}
 					}//locks are released

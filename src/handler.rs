@@ -77,6 +77,7 @@ fn default_state() -> PlayerState {
 		public_id: "".to_string(),
 		x: pos_x,
 		y: pos_y,
+		speed: 1.0,
 		rotation: 0.0,
 		health: 100.0,
 		cash: 20,

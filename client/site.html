@@ -307,12 +307,16 @@
 				backgroundColor: 0x101510
 		});
 
-		const gunshot_texture = await PIXI.Texture.from("static/textures/gunshot.png");
-		const pistol_ammo_texture = await PIXI.Assets.load("static/textures/pistol_ammo.png");
-		const coins_texture = await PIXI.Assets.load("static/textures/coins.png");
-		const coins_label_texture = await PIXI.Assets.load("static/textures/coins_label.png");
-		const heart_texture = await PIXI.Assets.load("static/textures/heart.png");
-		const seamless_texture = await PIXI.Assets.load("static/textures/seamless.jpg");
+		let gunshot_texture, pistol_ammo_texture, coins_texture, coins_label_texture, heart_texture, seamless_texture, speed_boost_texture;
+		await Promise.all([
+			PIXI.Assets.load("static/textures/gunshot.png").then(texture => gunshot_texture = texture),
+			PIXI.Assets.load("static/textures/pistol_ammo.png").then(texture => pistol_ammo_texture = texture),
+			PIXI.Assets.load("static/textures/coins.png").then(texture => coins_texture = texture),
+			PIXI.Assets.load("static/textures/coins_label.png").then(texture => coins_label_texture = texture),
+			PIXI.Assets.load("static/textures/heart.png").then(texture => heart_texture = texture),
+			PIXI.Assets.load("static/textures/seamless.jpg").then(texture => seamless_texture = texture),
+			PIXI.Assets.load("static/textures/speed_boost.png").then(texture => speed_boost_texture = texture)
+		]);
 
 		var background = new PIXI.TilingSprite(
 			seamless_texture,
@@ -489,7 +493,12 @@
 		const getLootSprite = function(lootObj){
 			var loot_obj = new PIXI.Container();
 			loot_obj.position.set(lootObj.x, lootObj.y);
-			var loot_texture = new PIXI.Sprite(coins_texture);
+			var loot_texture = new PIXI.Sprite({
+				"Cash": coins_texture,
+				"PistolAmmo": pistol_ammo_texture,
+				"SpeedBoost": speed_boost_texture
+			}[typeof lootObj.loot === "string" ? lootObj.loot:Object.keys(lootObj.loot)[0]]);
+			console.log(Object.keys(lootObj.loot)[0]);
 			loot_texture.anchor.set(0.5);
 			loot_obj.addChild(loot_texture);
 			return loot_obj;
@@ -541,7 +550,7 @@
 			worldLoot[loot_uuid] = {
 				graphics: loot_sprite,
 				l: lootObj,
-			};		
+			};
 		}
 
 		const handle_motionupdate = function(content){
@@ -715,13 +724,22 @@
 			loot_container.removeChild(worldLoot[content.loot_id].graphics);
 			const loot_content_clone = JSON.parse(JSON.stringify(worldLoot[content.loot_id].l.loot));
 			delete worldLoot[content.loot_id];
-			if (!content.receiver) return;
 
-			console.log(`you are receiver: ${JSON.stringify(loot_content_clone)}`);
-			if ("Cash" in loot_content_clone){
-				gameState[public_id].p.cash += loot_content_clone.Cash;
-				cash_text.text = gameState[public_id].p.cash;
-			}
+			const loot_type = typeof loot_content_clone === 'string' ? loot_content_clone:Object.keys(loot_content_clone)[0];
+			const loot_value = typeof loot_content_clone === 'string' ? null:Object.values(loot_content_clone)[0];
+			if (content.collector !== public_id && loot_type !== "SpeedBoost") return;
+
+			({
+				"Cash": () => {
+					gameState[content.collector].p.cash += loot_value;
+					cash_text.text = gameState[content.collector].p.cash;
+				},
+				"Pistol": () => {},
+				"SpeedBoost": () => {
+					gameState[content.collector].p.speed += 1.0;
+					console.log(`Collected speedboost: ${gameState[content.collector].p.speed}`);
+				}
+			}[loot_type])();
 		}
 
 		const recvFn = function(event) {
@@ -841,31 +859,36 @@
 				}
 				
 				//apply translations
+				/*
+					TODO:
+					const shallow_copy = player.p.public_id == public_id ? world.pivot:player.graphics
+				*/
+				const move_speed = player_speed * player.p.speed;
 				if (player.p.public_id == public_id){
 					switch (player.p.motion.direction){
 						case "MoveUp":
-							world.pivot.y -= player_speed * deltaTime;break;
+							world.pivot.y -= move_speed * deltaTime;break;
 						case "MoveDown":
-							world.pivot.y += player_speed * deltaTime;break;
+							world.pivot.y += move_speed * deltaTime;break;
 						case "MoveLeft":
-							world.pivot.x -= player_speed * deltaTime;break;
+							world.pivot.x -= move_speed * deltaTime;break;
 						case "MoveRight":
-							world.pivot.x += player_speed * deltaTime;break;
+							world.pivot.x += move_speed * deltaTime;break;
 						case "MoveUpRight":
-							world.pivot.x += player_speed * deltaTime * invr2;
-							world.pivot.y -= player_speed * deltaTime * invr2;
+							world.pivot.x += move_speed * deltaTime * invr2;
+							world.pivot.y -= move_speed * deltaTime * invr2;
 							break;
 						case "MoveDownRight":
-							world.pivot.x += player_speed * deltaTime * invr2;
-							world.pivot.y += player_speed * deltaTime * invr2;
+							world.pivot.x += move_speed * deltaTime * invr2;
+							world.pivot.y += move_speed * deltaTime * invr2;
 							break;
 						case "MoveDownLeft":
-							world.pivot.x -= player_speed * deltaTime * invr2;
-							world.pivot.y += player_speed * deltaTime * invr2;
+							world.pivot.x -= move_speed * deltaTime * invr2;
+							world.pivot.y += move_speed * deltaTime * invr2;
 							break;
 						case "MoveUpLeft":
-							world.pivot.x -= player_speed * deltaTime * invr2;
-							world.pivot.y -= player_speed * deltaTime * invr2;
+							world.pivot.x -= move_speed * deltaTime * invr2;
+							world.pivot.y -= move_speed * deltaTime * invr2;
 							break;
 					}
 
@@ -878,28 +901,28 @@
 				} else {
 					switch (player.p.motion.direction){
 						case "MoveUp":
-							player.graphics.y -= player_speed * deltaTime;break;
+							player.graphics.y -= move_speed * deltaTime;break;
 						case "MoveDown":
-							player.graphics.y += player_speed * deltaTime;break;
+							player.graphics.y += move_speed * deltaTime;break;
 						case "MoveLeft":
-							player.graphics.x -= player_speed * deltaTime;break;
+							player.graphics.x -= move_speed * deltaTime;break;
 						case "MoveRight":
-							player.graphics.x += player_speed * deltaTime;break;
+							player.graphics.x += move_speed * deltaTime;break;
 						case "MoveUpRight":
-							player.graphics.x += player_speed * deltaTime * invr2;
-							player.graphics.y -= player_speed * deltaTime * invr2;
+							player.graphics.x += move_speed * deltaTime * invr2;
+							player.graphics.y -= move_speed * deltaTime * invr2;
 							break;
 						case "MoveDownRight":
-							player.graphics.x += player_speed * deltaTime * invr2;
-							player.graphics.y += player_speed * deltaTime * invr2;
+							player.graphics.x += move_speed * deltaTime * invr2;
+							player.graphics.y += move_speed * deltaTime * invr2;
 							break;
 						case "MoveDownLeft":
-							player.graphics.x -= player_speed * deltaTime * invr2;
-							player.graphics.y += player_speed * deltaTime * invr2;
+							player.graphics.x -= move_speed * deltaTime * invr2;
+							player.graphics.y += move_speed * deltaTime * invr2;
 							break;
 						case "MoveUpLeft":
-							player.graphics.x -= player_speed * deltaTime * invr2;
-							player.graphics.y -= player_speed * deltaTime * invr2;
+							player.graphics.x -= move_speed * deltaTime * invr2;
+							player.graphics.y -= move_speed * deltaTime * invr2;
 							break;
 					}
 				}
