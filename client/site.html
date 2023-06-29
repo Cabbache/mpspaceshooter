@@ -661,6 +661,7 @@
 			if (content.public_id == public_id){ //this happens when spawning
 				world.pivot.x = content.x;
 				world.pivot.y = content.y;
+				gameState[public_id].p.speed = content.speed;
 				gameState[public_id].p.health = content.health;
 				gameState[public_id].graphics.rotation = content.rotation;
 				coords_text.text = `x: ${Math.round(world.pivot.x)}, y: ${-Math.round(world.pivot.y)}`;
@@ -688,12 +689,14 @@
 		const handle_playerdeath = function(content){
 			const is_self = content.from == public_id;
 			if (is_self){
+				summon_loot(content.loot_uuid, content.loot);
 				alert("You died!");
 				socket.send(
 					JSON.stringify({
 						"t":"Spawn"
 					})
 				);
+				console.log(worldLoot);
 			} else {
 				const emitJSON = JSON.parse(JSON.stringify(explosionEmitterJSON));
 				emitJSON.pos = {
@@ -719,8 +722,10 @@
 
 		const handle_lootcollection = function(content){
 			console.log(content);
-			if (!(content.loot_id in worldLoot))
+			if (!(content.loot_id in worldLoot)){
+				console.log("Could not find collected loot");
 				return;
+			}
 			loot_container.removeChild(worldLoot[content.loot_id].graphics);
 			const loot_content_clone = JSON.parse(JSON.stringify(worldLoot[content.loot_id].l.loot));
 			delete worldLoot[content.loot_id];
@@ -729,12 +734,14 @@
 			const loot_value = typeof loot_content_clone === 'string' ? null:Object.values(loot_content_clone)[0];
 			if (content.collector !== public_id && loot_type !== "SpeedBoost") return;
 
+			console.log(`action on ${loot_type}`);
+
 			({
 				"Cash": () => {
 					gameState[content.collector].p.cash += loot_value;
 					cash_text.text = gameState[content.collector].p.cash;
 				},
-				"Pistol": () => {},
+				"PistolAmmo": () => {},
 				"SpeedBoost": () => {
 					gameState[content.collector].p.speed += 1.0;
 					console.log(`Collected speedboost: ${gameState[content.collector].p.speed}`);
@@ -944,6 +951,7 @@
 			emissions = emissions.filter(emitter => emitter.emit);
 			emissions.forEach(emitter => emitter.update(deltaTime));
 
+			//TODO it happens often that server rejects claim
 			Object.entries(worldLoot).forEach(([loot_id, lootObj]) => {
 				if (lootObj.claimed)
 					return;
