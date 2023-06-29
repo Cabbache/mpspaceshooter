@@ -257,6 +257,7 @@ pub enum ServerMessage{
 	TrigUpdate {by: String, weptype: WeaponType, pressed: bool},
 	PlayerDeath {loot: LootObject, loot_uuid: String, from: String},
 	LootCollected {loot_id: String, collector: String},
+	LootReject(String),
 }
 
 pub async fn broadcast(msg: &ServerMessage, clients_readlock: &tokio::sync::RwLockReadGuard<'_, HashMap<std::string::String, Client>>){
@@ -432,7 +433,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				})
 				.collect();
 
-			// Send the response to the client.
+			//Send the response to the client.
 			if let Some(client) = clr.get(private_id) {
 				let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
 				client.transmit(&ServerMessage::GameState{ pstates: players, worldloot: world_loot.read().await.clone() }, Some(public_id)).await?;
@@ -538,7 +539,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 								y: py,
 								loot: match rng.gen_range(0..101){
 									0..=33 => LootContent::Cash(playerstate.cash / 2),
-									34..=67 => LootContent::PistolAmmo(5),
+									34..=67 => LootContent::PistolAmmo(15),
 									_ => LootContent::SpeedBoost,
 								}
 							};
@@ -575,6 +576,11 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				Some(loot_obj) => {
 					let (px, py) = live_pos(&sender_state.read().await.clone());
 					if (py - loot_obj.y).pow(2) + (px - loot_obj.x).pow(2) > LOOT_RADIUS.pow(2){
+						if let Some(client) = clr.get(private_id){
+							client.transmit(&ServerMessage::LootReject(loot_id), Some(format!("{:x}", xxh3_64(private_id.as_bytes())))).await?;
+						} else {
+							eprintln!("Weird, did not find client {} in clr", private_id);
+						}
 						return Err("Too far for loot claim".into());
 					}
 

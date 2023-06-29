@@ -661,11 +661,22 @@
 			if (content.public_id == public_id){ //this happens when spawning
 				world.pivot.x = content.x;
 				world.pivot.y = content.y;
-				gameState[public_id].p.speed = content.speed;
-				gameState[public_id].p.health = content.health;
+				gameState[public_id].p = content;
 				gameState[public_id].graphics.rotation = content.rotation;
+				
+				//update coords text
 				coords_text.text = `x: ${Math.round(world.pivot.x)}, y: ${-Math.round(world.pivot.y)}`;
+
+				//update health bar
 				update_healthbar(content.health);
+
+				//update ammo bar
+				const inventory = content.inventory;
+				const selectedWeapon = inventory.weapons[inventory.selection];
+				ammo_text.text = selectedWeapon.ammo;
+
+				//update cash bar
+				cash_text.text = content.cash;
 			} else {
 				const square = getPlayerSprite(content);
 				players_container.addChild(square);
@@ -720,6 +731,11 @@
 			}
 		}
 
+		const handle_rejection = function(content){
+			console.log(`rejection: ${content}`);
+			delete worldLoot[content].claimed;
+		}
+
 		const handle_lootcollection = function(content){
 			console.log(content);
 			if (!(content.loot_id in worldLoot)){
@@ -741,7 +757,11 @@
 					gameState[content.collector].p.cash += loot_value;
 					cash_text.text = gameState[content.collector].p.cash;
 				},
-				"PistolAmmo": () => {},
+				"PistolAmmo": () => {
+					const pp = gameState[content.collector].p;
+					pp.inventory.weapons[pp.inventory.selection].ammo += loot_value;
+					ammo_text.text = pp.inventory.weapons[pp.inventory.selection].ammo;
+				},
 				"SpeedBoost": () => {
 					gameState[content.collector].p.speed += 1.0;
 					console.log(`Collected speedboost: ${gameState[content.collector].p.speed}`);
@@ -763,7 +783,8 @@
 				"PlayerDeath": handle_playerdeath,
 				"LootCollected": handle_lootcollection,
 				"TrigUpdate": handle_trigUpdate,
-				"HealthUpdate": handle_healthUpdate
+				"HealthUpdate": handle_healthUpdate,
+				"LootReject": handle_rejection
 			};
 			if (!(datatype in fmap)){
 				console.error(`received unknown server message: ${JSON.stringify(content)}`);
