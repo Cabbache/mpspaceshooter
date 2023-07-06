@@ -279,41 +279,135 @@ fn line_circle_intersect(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> bool{
 	r1_good || r2_good
 }
 
-fn live_pos(trajectory: &Trajectory) -> Vector{
+fn reset_trajectory(trajectory: &Trajectory) -> Trajectory{
 	let mult = checked_pow(10, 9).unwrap();
 	let now = Instant::now();
 	let seconds = ((now - trajectory.time).as_nanos() as f32) / (mult as f32);
-	trajectory.vel
-	trajectory.pos
+	let base_pos = Vector{
+		x: trajectory.pos.x + seconds*trajectory.vel.x,
+		y: trajectory.pos.y + seconds.trajectory.vel.y,
+	};
 	match trajectory.propelling {
 		true => {
 			match trajectory.spinDirection {
 				PlayerRotation::Stopped => {
-					ACCELERATION
+					Trajectory{
+						propelling: trajectory.propelling,
+						pos: Vector{
+							x: base.x + seconds*trajectory.spin.cos()*ACCELERATION/2,
+							y: base.y + seconds*trajectory.spin.sin()*ACCELERATION/2,
+						},
+						vel: Vector{
+							x: trajectory.vel.x + trajectory.spin.cos() * ACCELERATION,
+							y: trajectory.vel.y + trajectory.spin.sin() * ACCELERATION,
+						},
+						spin: trajectory.spin,
+						spinDirection: trajectory.spinDirection,
+						time: Instant::now(),
+					}
 				},
-				PlayerRotation::AntiClockwise => 
-				PlayerRotation::Clockwise => diff,
+				_ => {
+					let speed = match trajectory.spinDirection {
+						PlayerRotation::Clockwise => 1,
+						PlayerRotation::AntiClockwise => -1,
+						_ => 0,
+					} * RADIANS_PER_SECOND;
+					Trajectory{
+						propelling: trajectory.propelling,
+						pos: Vector{
+							x: base.x -ACCELERATION*(speed*seconds + spin).cos() / (speed*speed),
+							y: base.y -ACCELERATION*(speed*seconds + spin).sin() / (speed*speed),
+						},
+						vel: Vector{
+							x: trajectory.vel.x + ACCELERATION*(speed*seconds + trajectory.spin).sin() / speed,
+							y: trajectory.vel.y + ACCELERATION*(speed*seconds + trajectory.spin).cos() / -speed,
+						},
+						spin: trajectory.spin + speed*seconds,
+						spinDirection: trajectory.spinDirection,
+						time: Instant::now(),
+					}
+				}
 			}
 		},
-		false => {
-			Vector{
-				x: trajectory.pos.x + trajectory.vel.x * seconds,
-				y: trajectory.pos.y + trajectory.vel.y * seconds,
-			}
+		false => Trajectory{
+			propelling: trajectory.propelling,
+			pos: base,
+			vel: trajectory.vel,
+			spin: match trajectory.spinDirection {
+				PlayerRotation::Clockwise => 1,
+				PlayerRotation::AntiClockwise => -1,
+				_ => 0,
+			} * RADIANS_PER_SECOND * seconds + trajectory.spin,
+			spinDirection: trajectory.spinDirection,
+			time: Instant::now(),
 		}
 	}
 }
 
-fn live_rot(pstate: &PlayerState) -> f32 {
+fn live_pos(trajectory: &Trajectory) -> Vector{
 	let mult = checked_pow(10, 9).unwrap();
 	let now = Instant::now();
-	let diff = ((now - pstate.rotation_motion.time).as_nanos() as f32) / (mult as f32);
-	let dr = match pstate.rotation_motion.direction{
-		PlayerRotation::AntiClockwise => -diff,
-		PlayerRotation::Clockwise => diff,
-		PlayerRotation::Stopped => 0.0
+	let seconds = ((now - trajectory.time).as_nanos() as f32) / (mult as f32);
+	let base = Vector{
+		x: trajectory.pos.x + seconds*trajectory.vel.x,
+		y: trajectory.pos.y + seconds.trajectory.vel.y,
+	};
+	match trajectory.propelling {
+		true => {
+			match trajectory.spinDirection {
+				PlayerRotation::Stopped => {
+					//next two lines are live_vel
+					//trajectory.vel.x + trajectory.spin.cos() * ACCELERATION
+					//trajectory.vel.y + trajectory.spin.sin() * ACCELERATION
+					Vector{
+						x: base.x + seconds*trajectory.spin.cos()*ACCELERATION/2,
+						y: base.y + seconds*trajectory.spin.sin()*ACCELERATION/2,
+					}
+				},
+				_ => {
+					let speed = match trajectory.spinDirection {
+						PlayerRotation::Clockwise => 1,
+						PlayerRotation::AntiClockwise => -1
+					} * RADIANS_PER_SECOND;
+
+					//cos(spin + speed*t)*acceleration <- x acceleration function
+					//sin(spin + speed*t)*acceleration <- y acceleration function
+					
+					//Integral of above (the current change in velocity)
+					//ACCELERATION*sin(speed*t + trajectory.spin) / speed
+					//ACCELERATION*cos(speed*t + trajectory.spin) / -speed
+					//let dVel = Vector{
+					//	x: ACCELERATION*(speed*seconds + trajectory.spin).sin() / speed
+					//	y: ACCELERATION*(speed*seconds + trajectory.spin).cos() / -speed
+					//};
+					
+					//Integral of above (the current change in position)
+					let dPos = Vector{
+						x: -ACCELERATION*(speed*seconds + spin).cos() / (speed*speed)
+						y: -ACCELERATION*(speed*seconds + spin).sin() / (speed*speed)
+					};
+
+					Vector{
+						base.x + dPos.x,
+						base.y + dPos.y,
+					}
+				}
+			}
+		},
+		false => base
+	}
+}
+
+fn live_rot(trajectory: &Trajectory) -> f32 {
+	let mult = checked_pow(10, 9).unwrap();
+	let now = Instant::now();
+	let seconds = ((now - trajectory.time).as_nanos() as f32) / (mult as f32);
+	let dSpin = match trajectory.spinDirection{
+		PlayerRotation::Stopped => 0.0,
+		PlayerRotation::AntiClockwise => -seconds,
+		PlayerRotation::Clockwise => seconds,
 	} * RADIANS_PER_SECOND;
-	pstate.rotation + dr
+	trajectory.spin + dSpin
 }
 
 //TODO capture the current time and pass it to live_pos and live_rot
