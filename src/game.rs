@@ -19,11 +19,11 @@ use crate::Client;
 use crate::WorldLoot;
 use crate::handler::spawn_from_prev;
 
-const UNITS_PER_SECOND: f32 = 200.0; //player movement speed
 const RADIANS_PER_SECOND: f32 = PI; //player rotation speed
 const PLAYER_RADIUS: f32 = 25.0; //players have circular hitbox
 const LOOT_RADIUS: f32 = 25.0; //players must be within this distance to claim
 const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
+const ACCELERATION: f32 = 1.0; //player acceleration
 
 #[derive(Serialize, Debug, Clone)]
 pub enum LootContent{
@@ -79,20 +79,32 @@ pub struct Inventory{
 }
 
 #[derive(Serialize, Debug, Clone)]
+pub struct Vector{
+	pub x: f32,
+	pub y: f32,
+}
+
+#[derive(Debug, Clone)]
+pub struct Trajectory{
+	pub propelling: bool,
+	pub pos: Vector,
+	pub vel: Vector,
+	pub spin: f32,
+	pub spinDirection: PlayerRotation,
+	pub time: Instant,
+}
+
+#[derive(Serialize, Debug, Clone)]
 pub struct PlayerState {
 	pub name: String,
 	pub public_id: String,
 	pub health: f32,
-	pub x: f32,
-	pub y: f32,
-	pub speed: f32,
 	pub cash: u32,
-	pub rotation: f32,
+	pub fuel: u32,
 	pub color: Color,
 	pub inventory: Inventory,
-	pub motion: MotionStart,
-	pub rotation_motion: RotationStart,
 	pub trigger_pressed: bool,
+	pub trajectory: Trajectory,
 }
 
 impl PlayerState {
@@ -104,7 +116,7 @@ impl PlayerState {
 			"public_id": &self.public_id,
 			"color": &self.color,
 			"motion": &self.motion,
-			"speed": &self.speed,
+			"velocity": &self.speed,
 			"rotation_motion": &self.rotation_motion,
 			"x": x,
 			"y": y,
@@ -181,11 +193,7 @@ impl Client {
 	}
 }
 
-#[derive(Debug, Clone)]
-pub struct MotionStart{
-	pub direction: PlayerMotion,
-	pub time: Instant,
-}
+
 
 impl Serialize for MotionStart {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -203,29 +211,6 @@ pub struct RotationStart{
 	pub time: Instant,
 }
 
-impl Serialize for RotationStart {
-	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where S: Serializer,
-	{
-		let mut state = serializer.serialize_struct("RotationStart", 1)?;
-		state.serialize_field("direction", &self.direction)?;
-		state.end()
-	}
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq, Hash, Copy)]
-pub enum PlayerMotion {
-	MoveUp,
-	MoveDown,
-	MoveLeft,
-	MoveRight,
-	MoveUpRight,
-	MoveDownRight,
-	MoveDownLeft,
-	MoveUpLeft,
-	Stopped
-}
-
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq, Hash, Copy)]
 pub enum PlayerRotation {
 	AntiClockwise,
@@ -236,7 +221,8 @@ pub enum PlayerRotation {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "t", content = "c")]
 pub enum ClientMessage{
-	MotionUpdate {motion: PlayerMotion},
+	Propel,
+	PropelStop,
 	RotationUpdate {direction: PlayerRotation},
 	ChangeSlot {slot: u8},
 	TrigUpdate {pressed: bool},
@@ -251,12 +237,12 @@ pub enum ServerMessage{
 	PlayerJoin(PlayerState),
 	PlayerLeave(String),
 	HealthUpdate(f32),
-	GameState{ pstates: Vec<PlayerState>, worldloot: HashMap<String, LootObject>},
-	MotionUpdate {direction: PlayerMotion, from: String, x: f32, y: f32},
-	RotationUpdate {direction: PlayerRotation, from: String, r: f32},
-	TrigUpdate {by: String, weptype: WeaponType, pressed: bool},
-	PlayerDeath {loot: LootObject, loot_uuid: String, from: String},
-	LootCollected {loot_id: String, collector: String},
+	GameState{ pstates: Vec<PlayerState>, worldloot: HashMap<String, LootObject> },
+	PropelUpdate { propel: bool, pos: Vector, vel: Vector, from: String },
+	RotationUpdate { direction: PlayerRotation, spin: f32, from: String },
+	TrigUpdate {by: String, weptype: WeaponType, pressed: bool },
+	PlayerDeath {loot: LootObject, loot_uuid: String, from: String },
+	LootCollected {loot_id: String, collector: String },
 	LootReject(String),
 }
 
@@ -293,23 +279,29 @@ fn line_circle_intersect(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> bool{
 	r1_good || r2_good
 }
 
-fn live_pos(pstate: &PlayerState) -> (f32, f32){
+fn live_pos(trajectory: &Trajectory) -> Vector{
 	let mult = checked_pow(10, 9).unwrap();
 	let now = Instant::now();
-	let diff = pstate.speed * ((now - pstate.motion.time).as_nanos() as f32) / (mult as f32);
-	let (dx,dy) = match pstate.motion.direction{
-		PlayerMotion::MoveUp => (0.0,-diff),
-		PlayerMotion::MoveDown => (0.0,diff),
-		PlayerMotion::MoveRight => (diff,0.0),
-		PlayerMotion::MoveLeft => (-diff,0.0),
-		PlayerMotion::MoveUpRight => (diff * FRAC_1_SQRT_2, -diff * FRAC_1_SQRT_2),
-		PlayerMotion::MoveUpLeft => (-diff * FRAC_1_SQRT_2, -diff * FRAC_1_SQRT_2),
-		PlayerMotion::MoveDownLeft => (-diff * FRAC_1_SQRT_2, diff * FRAC_1_SQRT_2),
-		PlayerMotion::MoveDownRight => (diff * FRAC_1_SQRT_2, diff * FRAC_1_SQRT_2),
-		PlayerMotion::Stopped => (0.0,0.0)
-	};
-	let (dx,dy) = (dx*UNITS_PER_SECOND, dy*UNITS_PER_SECOND);
-	(pstate.x + dx, pstate.y + dy)
+	let seconds = ((now - trajectory.time).as_nanos() as f32) / (mult as f32);
+	trajectory.vel
+	trajectory.pos
+	match trajectory.propelling {
+		true => {
+			match trajectory.spinDirection {
+				PlayerRotation::Stopped => {
+					ACCELERATION
+				},
+				PlayerRotation::AntiClockwise => 
+				PlayerRotation::Clockwise => diff,
+			}
+		},
+		false => {
+			Vector{
+				x: trajectory.pos.x + trajectory.vel.x * seconds,
+				y: trajectory.pos.y + trajectory.vel.y * seconds,
+			}
+		}
+	}
 }
 
 fn live_rot(pstate: &PlayerState) -> f32 {
