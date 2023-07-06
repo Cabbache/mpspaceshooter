@@ -8,14 +8,14 @@
 	<script src="static/pe.min.js"></script> <!-- Emitters -->
 </head>
 <body>
-  <div class="modal" id="modal">
+  <div class="modal" id="join-modal">
     <div class="modal-dialog">
       <div class="modal-header">
         <h2>Hello!</h2>
       </div>
       <div class="modal-body">
         <form>
-          <input type="text" id="nick" name="nick" placeholder="What is your name? (3 to 24 characters)" autocomplete="off">
+          <input type="text" name="nick" placeholder="What is your name? (3 to 24 characters)" autocomplete="off">
 
           <div class="color-selector">
 						<input type="radio" id="color-red" name="color" value="red">
@@ -40,16 +40,27 @@
     </div>
   </div>
 
+  <div class="modal" id="shop-modal" style="display: none">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2>Shop</h2>
+      </div>
+			<div class="modal-body">
+				<h2>TODO: add items for sale</h2>
+			</div>
+		</div>
+  </div>
+
 <script>
 	// Get the modal
-	const modal = document.getElementById("modal");
-	const form = document.querySelector('form');
-	const submitButton = document.querySelector('input[type="submit"]');
+	const joinmodal = document.getElementById("join-modal");
+	const form = joinmodal.querySelector('form');
+	const submitButton = joinmodal.querySelector('input[type="submit"]');
 	submitButton.disabled = true;
 
 	// Add event listeners for the nickname input field and color radio buttons
-	const nicknameInput = document.getElementById('nick');
-	const colorRadios = document.querySelectorAll('input[name="color"]');
+	const nicknameInput = joinmodal.querySelector('input[name="nick"]');
+	const colorRadios = joinmodal.querySelectorAll('input[name="color"]');
 	nicknameInput.addEventListener('input', updateSubmitButtonState);
 	colorRadios.forEach(radio => {
 		radio.addEventListener('change', updateSubmitButtonState);
@@ -58,7 +69,7 @@
 	// Function to update the state of the submit button based on the input values
 	function updateSubmitButtonState() {
 		const nickname = nicknameInput.value.trim();
-		const color = document.querySelector('input[name="color"]:checked');
+		const color = joinmodal.querySelector('input[name="color"]:checked');
 
 		if (nickname.length >= 3 && color !== null && nickname.length <= 24) {
 			submitButton.disabled = false;
@@ -70,10 +81,10 @@
 	form.addEventListener('submit', function(event) {
 		event.preventDefault();
 
-		const nick = document.getElementById("nick").value;
-		const color = document.querySelector('input[name="color"]:checked').value;
+		const nick = joinmodal.querySelector('input[name="nick"]').value;
+		const color = joinmodal.querySelector('input[name="color"]:checked').value;
 
-		modal.style.display = "none";
+		joinmodal.style.display = "none";
 		form.reset();
 		runClient(nick, color);
 	});
@@ -794,12 +805,11 @@
 		};
 
 		const keyAction = function (repeated, name, up){
-			//console.log(name);
 			if (!opened || repeated) return;
 
 			let rotation_keys = ["arrowleft","arrowright"];
 			let translation_keys = ["w", "a", "s", "d"]; //case sensitive (todo make this insensitive)
-			let misc_keys = [" "];
+			let misc_keys = [" ", "escape"];
 			
 			name = name.toLowerCase();
 			keymap[name] = !up;
@@ -853,7 +863,7 @@
 					})
 				);
 			} else if (misc_keys.includes(name)) {
-				if (name == " "){
+				if (name == " "){ //shoot
 					const inventory = gameState[public_id].p.inventory;
 					const selectedWeapon = inventory.weapons[inventory.selection];
 					if (selectedWeapon.ammo <= 0)
@@ -868,6 +878,8 @@
 							 }
 						})
 					);
+				} else if (name == "escape") {
+					document.getElementById("shop-modal").style.display = keymap[name] ? "flex":"none";
 				}
 			}
 		};
