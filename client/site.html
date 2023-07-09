@@ -898,73 +898,41 @@
 						player.graphics.rotation += -rotation_speed * deltaTime;break;
 				}
 				
-				//apply translations
-				/*
-					TODO:
-					const shallow_copy = player.p.public_id == public_id ? world.pivot:player.graphics
-				*/
+				const shallow_copy = player.p.public_id == public_id ? world.pivot:player.graphics
 				const move_speed = player_speed * player.p.speed;
+				switch (player.p.motion.direction){
+					case "MoveUp":
+						shallow_copy.y -= move_speed * deltaTime;break;
+					case "MoveDown":
+						shallow_copy.y += move_speed * deltaTime;break;
+					case "MoveLeft":
+						shallow_copy.x -= move_speed * deltaTime;break;
+					case "MoveRight":
+						shallow_copy.x += move_speed * deltaTime;break;
+					case "MoveUpRight":
+						shallow_copy.x += move_speed * deltaTime * invr2;
+						shallow_copy.y -= move_speed * deltaTime * invr2;
+						break;
+					case "MoveDownRight":
+						shallow_copy.x += move_speed * deltaTime * invr2;
+						shallow_copy.y += move_speed * deltaTime * invr2;
+						break;
+					case "MoveDownLeft":
+						shallow_copy.x -= move_speed * deltaTime * invr2;
+						shallow_copy.y += move_speed * deltaTime * invr2;
+						break;
+					case "MoveUpLeft":
+						shallow_copy.x -= move_speed * deltaTime * invr2;
+						shallow_copy.y -= move_speed * deltaTime * invr2;
+						break;
+				}
 				if (player.p.public_id == public_id){
-					switch (player.p.motion.direction){
-						case "MoveUp":
-							world.pivot.y -= move_speed * deltaTime;break;
-						case "MoveDown":
-							world.pivot.y += move_speed * deltaTime;break;
-						case "MoveLeft":
-							world.pivot.x -= move_speed * deltaTime;break;
-						case "MoveRight":
-							world.pivot.x += move_speed * deltaTime;break;
-						case "MoveUpRight":
-							world.pivot.x += move_speed * deltaTime * invr2;
-							world.pivot.y -= move_speed * deltaTime * invr2;
-							break;
-						case "MoveDownRight":
-							world.pivot.x += move_speed * deltaTime * invr2;
-							world.pivot.y += move_speed * deltaTime * invr2;
-							break;
-						case "MoveDownLeft":
-							world.pivot.x -= move_speed * deltaTime * invr2;
-							world.pivot.y += move_speed * deltaTime * invr2;
-							break;
-						case "MoveUpLeft":
-							world.pivot.x -= move_speed * deltaTime * invr2;
-							world.pivot.y -= move_speed * deltaTime * invr2;
-							break;
-					}
-
 					const tile_x = Math.floor(world.pivot.x / seamless_texture.width);
 					const tile_y = Math.floor(world.pivot.y / seamless_texture.height);
 					background.x = tile_x*seamless_texture.width - background.width/2;
 					background.y = tile_y*seamless_texture.height - background.height/2;
 
 					coords_text.text = `x: ${Math.round(world.pivot.x)}, y: ${-Math.round(world.pivot.y)}`;
-				} else {
-					switch (player.p.motion.direction){
-						case "MoveUp":
-							player.graphics.y -= move_speed * deltaTime;break;
-						case "MoveDown":
-							player.graphics.y += move_speed * deltaTime;break;
-						case "MoveLeft":
-							player.graphics.x -= move_speed * deltaTime;break;
-						case "MoveRight":
-							player.graphics.x += move_speed * deltaTime;break;
-						case "MoveUpRight":
-							player.graphics.x += move_speed * deltaTime * invr2;
-							player.graphics.y -= move_speed * deltaTime * invr2;
-							break;
-						case "MoveDownRight":
-							player.graphics.x += move_speed * deltaTime * invr2;
-							player.graphics.y += move_speed * deltaTime * invr2;
-							break;
-						case "MoveDownLeft":
-							player.graphics.x -= move_speed * deltaTime * invr2;
-							player.graphics.y += move_speed * deltaTime * invr2;
-							break;
-						case "MoveUpLeft":
-							player.graphics.x -= move_speed * deltaTime * invr2;
-							player.graphics.y -= move_speed * deltaTime * invr2;
-							break;
-					}
 				}
 			});
 
