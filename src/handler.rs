@@ -14,9 +14,8 @@ use std::fs;
 use crate::PlayerState;
 use crate::WorldLoot;
 use crate::game::Color;
-use crate::game::MotionStart;
-use crate::game::RotationStart;
-use crate::game::PlayerMotion;
+use crate::game::Vector;
+use crate::game::Trajectory;
 use crate::game::PlayerRotation;
 use crate::game::Inventory;
 use crate::game::Weapon;
@@ -40,7 +39,7 @@ pub async fn register_handler(body: Value, clients: Clients) -> Result<impl Repl
 	match selection_result {
 		Ok(selections) => {
 			if selections.nick.len() > 24 {
-				return Ok(json(&"meow"))
+				return Ok(json(&"meow")) //TODO
 			}
 
 			let private_uuid = Uuid::new_v4().as_simple().to_string();
@@ -75,13 +74,11 @@ fn default_state() -> PlayerState {
 	return PlayerState {
 		name: "".to_string(),
 		public_id: "".to_string(),
-		x: pos_x,
-		y: pos_y,
-		speed: 1.0,
-		rotation: 0.0,
 		health: 100.0,
 		cash: 20,
+		fuel: 100,
 		color: Color{r:255,g:255,b:255},
+		trigger_pressed: false,
 		inventory: Inventory{
 			selection: 0,
 			weapons: HashMap::from([
@@ -89,9 +86,14 @@ fn default_state() -> PlayerState {
 				(1, Weapon{ weptype: WeaponType::Grenade {press_time: Instant::now()}, ammo: 2 }),
 			])
 		},
-		trigger_pressed: false,
-		motion: MotionStart{direction: PlayerMotion::Stopped, time: Instant::now()},
-		rotation_motion: RotationStart{direction: PlayerRotation::Stopped, time: Instant::now()}	
+		trajectory: Trajectory{
+			propelling: false,
+			pos: Vector{ x: pos_x, y: pos_y},
+			vel: Vector{x: 0.0, y: 0.0},
+			spin_direction: PlayerRotation::Stopped,
+			spin: 0.0,
+			time: Instant::now(),
+		}
 	}
 }
 

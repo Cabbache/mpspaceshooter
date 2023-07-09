@@ -1,11 +1,12 @@
 use std::collections::HashMap;
-use std::f32::consts::{FRAC_1_SQRT_2, PI};
+use std::f32::consts::{PI};
 use std::time::Instant;
 use std::error::Error;
 
 use futures::future::join_all;
-use num_traits::{checked_pow, Pow};
-use serde::{Deserialize, Serialize, Serializer, ser::SerializeStruct};
+use num_traits::{Pow};
+//use serde::{Deserialize, Serialize, Serializer, ser::SerializeStruct};
+use serde::{Deserialize, Serialize, Serializer};
 use serde_json::{from_str, json, to_string, Value};
 use warp::ws::Message;
 use xxhash_rust::xxh3::xxh3_64;
@@ -90,11 +91,11 @@ pub struct Trajectory{
 	pub pos: Vector,
 	pub vel: Vector,
 	pub spin: f32,
-	pub spinDirection: PlayerRotation,
+	pub spin_direction: PlayerRotation,
 	pub time: Instant,
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct PlayerState {
 	pub name: String,
 	pub public_id: String,
@@ -104,23 +105,25 @@ pub struct PlayerState {
 	pub color: Color,
 	pub inventory: Inventory,
 	pub trigger_pressed: bool,
+	#[serde(skip_serializing)]
 	pub trajectory: Trajectory,
 }
 
 impl PlayerState {
 	pub fn encode_other(&self) -> Value{
-		let (x,y) = live_pos(self);
-		let r = live_rot(self);
+		//TODO consider implementing live() in Trajectory - an immutable version of reset() and use that instead
+		let pos = &self.trajectory.live_pos();
+		let vel = &self.trajectory.live_vel();
+		let spin = &self.trajectory.live_rot();
 		return json!({
 			"name": &self.name,
 			"public_id": &self.public_id,
 			"color": &self.color,
-			"motion": &self.motion,
-			"velocity": &self.speed,
-			"rotation_motion": &self.rotation_motion,
-			"x": x,
-			"y": y,
-			"rotation": r,
+			"propelling": &self.trajectory.propelling,
+			"pos": &pos,
+			"vel": &vel,
+			"spin": &spin,
+			"spinDir": &self.trajectory.spin_direction,
 		});
 	}
 
@@ -134,7 +137,15 @@ impl PlayerState {
 			"health": &self.health,
 			"cash": &self.cash,
 		});
-		result.as_object_mut().unwrap().extend(additional.as_object().unwrap().clone());
+		result
+		.as_object_mut()
+		.unwrap()
+		.extend(
+			additional
+			.as_object().
+			unwrap()
+			.clone()
+		);
 		return result;
 	}
 }
@@ -149,7 +160,6 @@ impl Client {
 			let serialized_msg = match msg {
 				ServerMessage::PlayerJoin(_) |
 				ServerMessage::GameState{pstates: _, worldloot: _} => {
-				//ServerMessage::GameState{pstates: _, worldloot: _} |
 				//ServerMessage::LootCollected{loot_id: _, collector: _} => {
 					match msg {
 						ServerMessage::GameState{ pstates, worldloot } => {
@@ -193,24 +203,6 @@ impl Client {
 	}
 }
 
-
-
-impl Serialize for MotionStart {
-	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where S: Serializer,
-	{
-		let mut state = serializer.serialize_struct("MotionStart", 1)?;
-		state.serialize_field("direction", &self.direction)?;
-		state.end()
-	}
-}
-
-#[derive(Debug, Clone)]
-pub struct RotationStart{
-	pub direction: PlayerRotation,
-	pub time: Instant,
-}
-
 #[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq, Hash, Copy)]
 pub enum PlayerRotation {
 	AntiClockwise,
@@ -218,12 +210,12 @@ pub enum PlayerRotation {
 	Stopped
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
 #[serde(tag = "t", content = "c")]
 pub enum ClientMessage{
 	Propel,
 	PropelStop,
-	RotationUpdate {direction: PlayerRotation},
+	Rotation {dir: PlayerRotation},
 	ChangeSlot {slot: u8},
 	TrigUpdate {pressed: bool},
 	ClaimLoot {loot_id: String},
@@ -279,135 +271,156 @@ fn line_circle_intersect(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> bool{
 	r1_good || r2_good
 }
 
-fn reset_trajectory(trajectory: &Trajectory) -> Trajectory{
-	let mult = checked_pow(10, 9).unwrap();
-	let now = Instant::now();
-	let seconds = ((now - trajectory.time).as_nanos() as f32) / (mult as f32);
-	let base_pos = Vector{
-		x: trajectory.pos.x + seconds*trajectory.vel.x,
-		y: trajectory.pos.y + seconds.trajectory.vel.y,
-	};
-	match trajectory.propelling {
-		true => {
-			match trajectory.spinDirection {
-				PlayerRotation::Stopped => {
-					Trajectory{
-						propelling: trajectory.propelling,
-						pos: Vector{
-							x: base.x + seconds*trajectory.spin.cos()*ACCELERATION/2,
-							y: base.y + seconds*trajectory.spin.sin()*ACCELERATION/2,
-						},
-						vel: Vector{
-							x: trajectory.vel.x + trajectory.spin.cos() * ACCELERATION,
-							y: trajectory.vel.y + trajectory.spin.sin() * ACCELERATION,
-						},
-						spin: trajectory.spin,
-						spinDirection: trajectory.spinDirection,
-						time: Instant::now(),
+impl Trajectory {
+	fn reset(&mut self){
+		let seconds = (Instant::now() - self.time).as_secs_f32();
+		let base = Vector{
+			x: self.pos.x + seconds*self.vel.x,
+			y: self.pos.y + seconds*self.vel.y,
+		};
+		match self.propelling {
+			true => {
+				match self.spin_direction {
+					PlayerRotation::Stopped => {
+						self.pos = Vector{
+							x: base.x + seconds*self.spin.cos()*ACCELERATION/2.0,
+							y: base.y + seconds*self.spin.sin()*ACCELERATION/2.0,
+						};
+						self.vel = Vector{
+							x: self.vel.x + self.spin.cos() * ACCELERATION,
+							y: self.vel.y + self.spin.sin() * ACCELERATION,
+						};
+					},
+					_ => {
+						let speed = match self.spin_direction {
+							PlayerRotation::Clockwise => 1.0,
+							PlayerRotation::AntiClockwise => -1.0,
+							_ => 0.0,
+						} * RADIANS_PER_SECOND;
+						self.pos = Vector{
+							x: base.x -ACCELERATION*(speed*seconds + self.spin).cos() / (speed*speed),
+							y: base.y -ACCELERATION*(speed*seconds + self.spin).sin() / (speed*speed),
+						};
+						self.vel = Vector{
+							x: self.vel.x + ACCELERATION*(speed*seconds + self.spin).sin() / speed,
+							y: self.vel.y + ACCELERATION*(speed*seconds + self.spin).cos() / -speed,
+						};
+						self.spin = self.spin + speed*seconds;
 					}
-				},
-				_ => {
-					let speed = match trajectory.spinDirection {
-						PlayerRotation::Clockwise => 1,
-						PlayerRotation::AntiClockwise => -1,
-						_ => 0,
-					} * RADIANS_PER_SECOND;
-					Trajectory{
-						propelling: trajectory.propelling,
-						pos: Vector{
-							x: base.x -ACCELERATION*(speed*seconds + spin).cos() / (speed*speed),
-							y: base.y -ACCELERATION*(speed*seconds + spin).sin() / (speed*speed),
-						},
-						vel: Vector{
-							x: trajectory.vel.x + ACCELERATION*(speed*seconds + trajectory.spin).sin() / speed,
-							y: trajectory.vel.y + ACCELERATION*(speed*seconds + trajectory.spin).cos() / -speed,
-						},
-						spin: trajectory.spin + speed*seconds,
-						spinDirection: trajectory.spinDirection,
-						time: Instant::now(),
+				}
+			},
+			false => {
+				self.pos = base;
+				self.spin = match self.spin_direction {
+					PlayerRotation::Clockwise => 1.0,
+					PlayerRotation::AntiClockwise => -1.0,
+					_ => 0.0,
+				} * RADIANS_PER_SECOND * seconds + self.spin;
+			}
+		}
+		self.time = Instant::now();
+	}
+
+	pub fn live_vel(&self) -> Vector {
+		match self.propelling {
+			false => self.vel.clone(),
+			true => {
+				let seconds = (Instant::now() - self.time).as_secs_f32();
+				match self.spin_direction {
+					PlayerRotation::Stopped => Vector{
+						x: self.vel.x + self.spin.cos()*ACCELERATION*seconds,
+						y: self.vel.y + self.spin.sin()*ACCELERATION*seconds,
+					},
+					_ => {
+						let speed = match self.spin_direction {
+							PlayerRotation::Clockwise => 1.0,
+							PlayerRotation::AntiClockwise => -1.0,
+							_ => 0.0,
+						} * RADIANS_PER_SECOND;
+
+						let d_vel = Vector{
+							x: ACCELERATION*(speed*seconds + self.spin).sin() / speed,
+							y: ACCELERATION*(speed*seconds + self.spin).cos() / -speed,
+						};
+						
+						Vector{
+							x: self.vel.x + d_vel.x,
+							y: self.vel.y + d_vel.y,
+						}
 					}
 				}
 			}
-		},
-		false => Trajectory{
-			propelling: trajectory.propelling,
-			pos: base,
-			vel: trajectory.vel,
-			spin: match trajectory.spinDirection {
-				PlayerRotation::Clockwise => 1,
-				PlayerRotation::AntiClockwise => -1,
-				_ => 0,
-			} * RADIANS_PER_SECOND * seconds + trajectory.spin,
-			spinDirection: trajectory.spinDirection,
-			time: Instant::now(),
 		}
 	}
-}
 
-fn live_pos(trajectory: &Trajectory) -> Vector{
-	let mult = checked_pow(10, 9).unwrap();
-	let now = Instant::now();
-	let seconds = ((now - trajectory.time).as_nanos() as f32) / (mult as f32);
-	let base = Vector{
-		x: trajectory.pos.x + seconds*trajectory.vel.x,
-		y: trajectory.pos.y + seconds.trajectory.vel.y,
-	};
-	match trajectory.propelling {
-		true => {
-			match trajectory.spinDirection {
-				PlayerRotation::Stopped => {
-					//next two lines are live_vel
-					//trajectory.vel.x + trajectory.spin.cos() * ACCELERATION
-					//trajectory.vel.y + trajectory.spin.sin() * ACCELERATION
-					Vector{
-						x: base.x + seconds*trajectory.spin.cos()*ACCELERATION/2,
-						y: base.y + seconds*trajectory.spin.sin()*ACCELERATION/2,
-					}
-				},
-				_ => {
-					let speed = match trajectory.spinDirection {
-						PlayerRotation::Clockwise => 1,
-						PlayerRotation::AntiClockwise => -1
-					} * RADIANS_PER_SECOND;
+	pub fn live_pos(&self) -> Vector {
+		let seconds = (Instant::now() - self.time).as_secs_f32();
+		let base = Vector{
+			x: self.pos.x + seconds*self.vel.x,
+			y: self.pos.y + seconds*self.vel.y,
+		};
+		match self.propelling {
+			true => {
+				match self.spin_direction {
+					PlayerRotation::Stopped => {
+						Vector{
+							x: base.x + seconds*self.spin.cos()*ACCELERATION/2.0,
+							y: base.y + seconds*self.spin.sin()*ACCELERATION/2.0,
+						}
+					},
+					_ => {
+						let speed = match self.spin_direction {
+							PlayerRotation::Clockwise => 1.0,
+							PlayerRotation::AntiClockwise => -1.0,
+							_ => 0.0,
+						} * RADIANS_PER_SECOND;
 
-					//cos(spin + speed*t)*acceleration <- x acceleration function
-					//sin(spin + speed*t)*acceleration <- y acceleration function
-					
-					//Integral of above (the current change in velocity)
-					//ACCELERATION*sin(speed*t + trajectory.spin) / speed
-					//ACCELERATION*cos(speed*t + trajectory.spin) / -speed
-					//let dVel = Vector{
-					//	x: ACCELERATION*(speed*seconds + trajectory.spin).sin() / speed
-					//	y: ACCELERATION*(speed*seconds + trajectory.spin).cos() / -speed
-					//};
-					
-					//Integral of above (the current change in position)
-					let dPos = Vector{
-						x: -ACCELERATION*(speed*seconds + spin).cos() / (speed*speed)
-						y: -ACCELERATION*(speed*seconds + spin).sin() / (speed*speed)
-					};
+						//cos(spin + speed*t)*acceleration <- x acceleration function
+						//sin(spin + speed*t)*acceleration <- y acceleration function
+						
+						//Integral of above (the current change in velocity)
+						//ACCELERATION*sin(speed*t + self.spin) / speed
+						//ACCELERATION*cos(speed*t + self.spin) / -speed
+						//let dVel = Vector{
+						//	x: ACCELERATION*(speed*seconds + self.spin).sin() / speed
+						//	y: ACCELERATION*(speed*seconds + self.spin).cos() / -speed
+						//};
+						
+						//Integral of above (the current change in position)
+						let d_pos = Vector{
+							x: -ACCELERATION*(speed*seconds + self.spin).cos() / (speed*speed),
+							y: -ACCELERATION*(speed*seconds + self.spin).sin() / (speed*speed),
+						};
 
-					Vector{
-						base.x + dPos.x,
-						base.y + dPos.y,
+						Vector{
+							x: base.x + d_pos.x,
+							y: base.y + d_pos.y,
+						}
 					}
 				}
-			}
-		},
-		false => base
+			},
+			false => base
+		}
 	}
-}
 
-fn live_rot(trajectory: &Trajectory) -> f32 {
-	let mult = checked_pow(10, 9).unwrap();
-	let now = Instant::now();
-	let seconds = ((now - trajectory.time).as_nanos() as f32) / (mult as f32);
-	let dSpin = match trajectory.spinDirection{
-		PlayerRotation::Stopped => 0.0,
-		PlayerRotation::AntiClockwise => -seconds,
-		PlayerRotation::Clockwise => seconds,
-	} * RADIANS_PER_SECOND;
-	trajectory.spin + dSpin
+	pub fn live_rot(&self) -> f32 {
+		let seconds = (Instant::now() - self.time).as_secs_f32();
+		(match self.spin_direction {
+			PlayerRotation::Stopped => 0.0,
+			PlayerRotation::AntiClockwise => -seconds,
+			PlayerRotation::Clockwise => seconds,
+		}) * RADIANS_PER_SECOND + self.spin
+	}
+
+	pub fn update_rotation(&mut self, new_direction: &PlayerRotation){
+		self.reset();
+		self.spin_direction = *new_direction;
+	}
+
+	pub fn update_propulsion(&mut self, on: bool){
+		self.reset();
+		self.propelling = on;
+	}
 }
 
 //TODO capture the current time and pass it to live_pos and live_rot
@@ -450,54 +463,46 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				&clr
 			).await; //broadcast playerjoin
 		},
-		ClientMessage::MotionUpdate { motion } => {
-			if sender_state.read().await.clone().motion.direction == motion { //nothing changed
-				eprintln!("modded client detected (redundant motion update)");
+		ClientMessage::Propel |
+		ClientMessage::PropelStop => {
+			let is_propel = message == ClientMessage::Propel;
+			if sender_state.read().await.clone().trajectory.propelling == is_propel{ //nothing changed
+				eprintln!("modded client detected (redundant propel update)");
 				return Ok(());
 			}
-			let (nx, ny) = live_pos(&sender_state.read().await.clone());
-			{
+			let new_trajectory = {
 				let mut writeable = sender_state.write().await;
-				writeable.x = nx;
-				writeable.y = ny;
-				writeable.motion = MotionStart{
-					direction: motion,
-					time: Instant::now()
-				};
-			} //This makes writable out of scope, so the write lock is released
-			let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
-			let msg = ServerMessage::MotionUpdate {
-				direction: motion,
-				from: public_id,
-				x: nx,
-				y: ny,
+				writeable.trajectory.update_propulsion(is_propel);
+				writeable.trajectory.clone()
 			};
-			//broadcast(&msg, clients).await;
-			broadcast(&msg, &clr).await;
+			broadcast(
+				&ServerMessage::PropelUpdate{
+					propel: is_propel,
+					pos: new_trajectory.pos,
+					vel: new_trajectory.vel,
+					from: format!("{:x}", xxh3_64(private_id.as_bytes())),
+				},
+				&clr,
+			).await;
 		},
-		ClientMessage::RotationUpdate { direction } => { //TODO remove action_required variable since now we have locks within the hashmap, instead handle things inside the first match statement
-			if sender_state.read().await.clone().rotation_motion.direction == direction {
+		ClientMessage::Rotation { dir } => {
+			if sender_state.read().await.clone().trajectory.spin_direction == dir {
+				eprintln!("modded client detected (redundant propel update)");
 				return Ok(());
 			}
-			let nr = live_rot(&sender_state.read().await.clone());
-
-			{
+			let new_trajectory = {
 				let mut writeable = sender_state.write().await;
-				writeable.rotation = nr;
-				writeable.rotation_motion = RotationStart{
-					direction: direction,
-					time: Instant::now()
-				};
-			} //This puts 'writeable' out of scope, freeing the resource
-
-			let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
-			let msg = ServerMessage::RotationUpdate {
-				direction: direction,
-				from: public_id,
-				r: nr
+				writeable.trajectory.update_rotation(&dir);
+				&writeable.trajectory.clone()
 			};
-			//broadcast(&msg, clients).await;
-			broadcast(&msg, &clr).await;
+			broadcast(
+				&ServerMessage::RotationUpdate {
+					direction: dir,
+					spin: new_trajectory.spin,
+					from: format!("{:x}", xxh3_64(private_id.as_bytes())),
+				},
+				&clr
+			).await;
 		},
 		ClientMessage::StateQuery => { //TODO rate limit this
 			eprintln!("Got statequery");
@@ -522,7 +527,13 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			//Send the response to the client.
 			if let Some(client) = clr.get(private_id) {
 				let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
-				client.transmit(&ServerMessage::GameState{ pstates: players, worldloot: world_loot.read().await.clone() }, Some(public_id)).await?;
+				client.transmit(
+					&ServerMessage::GameState{
+						pstates: players,
+						worldloot: world_loot.read().await.clone()
+					},
+					Some(public_id)
+				).await?;
 			} else {
 					eprintln!("Can't find client")
 			}
@@ -585,8 +596,8 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 					if !pressed {
 						return Ok(());
 					}
-					let rr = live_rot(&cl);
-					let (sx, sy) = live_pos(&cl);
+					let rr = cl.trajectory.live_rot();
+					let ss = cl.trajectory.live_pos();
 
 					//boring linear search
 					for (key, value) in clr.iter() { //TODO try using for_each
@@ -600,8 +611,8 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 						if playerstate.health <= 0f32 {
 							continue;
 						}
-						let (px, py) = live_pos(&playerstate);
-						let hit = line_circle_intersect(sx, sy, px, py, rr);
+						let pp = playerstate.trajectory.live_pos();
+						let hit = line_circle_intersect(ss.x, ss.y, pp.x, pp.y, rr);
 						if !hit{
 							continue;
 						}
@@ -621,8 +632,8 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 						} else {
 							let mut rng = StdRng::from_entropy();
 							let dropped_loot = LootObject{
-								x: px,
-								y: py,
+								x: pp.x,
+								y: pp.y,
 								loot: match rng.gen_range(0..101){
 									0..=33 => LootContent::Cash(playerstate.cash / 2),
 									34..=67 => LootContent::PistolAmmo(15),
@@ -660,8 +671,8 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			};
 			match loot_thing {
 				Some(loot_obj) => {
-					let (px, py) = live_pos(&sender_state.read().await.clone());
-					if (py - loot_obj.y).pow(2) + (px - loot_obj.x).pow(2) > LOOT_RADIUS.pow(2){
+					let pp = &sender_state.read().await.clone().trajectory.live_pos();
+					if (pp.y - loot_obj.y).pow(2) + (pp.x - loot_obj.x).pow(2) > LOOT_RADIUS.pow(2){
 						if let Some(client) = clr.get(private_id){
 							client.transmit(&ServerMessage::LootReject(loot_id), Some(format!("{:x}", xxh3_64(private_id.as_bytes())))).await?;
 						} else {
@@ -685,7 +696,6 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 								}
 							},
 							LootContent::SpeedBoost => {
-								pstate_writer.speed += 1.0;
 							}
 						}
 					}//locks are released
