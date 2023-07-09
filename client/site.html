@@ -303,6 +303,7 @@
 
 		const invr2 = 0.7071067811865475;
 		const PI = 3.14159265358979323;
+		const ACCELERATION = 1.0;
 
 		const bullet_distance = 500;
 		const player_speed = 200;
@@ -484,8 +485,8 @@
 
 		const getPlayerSprite = function(player){
 			var player_container = new PIXI.Container();
-			player_container.position.set(player.x, player.y);
-			player_container.rotation = player.rotation;
+			player_container.position.set(player.pos.x, player.pos.y);
+			player_container.rotation = player.spin;
 			var square = new PIXI.Sprite(PIXI.Texture.WHITE);
 			square.anchor.set(0.5);
 			square.width = 50;
@@ -535,8 +536,8 @@
 				if (p.public_id == public_id){
 					square.x = app.screen.width/2;
 					square.y = app.screen.height/2;
-					world.pivot.x = p.x;
-					world.pivot.y = p.y;
+					world.pivot.x = p.pos.x;
+					world.pivot.y = p.pos.y;
 					app.stage.addChild(square);
 					ammo_text.text = p.inventory.weapons[0].ammo;
 					cash_text.text = p.cash;
@@ -564,22 +565,24 @@
 			};
 		}
 
-		const handle_motionupdate = function(content){
+		const handle_propelupdate = function(content){
 			let broadcaster = content["from"];
-			gameState[broadcaster].p.motion.direction = content.direction;
+			gameState[broadcaster].p.propelling = content.propel;
+			gameState[broadcaster].p.vel.x = content.vel.x;
+			gameState[broadcaster].p.vel.y = content.vel.y;
 			if (broadcaster == public_id){
-				world.pivot.x = content.x;
-				world.pivot.y = content.y;
+				world.pivot.x = content.pos.x;
+				world.pivot.y = content.pos.y;
 			} else {
-				gameState[broadcaster].graphics.x = content.x;
-				gameState[broadcaster].graphics.y = content.y;
+				gameState[broadcaster].graphics.x = content.pos.x;
+				gameState[broadcaster].graphics.y = content.pos.y;
 			}
 		}
 
 		const handle_rotationupdate = function(content){
 			let broadcaster = content["from"];
-			gameState[broadcaster].p.rotation_motion.direction = content.direction;
-			gameState[broadcaster].graphics.rotation = content.r;
+			gameState[broadcaster].p.spinDir = content.direction;
+			gameState[broadcaster].graphics.rotation = content.spin;
 		}
 
 		const handle_trigUpdate = function(content){
@@ -670,10 +673,10 @@
 
 		const handle_playerjoin = function(content){
 			if (content.public_id == public_id){ //this happens when spawning
-				world.pivot.x = content.x;
-				world.pivot.y = content.y;
+				world.pivot.x = content.pos.x;
+				world.pivot.y = content.pos.y;
 				gameState[public_id].p = content;
-				gameState[public_id].graphics.rotation = content.rotation;
+				gameState[public_id].graphics.rotation = content.spin;
 				
 				//update coords text
 				coords_text.text = `x: ${Math.round(world.pivot.x)}, y: ${-Math.round(world.pivot.y)}`;
@@ -722,8 +725,8 @@
 			} else {
 				const emitJSON = JSON.parse(JSON.stringify(explosionEmitterJSON));
 				emitJSON.pos = {
-					x: gameState[content.from].p.x,
-					y: gameState[content.from].p.y
+					x: gameState[content.from].p.pos.x,
+					y: gameState[content.from].p.pos.y
 				};
 				emitJSON.behaviors.push({
 					type: 'textureSingle',
@@ -786,15 +789,15 @@
 			let datatype = data["t"];
 			let content = data["c"];
 			const fmap = {
-				"GameState": handle_gamestate,
-				"MotionUpdate": handle_motionupdate,
-				"RotationUpdate": handle_rotationupdate,
 				"PlayerJoin": handle_playerjoin,
 				"PlayerLeave": handle_playerleave,
+				"HealthUpdate": handle_healthUpdate,
+				"GameState": handle_gamestate,
+				"PropelUpdate": handle_propelupdate,
+				"RotationUpdate": handle_rotationupdate,
 				"PlayerDeath": handle_playerdeath,
 				"LootCollected": handle_lootcollection,
 				"TrigUpdate": handle_trigUpdate,
-				"HealthUpdate": handle_healthUpdate,
 				"LootReject": handle_rejection
 			};
 			if (!(datatype in fmap)){
@@ -807,11 +810,12 @@
 		const keyAction = function (repeated, name, up){
 			if (!opened || repeated) return;
 
-			let rotation_keys = ["arrowleft","arrowright"];
-			let translation_keys = ["w", "a", "s", "d"]; //case sensitive (todo make this insensitive)
-			let misc_keys = [" ", "escape"];
-			
 			name = name.toLowerCase();
+			const gameKeys = ["arrowleft","arrowright", " ", "escape"];
+
+			if (!gameKeys.includes(name))
+				return;
+
 			keymap[name] = !up;
 
 			if (translation_keys.includes(name)){
@@ -891,7 +895,7 @@
 			const deltaTime = delta / (1000*PIXI.settings.TARGET_FPMS);
 			Object.values(gameState).forEach(player => {
 				//apply rotations
-				switch (player.p.rotation_motion.direction){
+				switch (player.p.spinDir){
 					case "Clockwise":
 						player.graphics.rotation += rotation_speed * deltaTime;break;
 					case "AntiClockwise":
@@ -899,33 +903,12 @@
 				}
 				
 				const shallow_copy = player.p.public_id == public_id ? world.pivot:player.graphics
-				const move_speed = player_speed * player.p.speed;
-				switch (player.p.motion.direction){
-					case "MoveUp":
-						shallow_copy.y -= move_speed * deltaTime;break;
-					case "MoveDown":
-						shallow_copy.y += move_speed * deltaTime;break;
-					case "MoveLeft":
-						shallow_copy.x -= move_speed * deltaTime;break;
-					case "MoveRight":
-						shallow_copy.x += move_speed * deltaTime;break;
-					case "MoveUpRight":
-						shallow_copy.x += move_speed * deltaTime * invr2;
-						shallow_copy.y -= move_speed * deltaTime * invr2;
-						break;
-					case "MoveDownRight":
-						shallow_copy.x += move_speed * deltaTime * invr2;
-						shallow_copy.y += move_speed * deltaTime * invr2;
-						break;
-					case "MoveDownLeft":
-						shallow_copy.x -= move_speed * deltaTime * invr2;
-						shallow_copy.y += move_speed * deltaTime * invr2;
-						break;
-					case "MoveUpLeft":
-						shallow_copy.x -= move_speed * deltaTime * invr2;
-						shallow_copy.y -= move_speed * deltaTime * invr2;
-						break;
+				if (player.p.propelling){
+					player.p.vel.x += Math.cos(player.graphics.rotation)*ACCELERATION
+					player.p.vel.y += Math.sin(player.graphics.rotation)*ACCELERATION
 				}
+				shallow_copy.x += player.p.vel.x*deltaTime;
+				shallow_copy.y += player.p.vel.y*deltaTime;
 				if (player.p.public_id == public_id){
 					const tile_x = Math.floor(world.pivot.x / seamless_texture.width);
 					const tile_y = Math.floor(world.pivot.y / seamless_texture.height);
