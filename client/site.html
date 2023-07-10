@@ -303,13 +303,13 @@
 
 		const invr2 = 0.7071067811865475;
 		const PI = 3.14159265358979323;
-		const ACCELERATION = 1.0;
+		const ACCELERATION = 50.0;
 
 		const bullet_distance = 500;
 		const player_speed = 200;
 		const player_radius = 25;
 		const fadeRate = 8;
-		const rotation_speed = PI;
+		const rotation_speed = PI/2.0;
 
 		const healthbar_maxwidth = 0.15; //This gets multiplied by the  screen width
 
@@ -811,80 +811,53 @@
 			if (!opened || repeated) return;
 
 			name = name.toLowerCase();
-			const gameKeys = ["arrowleft","arrowright", " ", "escape"];
+			const gameKeys = ["arrowleft","arrowright", "arrowup", " ", "escape"];
 
 			if (!gameKeys.includes(name))
 				return;
 
 			keymap[name] = !up;
 
-			if (translation_keys.includes(name)){
+			if (name == "arrowright" || name == "arrowleft"){
 				let response = "";
-				if (keymap["w"] && keymap["d"]){
-					response = "MoveUpRight";
-				} else if (keymap["w"] && keymap["a"]){
-					response = "MoveUpLeft";
-				} else if (keymap["w"]){
-					response = "MoveUp";
-				}else if (keymap["s"] && keymap["d"]){
-					response = "MoveDownRight";
-				} else if (keymap["s"] && keymap["a"]){
-					response = "MoveDownLeft";
-				} else if (keymap["s"]){
-					response = "MoveDown";
-				} else if (keymap["a"]){
-					response = "MoveLeft";
-				} else if (keymap["d"]){
-					response = "MoveRight";
-				} else {
+				if (keymap["arrowleft"] == keymap["arrowright"]){
 					response = "Stopped";
-				}
-				//console.log("sending " + response);
-				socket.send(
-					JSON.stringify({
-						"t":"MotionUpdate",
-						"c":{
-							"motion": response,
-						 }
-					})
-				);
-			} else if (rotation_keys.includes(name)) {
-				let response = "";
-				if (keymap["arrowleft"]){
+				} else if (keymap["arrowleft"]){
 					response = "AntiClockwise";
 				} else if (keymap["arrowright"]){
 					response = "Clockwise";
-				} else {
-					response = "Stopped";
 				}
-				//console.log("sending " + response);
 				socket.send(
 					JSON.stringify({
-						"t":"RotationUpdate",
+						"t":"Rotation",
 						"c":{
-							"direction": response,
+							"dir": response,
 						 }
 					})
 				);
-			} else if (misc_keys.includes(name)) {
-				if (name == " "){ //shoot
-					const inventory = gameState[public_id].p.inventory;
-					const selectedWeapon = inventory.weapons[inventory.selection];
-					if (selectedWeapon.ammo <= 0)
-						return;
-					if (keymap[name])
-						ammo_text.text = --selectedWeapon.ammo;
-					socket.send(
-						JSON.stringify({
-							"t":"TrigUpdate",
-							"c":{
-								"pressed": keymap[name],
-							 }
-						})
-					);
-				} else if (name == "escape") {
-					document.getElementById("shop-modal").style.display = keymap[name] ? "flex":"none";
-				}
+			} else if (name == "arrowup") {
+				socket.send(
+					JSON.stringify({
+						"t":(up ? "PropelStop":"Propel")
+					})
+				);			
+			} else if (name == " ") {
+				const inventory = gameState[public_id].p.inventory;
+				const selectedWeapon = inventory.weapons[inventory.selection];
+				if (selectedWeapon.ammo <= 0)
+					return;
+				if (keymap[name])
+					ammo_text.text = --selectedWeapon.ammo;
+				socket.send(
+					JSON.stringify({
+						"t":"TrigUpdate",
+						"c":{
+							"pressed": keymap[name],
+						 }
+					})
+				);
+			} else if (name == "escape") {
+				document.getElementById("shop-modal").style.display = keymap[name] ? "flex":"none";
 			}
 		};
 
@@ -904,8 +877,8 @@
 				
 				const shallow_copy = player.p.public_id == public_id ? world.pivot:player.graphics
 				if (player.p.propelling){
-					player.p.vel.x += Math.cos(player.graphics.rotation)*ACCELERATION
-					player.p.vel.y += Math.sin(player.graphics.rotation)*ACCELERATION
+					player.p.vel.x += Math.cos(player.graphics.rotation)*ACCELERATION*deltaTime;
+					player.p.vel.y += Math.sin(player.graphics.rotation)*ACCELERATION*deltaTime;
 				}
 				shallow_copy.x += player.p.vel.x*deltaTime;
 				shallow_copy.y += player.p.vel.y*deltaTime;

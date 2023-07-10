@@ -20,11 +20,11 @@ use crate::Client;
 use crate::WorldLoot;
 use crate::handler::spawn_from_prev;
 
-const RADIANS_PER_SECOND: f32 = PI; //player rotation speed
+const RADIANS_PER_SECOND: f32 = PI/2.0; //player rotation speed
 const PLAYER_RADIUS: f32 = 25.0; //players have circular hitbox
 const LOOT_RADIUS: f32 = 25.0; //players must be within this distance to claim
 const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
-const ACCELERATION: f32 = 1.0; //player acceleration
+const ACCELERATION: f32 = 50.0; //player acceleration
 
 #[derive(Serialize, Debug, Clone)]
 pub enum LootContent{
@@ -271,6 +271,7 @@ fn line_circle_intersect(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> bool{
 	r1_good || r2_good
 }
 
+//TODO make cos/sin faster by storing the results
 impl Trajectory {
 	fn reset(&mut self){
 		let seconds = (Instant::now() - self.time).as_secs_f32();
@@ -283,12 +284,12 @@ impl Trajectory {
 				match self.spin_direction {
 					PlayerRotation::Stopped => {
 						self.pos = Vector{
-							x: base.x + seconds*self.spin.cos()*ACCELERATION/2.0,
-							y: base.y + seconds*self.spin.sin()*ACCELERATION/2.0,
+							x: base.x + seconds*seconds*self.spin.cos()*ACCELERATION/2.0,
+							y: base.y + seconds*seconds*self.spin.sin()*ACCELERATION/2.0,
 						};
 						self.vel = Vector{
-							x: self.vel.x + self.spin.cos() * ACCELERATION,
-							y: self.vel.y + self.spin.sin() * ACCELERATION,
+							x: self.vel.x + seconds*self.spin.cos()*ACCELERATION,
+							y: self.vel.y + seconds*self.spin.sin()*ACCELERATION,
 						};
 					},
 					_ => {
@@ -298,12 +299,12 @@ impl Trajectory {
 							_ => 0.0,
 						} * RADIANS_PER_SECOND;
 						self.pos = Vector{
-							x: base.x -ACCELERATION*(speed*seconds + self.spin).cos() / (speed*speed),
-							y: base.y -ACCELERATION*(speed*seconds + self.spin).sin() / (speed*speed),
+							x: base.x + ACCELERATION*(self.spin.cos() - (speed*seconds + self.spin).cos()) / (speed*speed),
+							y: base.y - ACCELERATION*((speed*seconds + self.spin).sin() - self.spin.sin()) / (speed*speed),
 						};
 						self.vel = Vector{
-							x: self.vel.x + ACCELERATION*(speed*seconds + self.spin).sin() / speed,
-							y: self.vel.y + ACCELERATION*(speed*seconds + self.spin).cos() / -speed,
+							x: self.vel.x + ACCELERATION*((speed*seconds + self.spin).sin() - self.spin.sin()) / speed,
+							y: self.vel.y + ACCELERATION*(self.spin.cos() - (speed*seconds + self.spin).cos()) / speed,
 						};
 						self.spin = self.spin + speed*seconds;
 					}
@@ -364,8 +365,8 @@ impl Trajectory {
 				match self.spin_direction {
 					PlayerRotation::Stopped => {
 						Vector{
-							x: base.x + seconds*self.spin.cos()*ACCELERATION/2.0,
-							y: base.y + seconds*self.spin.sin()*ACCELERATION/2.0,
+							x: base.x + seconds*seconds*self.spin.cos()*ACCELERATION/2.0,
+							y: base.y + seconds*seconds*self.spin.sin()*ACCELERATION/2.0,
 						}
 					},
 					_ => {
@@ -472,9 +473,11 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			}
 			let new_trajectory = {
 				let mut writeable = sender_state.write().await;
+				println!("before {:?}", writeable.trajectory);
 				writeable.trajectory.update_propulsion(is_propel);
 				writeable.trajectory.clone()
 			};
+			println!("after {:?}", new_trajectory);
 			broadcast(
 				&ServerMessage::PropelUpdate{
 					propel: is_propel,
