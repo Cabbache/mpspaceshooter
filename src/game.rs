@@ -299,8 +299,8 @@ impl Trajectory {
 							_ => 0.0,
 						} * RADIANS_PER_SECOND;
 						self.pos = Vector{
-							x: base.x + ACCELERATION*(self.spin.cos() - (speed*seconds + self.spin).cos()) / (speed*speed),
-							y: base.y - ACCELERATION*((speed*seconds + self.spin).sin() - self.spin.sin()) / (speed*speed),
+							x: base.x + ACCELERATION*((self.spin.cos() - (speed*seconds + self.spin).cos())/speed - self.spin.sin()*seconds) / speed,
+							y: base.y + ACCELERATION*(self.spin.cos()*seconds - ((speed*seconds + self.spin).sin() - self.spin.sin())/speed) / speed,
 						};
 						self.vel = Vector{
 							x: self.vel.x + ACCELERATION*((speed*seconds + self.spin).sin() - self.spin.sin()) / speed,
