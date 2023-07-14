@@ -303,13 +303,13 @@
 
 		const invr2 = 0.7071067811865475;
 		const PI = 3.14159265358979323;
-		const ACCELERATION = 50.0;
+		const ACCELERATION = 200.0;
 
 		const bullet_distance = 500;
 		const player_speed = 200;
 		const player_radius = 25;
 		const fadeRate = 8;
-		const rotation_speed = PI/2.0;
+		const rotation_speed = PI;
 
 		const healthbar_maxwidth = 0.15; //This gets multiplied by the  screen width
 
@@ -877,8 +877,8 @@
 				
 				const shallow_copy = player.p.public_id == public_id ? world.pivot:player.graphics
 				if (player.p.propelling){
-					player.p.vel.x += Math.cos(player.graphics.rotation)*ACCELERATION*deltaTime;
-					player.p.vel.y += Math.sin(player.graphics.rotation)*ACCELERATION*deltaTime;
+					player.p.vel.x += Math.cos(player.graphics.rotation - PI/2)*ACCELERATION*deltaTime;
+					player.p.vel.y += Math.sin(player.graphics.rotation - PI/2)*ACCELERATION*deltaTime;
 				}
 				shallow_copy.x += player.p.vel.x*deltaTime;
 				shallow_copy.y += player.p.vel.y*deltaTime;

@@ -20,11 +20,12 @@ use crate::Client;
 use crate::WorldLoot;
 use crate::handler::spawn_from_prev;
 
-const RADIANS_PER_SECOND: f32 = PI/2.0; //player rotation speed
+const RADIANS_PER_SECOND: f32 = PI; //player rotation speed
 const PLAYER_RADIUS: f32 = 25.0; //players have circular hitbox
 const LOOT_RADIUS: f32 = 25.0; //players must be within this distance to claim
 const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
-const ACCELERATION: f32 = 50.0; //player acceleration
+const ACCELERATION: f32 = 200.0; //player acceleration
+const PROPEL_DIRECTION: f32 = -PI/2.0;
 
 #[derive(Serialize, Debug, Clone)]
 pub enum LootContent{
@@ -284,12 +285,12 @@ impl Trajectory {
 				match self.spin_direction {
 					PlayerRotation::Stopped => {
 						self.pos = Vector{
-							x: base.x + seconds*seconds*self.spin.cos()*ACCELERATION/2.0,
-							y: base.y + seconds*seconds*self.spin.sin()*ACCELERATION/2.0,
+							x: base.x + seconds*seconds*(self.spin + PROPEL_DIRECTION).cos()*ACCELERATION/2.0,
+							y: base.y + seconds*seconds*(self.spin + PROPEL_DIRECTION).sin()*ACCELERATION/2.0,
 						};
 						self.vel = Vector{
-							x: self.vel.x + seconds*self.spin.cos()*ACCELERATION,
-							y: self.vel.y + seconds*self.spin.sin()*ACCELERATION,
+							x: self.vel.x + seconds*(self.spin + PROPEL_DIRECTION).cos()*ACCELERATION,
+							y: self.vel.y + seconds*(self.spin + PROPEL_DIRECTION).sin()*ACCELERATION,
 						};
 					},
 					_ => {
@@ -299,12 +300,12 @@ impl Trajectory {
 							_ => 0.0,
 						} * RADIANS_PER_SECOND;
 						self.pos = Vector{
-							x: base.x + ACCELERATION*((self.spin.cos() - (speed*seconds + self.spin).cos())/speed - self.spin.sin()*seconds) / speed,
-							y: base.y + ACCELERATION*(self.spin.cos()*seconds - ((speed*seconds + self.spin).sin() - self.spin.sin())/speed) / speed,
+							x: base.x + ACCELERATION*(((self.spin + PROPEL_DIRECTION).cos() - (speed*seconds + (self.spin + PROPEL_DIRECTION)).cos())/speed - (self.spin + PROPEL_DIRECTION).sin()*seconds) / speed,
+							y: base.y + ACCELERATION*((self.spin + PROPEL_DIRECTION).cos()*seconds - ((speed*seconds + (self.spin + PROPEL_DIRECTION)).sin() - (self.spin + PROPEL_DIRECTION).sin())/speed) / speed,
 						};
 						self.vel = Vector{
-							x: self.vel.x + ACCELERATION*((speed*seconds + self.spin).sin() - self.spin.sin()) / speed,
-							y: self.vel.y + ACCELERATION*(self.spin.cos() - (speed*seconds + self.spin).cos()) / speed,
+							x: self.vel.x + ACCELERATION*((speed*seconds + (self.spin + PROPEL_DIRECTION)).sin() - (self.spin + PROPEL_DIRECTION).sin()) / speed,
+							y: self.vel.y + ACCELERATION*((self.spin + PROPEL_DIRECTION).cos() - (speed*seconds + (self.spin + PROPEL_DIRECTION)).cos()) / speed,
 						};
 						self.spin = self.spin + speed*seconds;
 					}
@@ -329,8 +330,8 @@ impl Trajectory {
 				let seconds = (Instant::now() - self.time).as_secs_f32();
 				match self.spin_direction {
 					PlayerRotation::Stopped => Vector{
-						x: self.vel.x + self.spin.cos()*ACCELERATION*seconds,
-						y: self.vel.y + self.spin.sin()*ACCELERATION*seconds,
+						x: self.vel.x + (self.spin + PROPEL_DIRECTION).cos()*ACCELERATION*seconds,
+						y: self.vel.y + (self.spin + PROPEL_DIRECTION).sin()*ACCELERATION*seconds,
 					},
 					_ => {
 						let speed = match self.spin_direction {
@@ -340,8 +341,8 @@ impl Trajectory {
 						} * RADIANS_PER_SECOND;
 
 						let d_vel = Vector{
-							x: ACCELERATION*(speed*seconds + self.spin).sin() / speed,
-							y: ACCELERATION*(speed*seconds + self.spin).cos() / -speed,
+							x: ACCELERATION*(speed*seconds + (self.spin + PROPEL_DIRECTION)).sin() / speed,
+							y: ACCELERATION*(speed*seconds + (self.spin + PROPEL_DIRECTION)).cos() / -speed,
 						};
 						
 						Vector{
@@ -365,8 +366,8 @@ impl Trajectory {
 				match self.spin_direction {
 					PlayerRotation::Stopped => {
 						Vector{
-							x: base.x + seconds*seconds*self.spin.cos()*ACCELERATION/2.0,
-							y: base.y + seconds*seconds*self.spin.sin()*ACCELERATION/2.0,
+							x: base.x + seconds*seconds*(self.spin + PROPEL_DIRECTION).cos()*ACCELERATION/2.0,
+							y: base.y + seconds*seconds*(self.spin + PROPEL_DIRECTION).sin()*ACCELERATION/2.0,
 						}
 					},
 					_ => {
@@ -389,8 +390,8 @@ impl Trajectory {
 						
 						//Integral of above (the current change in position)
 						let d_pos = Vector{
-							x: -ACCELERATION*(speed*seconds + self.spin).cos() / (speed*speed),
-							y: -ACCELERATION*(speed*seconds + self.spin).sin() / (speed*speed),
+							x: -ACCELERATION*(speed*seconds + (self.spin + PROPEL_DIRECTION)).cos() / (speed*speed),
+							y: -ACCELERATION*(speed*seconds + (self.spin + PROPEL_DIRECTION)).sin() / (speed*speed),
 						};
 
 						Vector{
