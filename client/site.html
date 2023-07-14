@@ -311,20 +311,23 @@
 		const getPlayerSprite = function(player){
 			var player_container = new PIXI.Container();
 			player_container.position.set(player.pos.x, player.pos.y);
-			player_container.rotation = player.spin;
 			var square = new PIXI.Sprite(PIXI.Texture.WHITE);
 			square.anchor.set(0.5);
 			square.width = 50;
 			square.height = 50;
 			square.anchor.set(0.5);
 			square.tint = player.color.r << 16 | player.color.g << 8 | player.color.b;
+			square.rotation = player.spin;
 
 			var text = new PIXI.Text(player.name, { fontFamily: "Arial", fontSize: 16, fill: 0xffffff });
 			text.anchor.set(0.5);
 			text.position.set(0, -40);
 			player_container.addChild(square);
 			player_container.addChild(text);
-			return player_container;
+			return {
+				container: player_container,
+				sprite: square
+			};
 		}
 
 		const getLootSprite = function(lootObj){
@@ -358,19 +361,20 @@
 			state.players.forEach((p) => {
 				const square = getPlayerSprite(p);
 				if (p.public_id == public_id){
-					square.x = app.screen.width/2;
-					square.y = app.screen.height/2;
+					square.container.x = app.screen.width/2;
+					square.container.y = app.screen.height/2;
 					world.pivot.x = p.pos.x;
 					world.pivot.y = p.pos.y;
-					app.stage.addChild(square);
+					app.stage.addChild(square.container);
 					ammo_text.text = p.inventory.weapons[0].ammo;
 					cash_text.text = p.cash;
 				} else {
-					players_container.addChild(square);
+					players_container.addChild(square.container);
 				}
 
 				gameState[p.public_id] = {
-					graphics: square,
+					graphics: square.container,
+					child: square.sprite,
 					p: p
 				};
 			});	
@@ -406,7 +410,7 @@
 		const handle_rotationupdate = function(content){
 			let broadcaster = content["from"];
 			gameState[broadcaster].p.spinDir = content.direction;
-			gameState[broadcaster].graphics.rotation = content.spin;
+			gameState[broadcaster].child.rotation = content.spin;
 		}
 
 		const handle_trigUpdate = function(content){
@@ -419,7 +423,7 @@
 				const line_start_x = public_id == updater ? world.pivot.x:gameState[updater].graphics.x;
 				const line_start_y = public_id == updater ? world.pivot.y:gameState[updater].graphics.y;
 
-				const line_rotation = gameState[updater].graphics.rotation;
+				const line_rotation = gameState[updater].child.rotation;
 				let hitInfo = {
 					hit: false,
 					shortest_line: bullet_distance,
@@ -500,7 +504,7 @@
 				world.pivot.x = content.pos.x;
 				world.pivot.y = content.pos.y;
 				gameState[public_id].p = content;
-				gameState[public_id].graphics.rotation = content.spin;
+				gameState[public_id].child.rotation = content.spin;
 				
 				//update coords text
 				coords_text.text = `x: ${Math.round(world.pivot.x)}, y: ${-Math.round(world.pivot.y)}`;
@@ -517,9 +521,10 @@
 				cash_text.text = content.cash;
 			} else {
 				const square = getPlayerSprite(content);
-				players_container.addChild(square);
+				players_container.addChild(square.container);
 				gameState[content.public_id] = {
-					graphics: square,
+					graphics: square.container,
+					child: square.sprite,
 					p: content
 				};
 			}
@@ -687,15 +692,15 @@
 				//apply rotations
 				switch (player.p.spinDir){
 					case "Clockwise":
-						player.graphics.rotation += rotation_speed * deltaTime;break;
+						player.child.rotation += rotation_speed * deltaTime;break;
 					case "AntiClockwise":
-						player.graphics.rotation += -rotation_speed * deltaTime;break;
+						player.child.rotation += -rotation_speed * deltaTime;break;
 				}
 				
 				const shallow_copy = player.p.public_id == public_id ? world.pivot:player.graphics
 				if (player.p.propelling){
-					player.p.vel.x += Math.cos(player.graphics.rotation - PI/2)*ACCELERATION*deltaTime;
-					player.p.vel.y += Math.sin(player.graphics.rotation - PI/2)*ACCELERATION*deltaTime;
+					player.p.vel.x += Math.cos(player.child.rotation - PI/2)*ACCELERATION*deltaTime;
+					player.p.vel.y += Math.sin(player.child.rotation - PI/2)*ACCELERATION*deltaTime;
 				}
 				shallow_copy.x += player.p.vel.x*deltaTime;
 				shallow_copy.y += player.p.vel.y*deltaTime;
