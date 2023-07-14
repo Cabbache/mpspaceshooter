@@ -214,6 +214,8 @@ pub enum PlayerRotation {
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 #[serde(tag = "t", content = "c")]
 pub enum ClientMessage{
+	Ping,
+	AckPong,
 	Propel,
 	PropelStop,
 	Rotation {dir: PlayerRotation},
@@ -227,6 +229,7 @@ pub enum ClientMessage{
 #[derive(Serialize, Debug)]
 #[serde(tag = "t", content = "c")]
 pub enum ServerMessage{
+	Pong,
 	PlayerJoin(PlayerState),
 	PlayerLeave(String),
 	HealthUpdate(f32),
@@ -458,6 +461,20 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 	}
 
 	match message {
+		ClientMessage::Ping => {
+			if let Some(client) = clr.get(private_id) {
+				let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
+				client.transmit(
+					&ServerMessage::Pong,
+					Some(public_id)
+				).await?;
+			} else {
+					eprintln!("Can't find client");
+			}
+		},
+		ClientMessage::AckPong => {
+			
+		},
 		ClientMessage::Spawn => {
 			spawn_from_prev(&mut *sender_state.write().await); //reset health and position
 			broadcast(
