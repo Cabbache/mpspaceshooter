@@ -111,14 +111,19 @@
 		var socket = null;
 		var opened = false;
 		var public_id = null;
+
+		const keyleft = "a";
+		const keyright = "d";
+		const keyup = "w";
+		const keyshoot = " ";
+		const keyshop = "escape";
+
 		var keymap = {
-			"ArrowUp": false,
-			"ArrowDown": false,
-			"ArrowLeft": false,
-			"ArrowRight": false,
-			"A": false,
-			"D": false,
-			" ": false,
+			[keyleft]: false,
+			[keyright]: false,
+			[keyup]: false,
+			[keyshoot]: false,
+			[keyshop]: false,
 		};
 
 		const invr2 = 0.7071067811865475;
@@ -330,7 +335,6 @@
 				"PistolAmmo": pistol_ammo_texture,
 				"SpeedBoost": speed_boost_texture
 			}[typeof lootObj.loot === "string" ? lootObj.loot:Object.keys(lootObj.loot)[0]]);
-			console.log(Object.keys(lootObj.loot)[0]);
 			loot_texture.anchor.set(0.5);
 			loot_obj.addChild(loot_texture);
 			return loot_obj;
@@ -541,7 +545,6 @@
 						"t":"Spawn"
 					})
 				);
-				console.log(worldLoot);
 			} else {
 				const emitJSON = JSON.parse(JSON.stringify(emitters["explosion"]));
 				emitJSON.pos = {
@@ -571,9 +574,8 @@
 		}
 
 		const handle_lootcollection = function(content){
-			console.log(content);
 			if (!(content.loot_id in worldLoot)){
-				console.log("Could not find collected loot");
+				console.error("Could not find collected loot");
 				return;
 			}
 			loot_container.removeChild(worldLoot[content.loot_id].graphics);
@@ -583,8 +585,6 @@
 			const loot_type = typeof loot_content_clone === 'string' ? loot_content_clone:Object.keys(loot_content_clone)[0];
 			const loot_value = typeof loot_content_clone === 'string' ? null:Object.values(loot_content_clone)[0];
 			if (content.collector !== public_id && loot_type !== "SpeedBoost") return;
-
-			console.log(`action on ${loot_type}`);
 
 			({
 				"Cash": () => {
@@ -598,7 +598,6 @@
 				},
 				"SpeedBoost": () => {
 					gameState[content.collector].p.speed += 1.0;
-					console.log(`Collected speedboost: ${gameState[content.collector].p.speed}`);
 				}
 			}[loot_type])();
 		}
@@ -631,20 +630,18 @@
 			if (!opened || repeated) return;
 
 			name = name.toLowerCase();
-			const gameKeys = ["arrowleft","arrowright", "arrowup", " ", "escape"];
-
-			if (!gameKeys.includes(name))
+			if (keymap[name] === undefined)
 				return;
 
 			keymap[name] = !up;
 
-			if (name == "arrowright" || name == "arrowleft"){
+			if (name == keyright || name == keyleft){
 				let response = "";
-				if (keymap["arrowleft"] == keymap["arrowright"]){
+				if (keymap[keyleft] == keymap[keyright]){
 					response = "Stopped";
-				} else if (keymap["arrowleft"]){
+				} else if (keymap[keyleft]){
 					response = "AntiClockwise";
-				} else if (keymap["arrowright"]){
+				} else if (keymap[keyright]){
 					response = "Clockwise";
 				}
 				socket.send(
@@ -655,13 +652,13 @@
 						 }
 					})
 				);
-			} else if (name == "arrowup") {
+			} else if (name == keyup) {
 				socket.send(
 					JSON.stringify({
 						"t":(up ? "PropelStop":"Propel")
 					})
 				);			
-			} else if (name == " ") {
+			} else if (name == keyshoot) {
 				const inventory = gameState[public_id].p.inventory;
 				const selectedWeapon = inventory.weapons[inventory.selection];
 				if (selectedWeapon.ammo <= 0)
@@ -676,7 +673,7 @@
 						 }
 					})
 				);
-			} else if (name == "escape") {
+			} else if (name == keyshop) {
 				document.getElementById("shop-modal").style.display = keymap[name] ? "flex":"none";
 			}
 		};
@@ -737,7 +734,6 @@
 					return;
 				lootObj.claimed = true;
 				socket.send(JSON.stringify({"t":"ClaimLoot","c":{"loot_id": loot_id}}));
-				console.log(`sent claim for ${loot_id}`);
 			});
 		});
 

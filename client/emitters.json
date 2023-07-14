@@ -1,4 +1,110 @@
 {
 	"bulletHit": {"lifetime":{"min":0.15,"max":0.25},"frequency":0.008,"spawnChance":1,"particlesPerWave":1,"emitterLifetime":0.2,"maxParticles":1000,"pos":{"x":0,"y":0},"addAtBack":false,"behaviors":[{"type":"alpha","config":{"alpha":{"list":[{"value":1,"time":0},{"value":0,"time":1}]}}},{"type":"scale","config":{"scale":{"list":[{"value":1,"time":0},{"value":0,"time":1}]}}},{"type":"color","config":{"color":{"list":[{"value":"ffff00","time":0},{"value":"ff8000","time":1}]}}},{"type":"moveSpeed","config":{"speed":{"list":[{"value":600,"time":0},{"value":400,"time":1}],"isStepped":false}}}]},
-	"explosion": {"lifetime":{"min":0.2,"max":0.5},"frequency":0.03,"spawnChance":0.9,"particlesPerWave":30,"emitterLifetime":0.2,"maxParticles":1000,"pos":{"x":0,"y":0},"addAtBack":false,"radius":{"min":0,"max":360},"speed":{"min":300,"max":600},"behaviors":[{"type":"alpha","config":{"alpha":{"list":[{"value":1,"time":0},{"value":0,"time":1}]}}},{"type":"scale","config":{"scale":{"list":[{"value":1,"time":0},{"value":0,"time":1}]}}},{"type":"color","config":{"color":{"list":[{"value":"ff0000","time":0},{"value":"ffff00","time":0.5},{"value":"ffffff","time":1}]}}},{"type":"rotationStatic","config":{"min":0,"max":360}},{"type":"moveSpeed","config":{"speed":{"list":[{"value":600,"time":0},{"value":100,"time":1}],"isStepped":false}}}]}
+	"explosion": {"lifetime":{"min":0.2,"max":0.5},"frequency":0.03,"spawnChance":0.9,"particlesPerWave":30,"emitterLifetime":0.2,"maxParticles":1000,"pos":{"x":0,"y":0},"addAtBack":false,"radius":{"min":0,"max":360},"speed":{"min":300,"max":600},"behaviors":[{"type":"alpha","config":{"alpha":{"list":[{"value":1,"time":0},{"value":0,"time":1}]}}},{"type":"scale","config":{"scale":{"list":[{"value":1,"time":0},{"value":0,"time":1}]}}},{"type":"color","config":{"color":{"list":[{"value":"ff0000","time":0},{"value":"ffff00","time":0.5},{"value":"ffffff","time":1}]}}},{"type":"rotationStatic","config":{"min":0,"max":360}},{"type":"moveSpeed","config":{"speed":{"list":[{"value":600,"time":0},{"value":100,"time":1}],"isStepped":false}}}]},
+	"propel": {
+    "lifetime": {
+      "min": 0.2,
+      "max": 0.5
+    },
+    "frequency": 0.03,
+    "spawnChance": 0.9,
+    "particlesPerWave": 30,
+    "emitterLifetime": 0.2,
+    "maxParticles": 1000,
+    "pos": {
+      "x": 0,
+      "y": 0
+    },
+    "addAtBack": false,
+    "radius": {
+      "min": 0,
+      "max": 360
+    },
+    "speed": {
+      "min": 300,
+      "max": 600
+    },
+    "behaviors": [
+      {
+        "type": "alpha",
+        "config": {
+          "alpha": {
+            "list": [
+              {
+                "value": 1,
+                "time": 0
+              },
+              {
+                "value": 0,
+                "time": 1
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "scale",
+        "config": {
+          "scale": {
+            "list": [
+              {
+                "value": 1,
+                "time": 0
+              },
+              {
+                "value": 0,
+                "time": 1
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "color",
+        "config": {
+          "color": {
+            "list": [
+              {
+                "value": "ff0000",
+                "time": 0
+              },
+              {
+                "value": "ffff00",
+                "time": 0.5
+              },
+              {
+                "value": "ffffff",
+                "time": 1
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "rotationStatic",
+        "config": {
+          "min": 0,
+          "max": 360
+        }
+      },
+      {
+        "type": "moveSpeed",
+        "config": {
+          "speed": {
+            "list": [
+              {
+                "value": 600,
+                "time": 0
+              },
+              {
+                "value": 100,
+                "time": 1
+              }
+            ],
+            "isStepped": false
+          }
+        }
+      }
+    ]
+  }
 }
