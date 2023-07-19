@@ -206,6 +206,12 @@
 		coords_text.position.set(app.screen.width * 0.9, app.screen.height*0.02 + 20);
 		app.stage.addChild(coords_text);
 
+		//add the fps text
+		var fps_text = new PIXI.Text("fps: -", { fontFamily: "Arial", fontSize: 18, fill: 0x88ff88 });
+		fps_text.anchor.set(0.5);
+		fps_text.position.set(app.screen.width * 0.9, app.screen.height*0.02 + 40);
+		app.stage.addChild(fps_text);
+
 		//add the cash text
 		var cash_text = new PIXI.Text("?", {
 			fill: "#e5a50a",
@@ -688,19 +694,25 @@
 
 		const ticker = PIXI.Ticker.shared.add(delta => {
 			const deltaTime = delta / (1000*PIXI.settings.TARGET_FPMS);
+			fps_text.text = `fps: ${Math.round(PIXI.Ticker.shared.FPS)}`;
 			Object.values(gameState).forEach(player => {
-				//apply rotations
-				switch (player.p.spinDir){
-					case "Clockwise":
-						player.child.rotation += rotation_speed * deltaTime;break;
-					case "AntiClockwise":
-						player.child.rotation += -rotation_speed * deltaTime;break;
-				}
+				/*
+					TODO use runge kutta
+					const initial_rotation = player.child.rotation;
+					const new_rotation = rotation_speed * deltaTime;
+				*/
+				const current_rotation_speed = rotation_speed*({"Clockwise":1,"AntiClockwise":-1})[player.p.spinDir] || 0;
+				player.child.rotation += current_rotation_speed * deltaTime;
 				
 				const shallow_copy = player.p.public_id == public_id ? world.pivot:player.graphics
 				if (player.p.propelling){
-					player.p.vel.x += Math.cos(player.child.rotation - PI/2)*ACCELERATION*deltaTime;
-					player.p.vel.y += Math.sin(player.child.rotation - PI/2)*ACCELERATION*deltaTime;
+					if (player.p.spinDir == "Stopped"){
+						player.p.vel.x += Math.cos(player.child.rotation - PI/2)*ACCELERATION*deltaTime;
+						player.p.vel.y += Math.sin(player.child.rotation - PI/2)*ACCELERATION*deltaTime;
+					} else {
+						player.p.vel.x += Math.cos(player.child.rotation - PI/2)*ACCELERATION*deltaTime;
+						player.p.vel.y += Math.sin(player.child.rotation - PI/2)*ACCELERATION*deltaTime;
+					}
 				}
 				shallow_copy.x += player.p.vel.x*deltaTime;
 				shallow_copy.y += player.p.vel.y*deltaTime;
@@ -743,8 +755,8 @@
 		});
 
 		ticker.speed = 1;
-		ticker.minFPS = 30;
-		ticker.maxFPS = 60;
+		ticker.minFPS = 5;
+		ticker.maxFPS = 10;
 		ticker.start();
 
 		window.addEventListener("resize", function(){
