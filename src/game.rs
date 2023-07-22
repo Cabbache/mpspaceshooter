@@ -142,9 +142,9 @@ pub struct PlayerState {
 impl PlayerState {
 	pub fn encode_other(&self) -> Value{
 		//TODO consider implementing live() in Trajectory - an immutable version of reset() and use that instead
-		let pos = &self.trajectory.live_pos();
-		let vel = &self.trajectory.live_vel();
-		let spin = &self.trajectory.live_rot();
+		let pos = &self.trajectory.pos;
+		let vel = &self.trajectory.vel;
+		let spin = &self.trajectory.spin;
 		return json!({
 			"name": &self.name,
 			"public_id": &self.public_id,
@@ -313,7 +313,7 @@ fn line_circle_intersect(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> bool{
 impl Trajectory {
 	pub fn live(&self) -> Trajectory{
 		let mut result = self.clone();
-		const delta: f32 = 0.005; //5ms time steps
+		const DELTA: f32 = 0.005; //5ms time steps
 		let spin_speed = match result.spin_direction {
 			PlayerRotation::Clockwise => 1.0,
 			PlayerRotation::AntiClockwise => -1.0,
@@ -322,7 +322,7 @@ impl Trajectory {
 		let seconds = (Instant::now() - result.time).as_secs_f32();
 		let mut step: f32 = 0f32;
 		while step < seconds{
-			let increment = f32::min(seconds - step, delta);
+			let increment = f32::min(seconds - step, DELTA);
 			result.pos.x += result.vel.x * increment;
 			result.pos.y += result.vel.y * increment;
 			for body in BODIES {
@@ -489,12 +489,13 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			//gpt-4 did this
 			// Use futures::future::join_all to wait for all tasks to complete.
 			let players_futures: Vec<_> = clr.iter()
-				.map(|(_, value)| value.state.read())
+				.map(|(_, value)| value.state.write())
 				.collect();
 
 			let players: Vec<_> = join_all(players_futures).await
 				.into_iter()
-				.filter_map(|lock| {
+				.filter_map(|mut lock| {
+					lock.trajectory.update();
 					let clone = lock.clone();
 					match clone.health > 0.0 { //to only send the living ones
 						true => Some(clone),
@@ -580,7 +581,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 					let (ss, rr) = {
 						let mut writeable = sender_state.write().await;
 						writeable.trajectory.update();
-						(writeable.trajectory.pos, writeable.trajectory.spin)
+						(writeable.trajectory.pos.clone(), writeable.trajectory.spin)
 					};
 
 					//boring linear search
@@ -659,9 +660,9 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			match loot_thing {
 				Some(loot_obj) => {
 					let pp = {
-						let writable = sender_state.write().await;
+						let mut writable = sender_state.write().await;
 						writable.trajectory.update();
-						writable.trajectory.pos
+						writable.trajectory.pos.clone()
 					};
 					if (pp.y - loot_obj.y).pow(2) + (pp.x - loot_obj.x).pow(2) > LOOT_RADIUS.pow(2){
 						if let Some(client) = clr.get(private_id){
