@@ -696,24 +696,18 @@
 			const deltaTime = delta / (1000*PIXI.settings.TARGET_FPMS);
 			fps_text.text = `fps: ${Math.round(PIXI.Ticker.shared.FPS)}`;
 			Object.values(gameState).forEach(player => {
-				/*
-					TODO use runge kutta
-					const initial_rotation = player.child.rotation;
-					const new_rotation = rotation_speed * deltaTime;
-				*/
 				const current_rotation_speed = rotation_speed*({"Clockwise":1,"AntiClockwise":-1})[player.p.spinDir] || 0;
-				player.child.rotation += current_rotation_speed * deltaTime;
-				
-				const shallow_copy = player.p.public_id == public_id ? world.pivot:player.graphics
 				if (player.p.propelling){
 					if (player.p.spinDir == "Stopped"){
 						player.p.vel.x += Math.cos(player.child.rotation - PI/2)*ACCELERATION*deltaTime;
 						player.p.vel.y += Math.sin(player.child.rotation - PI/2)*ACCELERATION*deltaTime;
 					} else {
-						player.p.vel.x += Math.cos(player.child.rotation - PI/2)*ACCELERATION*deltaTime;
-						player.p.vel.y += Math.sin(player.child.rotation - PI/2)*ACCELERATION*deltaTime;
+						player.p.vel.x += ACCELERATION*(Math.sin(current_rotation_speed*deltaTime + (player.child.rotation - PI/2)) - Math.sin(player.child.rotation - PI/2)) / current_rotation_speed;
+						player.p.vel.y += ACCELERATION*(Math.cos(player.child.rotation - PI/2) - Math.cos(current_rotation_speed*deltaTime + (player.child.rotation - PI/2))) / current_rotation_speed;
 					}
 				}
+				player.child.rotation += current_rotation_speed * deltaTime;
+				const shallow_copy = player.p.public_id == public_id ? world.pivot:player.graphics
 				shallow_copy.x += player.p.vel.x*deltaTime;
 				shallow_copy.y += player.p.vel.y*deltaTime;
 				if (player.p.public_id == public_id){
@@ -755,8 +749,8 @@
 		});
 
 		ticker.speed = 1;
-		ticker.minFPS = 5;
-		ticker.maxFPS = 10;
+		ticker.minFPS = 2;
+		ticker.maxFPS = 60;
 		ticker.start();
 
 		window.addEventListener("resize", function(){
