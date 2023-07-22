@@ -5,7 +5,6 @@ use std::error::Error;
 
 use futures::future::join_all;
 use num_traits::{Pow};
-//use serde::{Deserialize, Serialize, Serializer, ser::SerializeStruct};
 use serde::{Deserialize, Serialize, Serializer};
 use serde_json::{from_str, json, to_string, Value};
 use warp::ws::Message;
@@ -27,6 +26,32 @@ const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 const ACCELERATION: f32 = 200.0; //player acceleration
 const PROPEL_DIRECTION: f32 = -PI/2.0;
 
+const G: f32 = 1.0;
+
+const BODIES: [Body; 3] = [
+	Body {
+		pos: Vector{
+			x: 0.0,
+			y: 0.0,
+		},
+		radius: 5.0,
+	},
+	Body {
+		pos: Vector{
+			x: 10.0,
+			y: 10.0,
+		},
+		radius: 5.0,
+	},
+	Body {
+		pos: Vector{
+			x: -10.0,
+			y: 5.0,
+		},
+		radius: 5.0,
+	},
+];
+
 #[derive(Serialize, Debug, Clone)]
 pub enum LootContent{
 	Cash(u32),
@@ -41,13 +66,17 @@ pub struct LootObject{
 	loot: LootContent,
 }
 
-//Arc<RwLock<HashMap<String, LootObject>>>
-
 #[derive(Serialize, Debug, Clone)]
 pub struct Color{
 	pub r: i32,
 	pub g: i32,
 	pub b: i32,
+}
+
+#[derive(Serialize, Clone, Debug)]
+pub struct Body{
+	pub pos: Vector,
+	pub radius: f32,
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -160,10 +189,10 @@ impl Client {
 			};
 			let serialized_msg = match msg {
 				ServerMessage::PlayerJoin(_) |
-				ServerMessage::GameState{pstates: _, worldloot: _} => {
+				ServerMessage::GameState{pstates: _, worldloot: _, bodies: _} => {
 				//ServerMessage::LootCollected{loot_id: _, collector: _} => {
 					match msg {
-						ServerMessage::GameState{ pstates, worldloot } => {
+						ServerMessage::GameState{ pstates, worldloot, bodies } => {
 							let encoded_states: Vec<Value> = pstates.iter().map(|state| {
 								state.encode(public_id == state.public_id)
 							}).collect();
@@ -172,6 +201,7 @@ impl Client {
 								"c": {
 									"players": encoded_states,
 									"loot": worldloot,
+									"bodies": bodies,
 								}
 							}))?
 						},
@@ -233,7 +263,11 @@ pub enum ServerMessage{
 	PlayerJoin(PlayerState),
 	PlayerLeave(String),
 	HealthUpdate(f32),
-	GameState{ pstates: Vec<PlayerState>, worldloot: HashMap<String, LootObject> },
+	GameState{
+		pstates: Vec<PlayerState>,
+		worldloot: HashMap<String, LootObject>,
+		bodies: Vec<Body>,
+	},
 	PropelUpdate { propel: bool, pos: Vector, vel: Vector, from: String },
 	RotationUpdate { direction: PlayerRotation, spin: f32, from: String },
 	TrigUpdate {by: String, weptype: WeaponType, pressed: bool },
@@ -277,137 +311,38 @@ fn line_circle_intersect(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> bool{
 
 //TODO make cos/sin faster by storing the results
 impl Trajectory {
-	fn reset(&mut self){
-		let seconds = (Instant::now() - self.time).as_secs_f32();
-		let base = Vector{
-			x: self.pos.x + seconds*self.vel.x,
-			y: self.pos.y + seconds*self.vel.y,
-		};
-		match self.propelling {
-			true => {
-				match self.spin_direction {
-					PlayerRotation::Stopped => {
-						self.pos = Vector{
-							x: base.x + seconds*seconds*(self.spin + PROPEL_DIRECTION).cos()*ACCELERATION/2.0,
-							y: base.y + seconds*seconds*(self.spin + PROPEL_DIRECTION).sin()*ACCELERATION/2.0,
-						};
-						self.vel = Vector{
-							x: self.vel.x + seconds*(self.spin + PROPEL_DIRECTION).cos()*ACCELERATION,
-							y: self.vel.y + seconds*(self.spin + PROPEL_DIRECTION).sin()*ACCELERATION,
-						};
-					},
-					_ => {
-						let speed = match self.spin_direction {
-							PlayerRotation::Clockwise => 1.0,
-							PlayerRotation::AntiClockwise => -1.0,
-							_ => 0.0,
-						} * RADIANS_PER_SECOND;
-						self.pos = Vector{
-							x: base.x + ACCELERATION*(((self.spin + PROPEL_DIRECTION).cos() - (speed*seconds + (self.spin + PROPEL_DIRECTION)).cos())/speed - (self.spin + PROPEL_DIRECTION).sin()*seconds) / speed,
-							y: base.y + ACCELERATION*((self.spin + PROPEL_DIRECTION).cos()*seconds - ((speed*seconds + (self.spin + PROPEL_DIRECTION)).sin() - (self.spin + PROPEL_DIRECTION).sin())/speed) / speed,
-						};
-						self.vel = Vector{
-							x: self.vel.x + ACCELERATION*((speed*seconds + (self.spin + PROPEL_DIRECTION)).sin() - (self.spin + PROPEL_DIRECTION).sin()) / speed,
-							y: self.vel.y + ACCELERATION*((self.spin + PROPEL_DIRECTION).cos() - (speed*seconds + (self.spin + PROPEL_DIRECTION)).cos()) / speed,
-						};
-						self.spin = self.spin + speed*seconds;
-					}
-				}
-			},
-			false => {
-				self.pos = base;
-				self.spin = match self.spin_direction {
-					PlayerRotation::Clockwise => 1.0,
-					PlayerRotation::AntiClockwise => -1.0,
-					_ => 0.0,
-				} * RADIANS_PER_SECOND * seconds + self.spin;
+	pub fn live(&self) -> Trajectory{
+		let mut result = self.clone();
+		const delta: f32 = 0.005; //5ms time steps
+		let spin_speed = match result.spin_direction {
+			PlayerRotation::Clockwise => 1.0,
+			PlayerRotation::AntiClockwise => -1.0,
+			_ => 0.0,
+		} * RADIANS_PER_SECOND;
+		let seconds = (Instant::now() - result.time).as_secs_f32();
+		let mut step: f32 = 0f32;
+		while step < seconds{
+			let increment = f32::min(seconds - step, delta);
+			result.pos.x += result.vel.x * increment;
+			result.pos.y += result.vel.y * increment;
+			for body in BODIES {
+				let pull = body.pull(&result.pos);
+				result.vel.x += pull.x * increment;
+				result.vel.y += pull.y * increment;
 			}
-		}
-		self.time = Instant::now();
-	}
-
-	pub fn live_vel(&self) -> Vector {
-		match self.propelling {
-			false => self.vel.clone(),
-			true => {
-				let seconds = (Instant::now() - self.time).as_secs_f32();
-				match self.spin_direction {
-					PlayerRotation::Stopped => Vector{
-						x: self.vel.x + (self.spin + PROPEL_DIRECTION).cos()*ACCELERATION*seconds,
-						y: self.vel.y + (self.spin + PROPEL_DIRECTION).sin()*ACCELERATION*seconds,
-					},
-					_ => {
-						let speed = match self.spin_direction {
-							PlayerRotation::Clockwise => 1.0,
-							PlayerRotation::AntiClockwise => -1.0,
-							_ => 0.0,
-						} * RADIANS_PER_SECOND;
-
-						let d_vel = Vector{
-							x: ACCELERATION*(speed*seconds + (self.spin + PROPEL_DIRECTION)).sin() / speed,
-							y: ACCELERATION*(speed*seconds + (self.spin + PROPEL_DIRECTION)).cos() / -speed,
-						};
-						
-						Vector{
-							x: self.vel.x + d_vel.x,
-							y: self.vel.y + d_vel.y,
-						}
-					}
-				}
+			if result.propelling {
+				let current_spin = result.spin + spin_speed * step;
+				result.vel.x += (current_spin + PROPEL_DIRECTION).cos()*ACCELERATION*increment;
+				result.vel.y += (current_spin + PROPEL_DIRECTION).sin()*ACCELERATION*increment;
 			}
+			step += increment;
 		}
+		result.spin += spin_speed * seconds;
+		result.time = Instant::now();
+		result
 	}
 
-	pub fn live_pos(&self) -> Vector {
-		let seconds = (Instant::now() - self.time).as_secs_f32();
-		let base = Vector{
-			x: self.pos.x + seconds*self.vel.x,
-			y: self.pos.y + seconds*self.vel.y,
-		};
-		match self.propelling {
-			true => {
-				match self.spin_direction {
-					PlayerRotation::Stopped => {
-						Vector{
-							x: base.x + seconds*seconds*(self.spin + PROPEL_DIRECTION).cos()*ACCELERATION/2.0,
-							y: base.y + seconds*seconds*(self.spin + PROPEL_DIRECTION).sin()*ACCELERATION/2.0,
-						}
-					},
-					_ => {
-						let speed = match self.spin_direction {
-							PlayerRotation::Clockwise => 1.0,
-							PlayerRotation::AntiClockwise => -1.0,
-							_ => 0.0,
-						} * RADIANS_PER_SECOND;
-
-						//cos(spin + speed*t)*acceleration <- x acceleration function
-						//sin(spin + speed*t)*acceleration <- y acceleration function
-						
-						//Integral of above (the current change in velocity)
-						//ACCELERATION*sin(speed*t + self.spin) / speed
-						//ACCELERATION*cos(speed*t + self.spin) / -speed
-						//let dVel = Vector{
-						//	x: ACCELERATION*(speed*seconds + self.spin).sin() / speed
-						//	y: ACCELERATION*(speed*seconds + self.spin).cos() / -speed
-						//};
-						
-						//Integral of above (the current change in position)
-						let d_pos = Vector{
-							x: -ACCELERATION*(speed*seconds + (self.spin + PROPEL_DIRECTION)).cos() / (speed*speed),
-							y: -ACCELERATION*(speed*seconds + (self.spin + PROPEL_DIRECTION)).sin() / (speed*speed),
-						};
-
-						Vector{
-							x: base.x + d_pos.x,
-							y: base.y + d_pos.y,
-						}
-					}
-				}
-			},
-			false => base
-		}
-	}
-
+	//live rotation doesnt need mutation
 	pub fn live_rot(&self) -> f32 {
 		let seconds = (Instant::now() - self.time).as_secs_f32();
 		(match self.spin_direction {
@@ -417,14 +352,37 @@ impl Trajectory {
 		}) * RADIANS_PER_SECOND + self.spin
 	}
 
+	pub fn update(&mut self){
+		*self = self.live();
+	}
+
 	pub fn update_rotation(&mut self, new_direction: &PlayerRotation){
-		self.reset();
+		self.update();
 		self.spin_direction = *new_direction;
 	}
 
 	pub fn update_propulsion(&mut self, on: bool){
-		self.reset();
+		self.update();
 		self.propelling = on;
+	}
+}
+
+impl Body {
+	//returns the acceleration imposed by itself at a point
+	fn pull(&self, pos: &Vector) -> Vector{
+		let xdiff = self.pos.x - pos.x;
+		let ydiff = self.pos.y - pos.y;
+		let powsum = xdiff.powf(2.0) + ydiff.powf(2.0);
+		let mag = G * self.mass() / powsum;
+		let dist = powsum.sqrt();
+		Vector{
+			x: mag * xdiff / dist,
+			y: mag * ydiff / dist,
+		}
+	}
+
+	fn mass(&self) -> f32 {
+		self.radius*self.radius*PI
 	}
 }
 
@@ -551,7 +509,8 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				client.transmit(
 					&ServerMessage::GameState{
 						pstates: players,
-						worldloot: world_loot.read().await.clone()
+						worldloot: world_loot.read().await.clone(),
+						bodies: BODIES.to_vec(),
 					},
 					Some(public_id)
 				).await?;
@@ -617,8 +576,12 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 					if !pressed {
 						return Ok(());
 					}
-					let rr = cl.trajectory.live_rot();
-					let ss = cl.trajectory.live_pos();
+
+					let (ss, rr) = {
+						let mut writeable = sender_state.write().await;
+						writeable.trajectory.update();
+						(writeable.trajectory.pos, writeable.trajectory.spin)
+					};
 
 					//boring linear search
 					for (key, value) in clr.iter() { //TODO try using for_each
@@ -626,13 +589,17 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 							continue;
 						}
 
-						let playerstate = value.state.read().await.clone();
+						let playerstate = {
+							let mut writable = value.state.write().await;
+							writable.trajectory.update();
+							writable.clone()
+						};
 
 						//ignore dead players
 						if playerstate.health <= 0f32 {
 							continue;
 						}
-						let pp = playerstate.trajectory.live_pos();
+						let pp = playerstate.trajectory.pos;
 						let hit = line_circle_intersect(ss.x, ss.y, pp.x, pp.y, rr);
 						if !hit{
 							continue;
@@ -641,7 +608,6 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 						let new_health = {
 							let mut writeable = value.state.write().await;
 							writeable.health -= 10f32; //hard coded pistol damage to 10
-							//playerstate.health -= 10f32; //update the copy too
 							writeable.health
 						};
 
@@ -692,7 +658,11 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			};
 			match loot_thing {
 				Some(loot_obj) => {
-					let pp = &sender_state.read().await.clone().trajectory.live_pos();
+					let pp = {
+						let writable = sender_state.write().await;
+						writable.trajectory.update();
+						writable.trajectory.pos
+					};
 					if (pp.y - loot_obj.y).pow(2) + (pp.x - loot_obj.x).pow(2) > LOOT_RADIUS.pow(2){
 						if let Some(client) = clr.get(private_id){
 							client.transmit(&ServerMessage::LootReject(loot_id), Some(format!("{:x}", xxh3_64(private_id.as_bytes())))).await?;
