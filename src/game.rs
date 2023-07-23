@@ -299,7 +299,7 @@ fn line_circle_intersect(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> bool{
 impl Trajectory {
 	pub fn live(&self) -> Trajectory{
 		let mut result = self.clone();
-		const DELTA: f32 = 0.005; //5ms time steps
+		const DELTA: f32 = 0.016666; //5ms time steps
 		let spin_speed = match result.spin_direction {
 			PlayerRotation::Clockwise => 1.0,
 			PlayerRotation::AntiClockwise => -1.0,

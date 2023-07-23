@@ -66,7 +66,7 @@ pub async fn serve_page() -> Result<impl Reply> {
 }
 
 fn default_state() -> PlayerState {
-	let normal = Normal::new(0.0, 100.0).unwrap();
+	let normal = Normal::new(-500.0, 500.0).unwrap();
 	let pos_x = normal.sample(&mut rand::thread_rng());
 	let pos_y = normal.sample(&mut rand::thread_rng());
 	println!("x: {}", pos_x);

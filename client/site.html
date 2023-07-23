@@ -729,11 +729,11 @@
 						}
 						return [mag * xdiff / dist, mag * ydiff / dist];
 					})
-					.reduce(([a,b],[c,d]) => [a+c,b+d].map(v => v*deltaTime));
+					.reduce(([a,b],[c,d]) => [a+c,b+d]);
 				console.log(`${pull_x} ${pull_y}`);
 				const current_rotation_speed = rotation_speed*({"Clockwise":1,"AntiClockwise":-1})[player.p.spinDir] || 0;
-				player.p.vel.x += pull_x;
-				player.p.vel.y += pull_y;
+				player.p.vel.x += pull_x*deltaTime;
+				player.p.vel.y += pull_y*deltaTime;
 				if (player.p.propelling){
 					player.p.vel.x += Math.cos(player.child.rotation - PI/2)*ACCELERATION*deltaTime;
 					player.p.vel.y += Math.sin(player.child.rotation - PI/2)*ACCELERATION*deltaTime;
