@@ -26,29 +26,15 @@ const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 const ACCELERATION: f32 = 200.0; //player acceleration
 const PROPEL_DIRECTION: f32 = -PI/2.0;
 
-const G: f32 = 1.0;
+const G: f32 = 20.0;
 
-const BODIES: [Body; 3] = [
+const BODIES: [Body; 1] = [
 	Body {
 		pos: Vector{
 			x: 0.0,
 			y: 0.0,
 		},
-		radius: 5.0,
-	},
-	Body {
-		pos: Vector{
-			x: 10.0,
-			y: 10.0,
-		},
-		radius: 5.0,
-	},
-	Body {
-		pos: Vector{
-			x: -10.0,
-			y: 5.0,
-		},
-		radius: 5.0,
+		radius: 300.0,
 	},
 ];
 
