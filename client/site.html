@@ -175,10 +175,10 @@
 		const bodies_container = new PIXI.Container();
 
 		//higher zindex makes it appear on top
-		bullets_container.zIndex = 0;
-		players_container.zIndex = 1;
-		bodies_container.zIndex = 2;
-		loot_container.zIndex = 3;
+		bullets_container.zIndex = 1;
+		players_container.zIndex = 2;
+		bodies_container.zIndex = 3;
+		loot_container.zIndex = 4;
 
 		world.addChild(players_container);
 		world.addChild(loot_container);
@@ -724,13 +724,9 @@
 						let powsum = xdiff*xdiff + ydiff*ydiff;
 						let mag = G * body.radius*body.radius*PI / powsum;
 						let dist = Math.sqrt(powsum);
-						if (!isNaN(shallow_copy.x) && !isNaN(shallow_copy.y)){
-							console.log(`not nan: ${powsum} ${mag} ${dist}`);
-						}
 						return [mag * xdiff / dist, mag * ydiff / dist];
 					})
 					.reduce(([a,b],[c,d]) => [a+c,b+d]);
-				console.log(`${pull_x} ${pull_y}`);
 				const current_rotation_speed = rotation_speed*({"Clockwise":1,"AntiClockwise":-1})[player.p.spinDir] || 0;
 				player.p.vel.x += pull_x*deltaTime;
 				player.p.vel.y += pull_y*deltaTime;
@@ -757,6 +753,7 @@
 					bullets_container.children[i].scale.x-fadeRate*deltaTime
 				);
 			}
+			console.log(bullets_container.children.length);
 			//remove the gunshots from memory
 			bullets_container.children = bullets_container.children.filter(child => child.scale.x > 0.01);
 
@@ -780,7 +777,7 @@
 		});
 
 		ticker.speed = 1;
-		ticker.minFPS = 2;
+		ticker.minFPS = 30;
 		ticker.maxFPS = 60;
 		ticker.start();
 
