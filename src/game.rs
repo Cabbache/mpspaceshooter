@@ -18,6 +18,10 @@ use crate::Clients;
 use crate::Client;
 use crate::WorldLoot;
 use crate::handler::spawn_from_prev;
+use lazy_static::lazy_static;
+
+//#[macro_use]
+//extern crate lazy_static;
 
 const RADIANS_PER_SECOND: f32 = PI; //player rotation speed
 const PLAYER_RADIUS: f32 = 25.0; //players have circular hitbox
@@ -25,8 +29,15 @@ const LOOT_RADIUS: f32 = 25.0; //players must be within this distance to claim
 const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 const ACCELERATION: f32 = 200.0; //player acceleration
 const PROPEL_DIRECTION: f32 = -PI/2.0;
+const G: f32 = 20.0; //Gravitational constant
+const TIMESTEP_FPS: f32 = 60.0;
+const DRAG: f32 = 0.94; //velocity is multiplied by this every second
 
-const G: f32 = 20.0;
+//Calculated
+const TIMESTEP: f32 = 1f32 / TIMESTEP_FPS;
+lazy_static! {
+	static ref DRAGSTEP: f32 = DRAG.powf(1f32 / TIMESTEP_FPS);
+}
 
 const BODIES: [Body; 1] = [
 	Body {
@@ -299,7 +310,6 @@ fn line_circle_intersect(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> bool{
 impl Trajectory {
 	pub fn live(&self) -> Trajectory{
 		let mut result = self.clone();
-		const DELTA: f32 = 0.016666; //5ms time steps
 		let spin_speed = match result.spin_direction {
 			PlayerRotation::Clockwise => 1.0,
 			PlayerRotation::AntiClockwise => -1.0,
@@ -308,7 +318,7 @@ impl Trajectory {
 		let seconds = (Instant::now() - result.time).as_secs_f32();
 		let mut step: f32 = 0f32;
 		while step < seconds{
-			let increment = f32::min(seconds - step, DELTA);
+			let increment = f32::min(seconds - step, TIMESTEP);
 			result.pos.x += result.vel.x * increment;
 			result.pos.y += result.vel.y * increment;
 			for body in BODIES {
@@ -321,6 +331,8 @@ impl Trajectory {
 				result.vel.x += (current_spin + PROPEL_DIRECTION).cos()*ACCELERATION*increment;
 				result.vel.y += (current_spin + PROPEL_DIRECTION).sin()*ACCELERATION*increment;
 			}
+			result.vel.x *= *DRAGSTEP;
+			result.vel.y *= *DRAGSTEP;
 			step += increment;
 		}
 		result.spin += spin_speed * seconds;

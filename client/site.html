@@ -712,7 +712,11 @@
 		document.body.appendChild(app.view);
 		openWebSocket();
 
-		const ticker = PIXI.Ticker.shared.add(delta => {
+		const PhysicsTicker = PIXI.Ticker.shared.add(delta => {
+
+		});
+
+		const GraphicsTicker = PIXI.Ticker.shared.add(delta => {
 			const deltaTime = delta / (1000*PIXI.settings.TARGET_FPMS);
 			fps_text.text = `fps: ${Math.round(PIXI.Ticker.shared.FPS)}`;
 			Object.values(gameState).forEach(player => {
@@ -776,10 +780,15 @@
 			});
 		});
 
-		ticker.speed = 1;
-		ticker.minFPS = 30;
-		ticker.maxFPS = 60;
-		ticker.start();
+		PhyshicsTicker.speed = 1;
+		PhyshicsTicker.minFPS = 20;
+		PhyshicsTicker.maxFPS = 20;
+		PhyshicsTicker.start();
+
+		GraphicsTicker.speed = 1;
+		GraphicsTicker.minFPS = 30;
+		GraphicsTicker.maxFPS = 60;
+		GraphicsTicker.start();
 
 		window.addEventListener("resize", function(){
 			app.renderer.resize(window.innerWidth, window.innerHeight);
