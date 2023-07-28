@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::f32::consts::{PI};
-use std::time::Instant;
+use std::time::{Instant, Duration};
 use std::error::Error;
 
 use futures::future::join_all;
@@ -30,7 +30,7 @@ const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 const ACCELERATION: f32 = 200.0; //player acceleration
 const PROPEL_DIRECTION: f32 = -PI/2.0;
 const G: f32 = 20.0; //Gravitational constant
-const TIMESTEP_FPS: f32 = 30.0;
+const TIMESTEP_FPS: f32 = 8.0; //around 20 is good
 const DRAG: f32 = 0.94; //velocity is multiplied by this every second
 
 //Calculated
@@ -316,27 +316,25 @@ impl Trajectory {
 			_ => 0.0,
 		} * RADIANS_PER_SECOND;
 		let seconds = (Instant::now() - result.time).as_secs_f32();
-		let mut step: f32 = 0f32;
-		while step < seconds{
-			let increment = f32::min(seconds - step, TIMESTEP);
-			result.pos.x += result.vel.x * increment;
-			result.pos.y += result.vel.y * increment;
+		let ctr = (seconds / TIMESTEP) as u32;
+		for _ in 1..=ctr {
+			result.pos.x += result.vel.x * TIMESTEP;
+			result.pos.y += result.vel.y * TIMESTEP;
 			for body in BODIES {
 				let pull = body.pull(&result.pos);
-				result.vel.x += pull.x * increment;
-				result.vel.y += pull.y * increment;
+				result.vel.x += pull.x * TIMESTEP;
+				result.vel.y += pull.y * TIMESTEP;
 			}
+			result.spin += spin_speed * TIMESTEP;
 			if result.propelling {
-				let current_spin = result.spin + spin_speed * step;
-				result.vel.x += (current_spin + PROPEL_DIRECTION).cos()*ACCELERATION*increment;
-				result.vel.y += (current_spin + PROPEL_DIRECTION).sin()*ACCELERATION*increment;
+				result.vel.x += (result.spin + PROPEL_DIRECTION).cos()*ACCELERATION * TIMESTEP;
+				result.vel.y += (result.spin + PROPEL_DIRECTION).sin()*ACCELERATION * TIMESTEP;
 			}
-			result.vel.x *= *DRAGSTEP;
-			result.vel.y *= *DRAGSTEP;
-			step += increment;
+			//result.vel.x *= *DRAGSTEP;
+			//result.vel.y *= *DRAGSTEP;
 		}
-		result.spin += spin_speed * seconds;
-		result.time = Instant::now();
+		let increment = Duration::from_secs_f32(TIMESTEP * (ctr as f32));
+		result.time += increment;
 		result
 	}
 

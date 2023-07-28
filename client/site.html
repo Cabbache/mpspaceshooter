@@ -131,7 +131,7 @@
 		const PI = 3.14159265358979323;
 		const ACCELERATION = 200.0;
 		const G = 20.0;
-		const TIMESTEP_FPS = 30;
+		const TIMESTEP_FPS = 8;
 
 		const bullet_distance = 500;
 		const player_speed = 200;
@@ -426,19 +426,14 @@
 			gameState[broadcaster].p.propelling = content.propel;
 			gameState[broadcaster].p.vel.x = content.vel.x;
 			gameState[broadcaster].p.vel.y = content.vel.y;
-			if (broadcaster == public_id){
-				world.pivot.x = content.pos.x;
-				world.pivot.y = content.pos.y;
-			} else {
-				gameState[broadcaster].graphics.x = content.pos.x;
-				gameState[broadcaster].graphics.y = content.pos.y;
-			}
+			gameState[broadcaster].p.pos.x = content.pos.x;
+			gameState[broadcaster].p.pos.y = content.pos.y;
 		}
 
 		const handle_rotationupdate = function(content){
 			let broadcaster = content["from"];
 			gameState[broadcaster].p.spinDir = content.direction;
-			gameState[broadcaster].child.rotation = content.spin;
+			gameState[broadcaster].p.spin = content.spin;
 		}
 
 		const handle_trigUpdate = function(content){
@@ -715,40 +710,51 @@
 		openWebSocket();
 
 		var physics_counter = 0;
-		const PhysicsTicker = PIXI.Ticker.shared.add(delta => {
+		var graphics_counter = 0;
+		const GraphicsTicker = PIXI.Ticker.shared.add(delta => {
+			fps_text.text = `fps: ${Math.round(PIXI.Ticker.shared.FPS)}`;
+
 			const deltaTime = delta / (1000*PIXI.settings.TARGET_FPMS);
+
+			graphics_counter += deltaTime;
 			physics_counter += deltaTime;
 			while (physics_counter > TIMESTEP) {
 				physics_counter-=TIMESTEP;
 				Object.values(gameState).forEach(player => {
-					const shallow_copy = player.p.public_id == public_id ? world.pivot:player.graphics
+					player.p.pos.x += player.p.vel.x * TIMESTEP;
+					player.p.pos.y += player.p.vel.y * TIMESTEP;
 					const [pull_x, pull_y] = bodies
 						.map(body => {
-							let xdiff = body.pos.x - shallow_copy.x;
-							let ydiff = body.pos.y - shallow_copy.y;
+							let xdiff = body.pos.x - player.p.pos.x;
+							let ydiff = body.pos.y - player.p.pos.y;
 							let powsum = xdiff*xdiff + ydiff*ydiff;
 							let mag = G * body.radius*body.radius*PI / powsum;
 							let dist = Math.sqrt(powsum);
 							return [mag * xdiff / dist, mag * ydiff / dist];
 						})
 						.reduce(([a,b],[c,d]) => [a+c,b+d]);
-					const current_rotation_speed = rotation_speed*({"Clockwise":1,"AntiClockwise":-1})[player.p.spinDir] || 0;
-					player.p.vel.x += pull_x*TIMESTEP;
-					player.p.vel.y += pull_y*TIMESTEP;
-					if (player.p.propelling){
-						player.p.vel.x += Math.cos(player.child.rotation - PI/2)*ACCELERATION*TIMESTEP;
-						player.p.vel.y += Math.sin(player.child.rotation - PI/2)*ACCELERATION*TIMESTEP;
-					}
-					player.child.rotation += current_rotation_speed * TIMESTEP;
-					shallow_copy.x += player.p.vel.x*TIMESTEP;
-					shallow_copy.y += player.p.vel.y*TIMESTEP;
-				});
-			}
-		});
+					player.p.vel.x += pull_x * TIMESTEP;
+					player.p.vel.y += pull_y * TIMESTEP;
 
-		const GraphicsTicker = PIXI.Ticker.shared.add(delta => {
-			const deltaTime = delta / (1000*PIXI.settings.TARGET_FPMS);
-			fps_text.text = `fps: ${Math.round(PIXI.Ticker.shared.FPS)}`;
+					const current_rotation_speed = rotation_speed*({"Clockwise":1,"AntiClockwise":-1})[player.p.spinDir] || 0;
+					player.p.spin += current_rotation_speed * TIMESTEP;
+					if (player.p.propelling){
+						player.p.vel.x += Math.cos(player.p.spin - PI/2)*ACCELERATION * TIMESTEP;
+						player.p.vel.y += Math.sin(player.p.spin - PI/2)*ACCELERATION * TIMESTEP;
+					}
+				});
+				graphics_counter = 0;
+			}
+			
+			Object.values(gameState).forEach(player => {
+				const shallow_copy = player.p.public_id == public_id ? world.pivot:player.graphics
+
+				//lerp the positions
+				const current_rotation_speed = rotation_speed*({"Clockwise":1,"AntiClockwise":-1})[player.p.spinDir] || 0;
+				shallow_copy.x = player.p.pos.x + player.p.vel.x*graphics_counter;
+				shallow_copy.y = player.p.pos.y + player.p.vel.y*graphics_counter;
+				player.child.rotation = player.p.spin + current_rotation_speed*graphics_counter;
+			});
 
 			const tile_x = Math.floor(world.pivot.x / seamless_texture.width);
 			const tile_y = Math.floor(world.pivot.y / seamless_texture.height);
@@ -784,11 +790,6 @@
 				socket.send(JSON.stringify({"t":"ClaimLoot","c":{"loot_id": loot_id}}));
 			});
 		});
-
-		PhysicsTicker.speed = 1;
-		PhysicsTicker.minFPS = TIMESTEP_FPS;
-		PhysicsTicker.maxFPS = TIMESTEP_FPS;
-		PhysicsTicker.start();
 
 		GraphicsTicker.speed = 1;
 		GraphicsTicker.minFPS = 30;
