@@ -30,7 +30,7 @@ const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 const ACCELERATION: f32 = 200.0; //player acceleration
 const PROPEL_DIRECTION: f32 = -PI/2.0;
 const G: f32 = 20.0; //Gravitational constant
-const TIMESTEP_FPS: f32 = 60.0;
+const TIMESTEP_FPS: f32 = 30.0;
 const DRAG: f32 = 0.94; //velocity is multiplied by this every second
 
 //Calculated
