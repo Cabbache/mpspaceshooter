@@ -1,7 +1,6 @@
 use std::collections::HashMap;
-use std::f32::consts::{PI};
-use std::time::{Instant, Duration};
 use std::error::Error;
+use std::f32::consts::PI;
 
 use futures::future::join_all;
 use num_traits::{Pow};
@@ -18,36 +17,15 @@ use crate::Clients;
 use crate::Client;
 use crate::WorldLoot;
 use crate::handler::spawn_from_prev;
-use lazy_static::lazy_static;
+
+use trajectory::{Trajectory, Body, Vector};
 
 //#[macro_use]
 //extern crate lazy_static;
 
-const RADIANS_PER_SECOND: f32 = PI; //player rotation speed
 const PLAYER_RADIUS: f32 = 25.0; //players have circular hitbox
 const LOOT_RADIUS: f32 = 25.0; //players must be within this distance to claim
 const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
-const ACCELERATION: f32 = 200.0; //player acceleration
-const PROPEL_DIRECTION: f32 = -PI/2.0;
-const G: f32 = 20.0; //Gravitational constant
-const TIMESTEP_FPS: f32 = 8.0; //around 20 is good
-const DRAG: f32 = 0.94; //velocity is multiplied by this every second
-
-//Calculated
-const TIMESTEP: f32 = 1f32 / TIMESTEP_FPS;
-lazy_static! {
-	static ref DRAGSTEP: f32 = DRAG.powf(1f32 / TIMESTEP_FPS);
-}
-
-const BODIES: [Body; 1] = [
-	Body {
-		pos: Vector{
-			x: 0.0,
-			y: 0.0,
-		},
-		radius: 300.0,
-	},
-];
 
 #[derive(Serialize, Debug, Clone)]
 pub enum LootContent{
@@ -70,11 +48,7 @@ pub struct Color{
 	pub b: i32,
 }
 
-#[derive(Serialize, Clone, Debug)]
-pub struct Body{
-	pub pos: Vector,
-	pub radius: f32,
-}
+
 
 #[derive(Serialize, Debug, Clone)]
 pub struct Weapon{
@@ -85,7 +59,7 @@ pub struct Weapon{
 #[derive(Debug, Clone)]
 pub enum WeaponType{
 	Pistol,
-	Grenade {press_time: Instant}
+	Grenade {press_time: f32}
 }
 
 impl Serialize for WeaponType {
@@ -104,22 +78,6 @@ impl Serialize for WeaponType {
 pub struct Inventory{
 	pub selection: u8,
 	pub weapons: HashMap<u8, Weapon>,
-}
-
-#[derive(Serialize, Debug, Clone)]
-pub struct Vector{
-	pub x: f32,
-	pub y: f32,
-}
-
-#[derive(Debug, Clone)]
-pub struct Trajectory{
-	pub propelling: bool,
-	pub pos: Vector,
-	pub vel: Vector,
-	pub spin: f32,
-	pub spin_direction: PlayerRotation,
-	pub time: Instant,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -231,13 +189,6 @@ impl Client {
 	}
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, Eq, PartialEq, Hash, Copy)]
-pub enum PlayerRotation {
-	AntiClockwise,
-	Clockwise,
-	Stopped
-}
-
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 #[serde(tag = "t", content = "c")]
 pub enum ClientMessage{
@@ -245,7 +196,7 @@ pub enum ClientMessage{
 	AckPong,
 	Propel,
 	PropelStop,
-	Rotation {dir: PlayerRotation},
+	Rotation {dir: i8},
 	ChangeSlot {slot: u8},
 	TrigUpdate {pressed: bool},
 	ClaimLoot {loot_id: String},
@@ -266,7 +217,7 @@ pub enum ServerMessage{
 		bodies: Vec<Body>,
 	},
 	PropelUpdate { propel: bool, pos: Vector, vel: Vector, from: String },
-	RotationUpdate { direction: PlayerRotation, spin: f32, from: String },
+	RotationUpdate { direction: i8, spin: f32, from: String },
 	TrigUpdate {by: String, weptype: WeaponType, pressed: bool },
 	PlayerDeath {loot: LootObject, loot_uuid: String, from: String },
 	LootCollected {loot_id: String, collector: String },
@@ -304,82 +255,6 @@ fn line_circle_intersect(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> bool{
 	let r2_good = PISTOL_REACH > r2 && r2 > 0f32;
 
 	r1_good || r2_good
-}
-
-//TODO make cos/sin faster by storing the results
-impl Trajectory {
-	pub fn live(&self) -> Trajectory{
-		let mut result = self.clone();
-		let spin_speed = match result.spin_direction {
-			PlayerRotation::Clockwise => 1.0,
-			PlayerRotation::AntiClockwise => -1.0,
-			_ => 0.0,
-		} * RADIANS_PER_SECOND;
-		let seconds = (Instant::now() - result.time).as_secs_f32();
-		let ctr = (seconds / TIMESTEP) as u32;
-		for _ in 1..=ctr {
-			result.pos.x += result.vel.x * TIMESTEP;
-			result.pos.y += result.vel.y * TIMESTEP;
-			for body in BODIES {
-				let pull = body.pull(&result.pos);
-				result.vel.x += pull.x * TIMESTEP;
-				result.vel.y += pull.y * TIMESTEP;
-			}
-			result.spin += spin_speed * TIMESTEP;
-			if result.propelling {
-				result.vel.x += (result.spin + PROPEL_DIRECTION).cos()*ACCELERATION * TIMESTEP;
-				result.vel.y += (result.spin + PROPEL_DIRECTION).sin()*ACCELERATION * TIMESTEP;
-			}
-			//result.vel.x *= *DRAGSTEP;
-			//result.vel.y *= *DRAGSTEP;
-		}
-		let increment = Duration::from_secs_f32(TIMESTEP * (ctr as f32));
-		result.time += increment;
-		result
-	}
-
-	//live rotation doesnt need mutation
-	pub fn live_rot(&self) -> f32 {
-		let seconds = (Instant::now() - self.time).as_secs_f32();
-		(match self.spin_direction {
-			PlayerRotation::Stopped => 0.0,
-			PlayerRotation::AntiClockwise => -seconds,
-			PlayerRotation::Clockwise => seconds,
-		}) * RADIANS_PER_SECOND + self.spin
-	}
-
-	pub fn update(&mut self){
-		*self = self.live();
-	}
-
-	pub fn update_rotation(&mut self, new_direction: &PlayerRotation){
-		self.update();
-		self.spin_direction = *new_direction;
-	}
-
-	pub fn update_propulsion(&mut self, on: bool){
-		self.update();
-		self.propelling = on;
-	}
-}
-
-impl Body {
-	//returns the acceleration imposed by itself at a point
-	fn pull(&self, pos: &Vector) -> Vector{
-		let xdiff = self.pos.x - pos.x;
-		let ydiff = self.pos.y - pos.y;
-		let powsum = xdiff.powf(2.0) + ydiff.powf(2.0);
-		let mag = G * self.mass() / powsum;
-		let dist = powsum.sqrt();
-		Vector{
-			x: mag * xdiff / dist,
-			y: mag * ydiff / dist,
-		}
-	}
-
-	fn mass(&self) -> f32 {
-		self.radius*self.radius*PI
-	}
 }
 
 //TODO capture the current time and pass it to live_pos and live_rot
@@ -467,7 +342,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			}
 			let new_trajectory = {
 				let mut writeable = sender_state.write().await;
-				writeable.trajectory.update_rotation(&dir);
+				writeable.trajectory.update_rotation(dir);
 				&writeable.trajectory.clone()
 			};
 			broadcast(
@@ -507,7 +382,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 					&ServerMessage::GameState{
 						pstates: players,
 						worldloot: world_loot.read().await.clone(),
-						bodies: BODIES.to_vec(),
+						bodies: trajectory::BODIES.to_vec(),
 					},
 					Some(public_id)
 				).await?;

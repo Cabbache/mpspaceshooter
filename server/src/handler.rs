@@ -6,7 +6,6 @@ use xxhash_rust::xxh3::xxh3_64;
 use uuid::Uuid;
 use serde_json::Value;
 use std::sync::Arc;
-use std::time::Instant;
 use std::collections::HashMap;
 use tokio::sync::RwLock;
 use std::fs;
@@ -14,9 +13,7 @@ use std::fs;
 use crate::PlayerState;
 use crate::WorldLoot;
 use crate::game::Color;
-use crate::game::Vector;
-use crate::game::Trajectory;
-use crate::game::PlayerRotation;
+use trajectory::{Trajectory, Vector, current_time};
 use crate::game::Inventory;
 use crate::game::Weapon;
 use crate::game::WeaponType;
@@ -83,16 +80,16 @@ fn default_state() -> PlayerState {
 			selection: 0,
 			weapons: HashMap::from([
 				(0, Weapon{ weptype: WeaponType::Pistol, ammo: 50 }),
-				(1, Weapon{ weptype: WeaponType::Grenade {press_time: Instant::now()}, ammo: 2 }),
+				(1, Weapon{ weptype: WeaponType::Grenade {press_time: current_time()}, ammo: 2 }),
 			])
 		},
 		trajectory: Trajectory{
 			propelling: false,
 			pos: Vector{ x: pos_x, y: pos_y},
 			vel: Vector{x: 0.0, y: 0.0},
-			spin_direction: PlayerRotation::Stopped,
+			spin_direction: 0,
 			spin: 0.0,
-			time: Instant::now(),
+			time: current_time(),
 		}
 	}
 }

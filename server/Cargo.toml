@@ -1,0 +1,20 @@
+[package]
+name = "game"
+version = "0.1.0"
+authors = ["Cabbache <cabbache@cabbache.net>"]
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.19.2", features = ["macros", "sync", "rt-multi-thread"] }
+tokio-stream = "0.1.9"
+warp = "0.3"
+serde = {version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+futures = { version = "0.3", default-features = false }
+uuid = { version = "1.1.2", features = ["serde", "v4"] }
+num-traits = "0.2.15"
+xxhash-rust = { version = "0.8.6", features = ["xxh3", "xxh64"] }
+rand = "0.8.5"
+rand_distr = "0.4.3"
+lazy_static = "1.4.0"
+trajectory = { path = "../trajectory" }
