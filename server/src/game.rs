@@ -20,9 +20,6 @@ use crate::handler::spawn_from_prev;
 
 use trajectory::{Trajectory, Body, Vector};
 
-//#[macro_use]
-//extern crate lazy_static;
-
 const PLAYER_RADIUS: f32 = 25.0; //players have circular hitbox
 const LOOT_RADIUS: f32 = 25.0; //players must be within this distance to claim
 const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
@@ -47,8 +44,6 @@ pub struct Color{
 	pub g: i32,
 	pub b: i32,
 }
-
-
 
 #[derive(Serialize, Debug, Clone)]
 pub struct Weapon{
