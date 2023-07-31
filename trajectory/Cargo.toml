@@ -11,4 +11,5 @@ serde = { version = "1.0.179", features = ["derive"] }
 wasm-bindgen = "0.2.87"
 
 [lib]
-path = "src/lib.rs"
+#path = "src/lib.rs"
+crate-type = ["cdylib","rlib"]
