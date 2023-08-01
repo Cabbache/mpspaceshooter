@@ -262,6 +262,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			return Ok(());
 		}
 	};
+	println!("{}", current_time());
 
 	let clr = clients.read().await;
 	let sender_state = match clr.get(private_id) {

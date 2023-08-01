@@ -666,11 +666,11 @@
 			if (name == keyright || name == keyleft){
 				let response = "";
 				if (keymap[keyleft] == keymap[keyright]){
-					response = "Stopped";
+					response = 0;
 				} else if (keymap[keyleft]){
-					response = "AntiClockwise";
+					response = -1;
 				} else if (keymap[keyright]){
-					response = "Clockwise";
+					response = 1;
 				}
 				socket.send(
 					JSON.stringify({
@@ -736,7 +736,7 @@
 					player.p.vel.x += pull_x * TIMESTEP;
 					player.p.vel.y += pull_y * TIMESTEP;
 
-					const current_rotation_speed = rotation_speed*({"Clockwise":1,"AntiClockwise":-1})[player.p.spinDir] || 0;
+					const current_rotation_speed = rotation_speed * player.p.spinDir;
 					player.p.spin += current_rotation_speed * TIMESTEP;
 					if (player.p.propelling){
 						player.p.vel.x += Math.cos(player.p.spin - PI/2)*ACCELERATION * TIMESTEP;
@@ -750,7 +750,7 @@
 				const shallow_copy = player.p.public_id == public_id ? world.pivot:player.graphics
 
 				//lerp the positions
-				const current_rotation_speed = rotation_speed*({"Clockwise":1,"AntiClockwise":-1})[player.p.spinDir] || 0;
+				const current_rotation_speed = rotation_speed * player.p.spinDir;
 				shallow_copy.x = player.p.pos.x + player.p.vel.x*graphics_counter;
 				shallow_copy.y = player.p.pos.y + player.p.vel.y*graphics_counter;
 				player.child.rotation = player.p.spin + current_rotation_speed*graphics_counter;

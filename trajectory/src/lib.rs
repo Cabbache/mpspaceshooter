@@ -1,4 +1,3 @@
-use std::time::{SystemTime, UNIX_EPOCH};
 use lazy_static::lazy_static;
 use wasm_bindgen::prelude::*;
 use std::f32::consts::{PI};
@@ -36,7 +35,7 @@ pub struct Trajectory{
 	pub vel: Vector,
 	pub spin: f32,
 	pub spin_direction: i8, //-1,0,1
-	pub time: f32,
+	pub time: f32, //TODO move time outside trajectory?
 }
 
 //TODO make cos/sin faster by storing the results
@@ -121,11 +120,4 @@ impl Body {
 	fn mass(&self) -> f32 {
 		self.radius*self.radius*PI
 	}
-}
-
-//seconds since epoch
-pub fn current_time() -> f32{
-	let now = SystemTime::now();
-	let duration_since_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
-	duration_since_epoch.as_secs_f32()
 }
