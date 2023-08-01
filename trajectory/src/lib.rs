@@ -8,13 +8,14 @@ const PROPEL_DIRECTION: f32 = -PI/2.0;
 const RADIANS_PER_SECOND: f32 = PI; //player rotation speed
 const G: f32 = 20.0; //Gravitational constant
 
-const TIMESTEP_FPS: f32 = 8.0; //around 20 is good
+const TIMESTEP_FPS: u32 = 8; //around 20 is good
 const DRAG: f32 = 0.94; //velocity is multiplied by this every second
 
 //Calculated
-const TIMESTEP: f32 = 1f32 / TIMESTEP_FPS;
+const TIMESTEP_MILLIS: u32 = 1000 / TIMESTEP_FPS;
+const TIMESTEP_SECS: f32 = 1f32 / TIMESTEP_FPS as f32;
 lazy_static! {
-	static ref DRAGSTEP: f32 = DRAG.powf(1f32 / TIMESTEP_FPS);
+	static ref DRAGSTEP: f32 = DRAG.powf(1f32 / TIMESTEP_FPS as f32);
 }
 
 pub const BODIES: [Body; 1] = [
@@ -35,55 +36,54 @@ pub struct Trajectory{
 	pub vel: Vector,
 	pub spin: f32,
 	pub spin_direction: i8, //-1,0,1
-	pub time: f32, //TODO move time outside trajectory?
+	pub time: u64,
 }
 
 //TODO make cos/sin faster by storing the results
 #[wasm_bindgen]
 impl Trajectory {
-	pub fn live(&self) -> Trajectory{
+	pub fn live(&self, time: u64) -> Trajectory{
 		let mut result = self.clone();
 		let spin_speed = (result.spin_direction as f32) * RADIANS_PER_SECOND;
-		let seconds = current_time() - result.time;
-		let ctr = (seconds / TIMESTEP) as u32;
+		let elapsed = (time - result.time) as u32; //casting to u32 is probably safe (500 hours need to pass)
+		let ctr = elapsed / TIMESTEP_MILLIS;
 		for _ in 1..=ctr {
-			result.pos.x += result.vel.x * TIMESTEP;
-			result.pos.y += result.vel.y * TIMESTEP;
+			result.pos.x += result.vel.x * TIMESTEP_SECS;
+			result.pos.y += result.vel.y * TIMESTEP_SECS;
 			for body in BODIES {
 				let pull = body.pull(&result.pos);
-				result.vel.x += pull.x * TIMESTEP;
-				result.vel.y += pull.y * TIMESTEP;
+				result.vel.x += pull.x * TIMESTEP_SECS;
+				result.vel.y += pull.y * TIMESTEP_SECS;
 			}
-			result.spin += spin_speed * TIMESTEP;
+			result.spin += spin_speed * TIMESTEP_SECS;
 			if result.propelling {
-				result.vel.x += (result.spin + PROPEL_DIRECTION).cos()*ACCELERATION * TIMESTEP;
-				result.vel.y += (result.spin + PROPEL_DIRECTION).sin()*ACCELERATION * TIMESTEP;
+				result.vel.x += (result.spin + PROPEL_DIRECTION).cos()*ACCELERATION * TIMESTEP_SECS;
+				result.vel.y += (result.spin + PROPEL_DIRECTION).sin()*ACCELERATION * TIMESTEP_SECS;
 			}
 			//result.vel.x *= *DRAGSTEP;
 			//result.vel.y *= *DRAGSTEP;
 		}
-		let increment = TIMESTEP * (ctr as f32);
-		result.time += increment;
+		result.time += (TIMESTEP_MILLIS * ctr) as u64;
 		result
 	}
 
 	//live rotation doesnt need mutation
-	pub fn live_rot(&self) -> f32 {
-		let seconds = current_time() - self.time;
-		(self.spin_direction as f32) * seconds * RADIANS_PER_SECOND + self.spin
+	pub fn live_rot(&self, time: u64) -> f32 {
+		let elapsed = (time - self.time) as f32 /1000f32;
+		(self.spin_direction as f32) * elapsed * RADIANS_PER_SECOND + self.spin
 	}
 
-	pub fn update(&mut self){
-		*self = self.live();
+	pub fn update(&mut self, time: u64){
+		*self = self.live(time);
 	}
 
-	pub fn update_rotation(&mut self, new_direction: i8){
-		self.update();
+	pub fn update_rotation(&mut self, new_direction: i8, time: u64){
+		self.update(time);
 		self.spin_direction = new_direction;
 	}
 
-	pub fn update_propulsion(&mut self, on: bool){
-		self.update();
+	pub fn update_propulsion(&mut self, on: bool, time: u64){
+		self.update(time);
 		self.propelling = on;
 	}
 }

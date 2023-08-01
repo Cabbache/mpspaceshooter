@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::error::Error;
 use std::f32::consts::PI;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use futures::future::join_all;
 use num_traits::{Pow};
@@ -262,6 +263,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			return Ok(());
 		}
 	};
+
 	println!("{}", current_time());
 
 	let clr = clients.read().await;
@@ -317,7 +319,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			let new_trajectory = {
 				let mut writeable = sender_state.write().await;
 				println!("before {:?}", writeable.trajectory);
-				writeable.trajectory.update_propulsion(is_propel);
+				writeable.trajectory.update_propulsion(is_propel, current_time());
 				writeable.trajectory.clone()
 			};
 			println!("after {:?}", new_trajectory);
@@ -338,7 +340,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			}
 			let new_trajectory = {
 				let mut writeable = sender_state.write().await;
-				writeable.trajectory.update_rotation(dir);
+				writeable.trajectory.update_rotation(dir, current_time());
 				&writeable.trajectory.clone()
 			};
 			broadcast(
@@ -362,7 +364,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			let players: Vec<_> = join_all(players_futures).await
 				.into_iter()
 				.filter_map(|mut lock| {
-					lock.trajectory.update();
+					lock.trajectory.update(current_time());
 					let clone = lock.clone();
 					match clone.health > 0.0 { //to only send the living ones
 						true => Some(clone),
@@ -447,7 +449,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 
 					let (ss, rr) = {
 						let mut writeable = sender_state.write().await;
-						writeable.trajectory.update();
+						writeable.trajectory.update(current_time());
 						(writeable.trajectory.pos.clone(), writeable.trajectory.spin)
 					};
 
@@ -459,7 +461,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 
 						let playerstate = {
 							let mut writable = value.state.write().await;
-							writable.trajectory.update();
+							writable.trajectory.update(current_time());
 							writable.clone()
 						};
 
@@ -528,7 +530,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				Some(loot_obj) => {
 					let pp = {
 						let mut writable = sender_state.write().await;
-						writable.trajectory.update();
+						writable.trajectory.update(current_time());
 						writable.trajectory.pos.clone()
 					};
 					if (pp.y - loot_obj.y).pow(2) + (pp.x - loot_obj.x).pow(2) > LOOT_RADIUS.pow(2){
@@ -573,4 +575,10 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 		}
 	}
 	Ok(())
+}
+
+pub fn current_time() -> u64 {
+	let now = SystemTime::now();
+	let current_time = now.duration_since(UNIX_EPOCH).expect("Broken clock");
+	current_time.as_millis() as u64
 }

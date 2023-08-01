@@ -13,10 +13,11 @@ use std::fs;
 use crate::PlayerState;
 use crate::WorldLoot;
 use crate::game::Color;
-use trajectory::{Trajectory, Vector, current_time};
+use trajectory::{Trajectory, Vector};
 use crate::game::Inventory;
 use crate::game::Weapon;
 use crate::game::WeaponType;
+use crate::game::current_time;
 
 #[derive(Serialize, Debug)]
 pub struct RegisterResponse {
@@ -80,7 +81,7 @@ fn default_state() -> PlayerState {
 			selection: 0,
 			weapons: HashMap::from([
 				(0, Weapon{ weptype: WeaponType::Pistol, ammo: 50 }),
-				(1, Weapon{ weptype: WeaponType::Grenade {press_time: current_time()}, ammo: 2 }),
+				(1, Weapon{ weptype: WeaponType::Grenade {press_time: current_time() as f32}, ammo: 2 }),
 			])
 		},
 		trajectory: Trajectory{
