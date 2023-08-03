@@ -324,22 +324,41 @@
 		const getPlayerSprite = function(player){
 			var player_container = new PIXI.Container();
 			player_container.position.set(player.pos.x, player.pos.y);
-			var square = new PIXI.Sprite(PIXI.Texture.WHITE);
-			square.anchor.set(0.5);
-			square.width = 50;
-			square.height = 50;
-			square.anchor.set(0.5);
-			square.tint = player.color.r << 16 | player.color.g << 8 | player.color.b;
-			square.rotation = player.spin;
 
+			let actualBody = new PIXI.Container();
+			actualBody.rotation = player.spin;
 			var text = new PIXI.Text(player.name, { fontFamily: "Arial", fontSize: 16, fill: 0xffffff });
 			text.anchor.set(0.5);
 			text.position.set(0, -40);
-			player_container.addChild(square);
+
+			let circle = new PIXI.Graphics();
+			circle.beginFill(player.color.r << 16 | player.color.g << 8 | player.color.b);
+			circle.drawCircle(0, 0, 25);
+			circle.endFill();
+			let circleTexture = app.renderer.generateTexture(circle);
+			circle = new PIXI.Sprite(circleTexture);
+			circle.anchor.set(0.5);
+
+			let thruster = new PIXI.Graphics();
+			thruster.beginFill(0x808080);
+			thruster.drawPolygon([
+				-20,0,
+				20,0,
+				0,-30,
+			]);
+			thruster.endFill();
+			let thrusterTexture = app.renderer.generateTexture(thruster)
+			thruster = new PIXI.Sprite(thrusterTexture);
+			thruster.anchor.set(0.5);
+			thruster.position.set(0, 30);
+
+			actualBody.addChild(circle);
+			actualBody.addChild(thruster);
+			player_container.addChild(actualBody);
 			player_container.addChild(text);
 			return {
 				container: player_container,
-				sprite: square
+				sprite: actualBody,
 			};
 		}
 
