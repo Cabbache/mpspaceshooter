@@ -329,7 +329,7 @@
 			actualBody.rotation = player.spin;
 			var text = new PIXI.Text(player.name, { fontFamily: "Arial", fontSize: 16, fill: 0xffffff });
 			text.anchor.set(0.5);
-			text.position.set(0, -40);
+			text.position.set(0, -60);
 
 			let circle = new PIXI.Graphics();
 			circle.beginFill(player.color.r << 16 | player.color.g << 8 | player.color.b);
@@ -350,10 +350,19 @@
 			let thrusterTexture = app.renderer.generateTexture(thruster)
 			thruster = new PIXI.Sprite(thrusterTexture);
 			thruster.anchor.set(0.5);
-			thruster.position.set(0, 30);
+			thruster.position.set(0, 20);
 
-			actualBody.addChild(circle);
+			let weapon = new PIXI.Sprite(PIXI.Texture.WHITE);
+			weapon.anchor.set(0.5);
+			weapon.width = 5;
+			weapon.height = 20;
+			weapon.anchor.set(0.5);
+			weapon.tint = 0x000000;
+			weapon.position.set(0, -35);
+
+			actualBody.addChild(weapon);
 			actualBody.addChild(thruster);
+			actualBody.addChild(circle);
 			player_container.addChild(actualBody);
 			player_container.addChild(text);
 			return {
@@ -500,6 +509,7 @@
 				//bullet_line.rotation = line_rotation;
 				//bullets_container.addChild(bullet_line);
 
+				//TODO offset this a bit so that it appears at tip of gun
 				const gunshot_sprite = new PIXI.Sprite(gunshot_texture);
 				gunshot_sprite.position.set(line_start_x, line_start_y);
 				gunshot_sprite.rotation = line_rotation;
