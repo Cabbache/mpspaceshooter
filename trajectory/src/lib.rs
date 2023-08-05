@@ -256,12 +256,10 @@ impl Trajectory {
 			x: self.pos.x + self.vel.x*TIMESTEP_SECS,
 			y: self.pos.y + self.vel.y*TIMESTEP_SECS,
 		};
-		//if outside dome
 		if next_pos.x.powi(2) + next_pos.y.powi(2) > DOME_RADIUS.powi(2) {
-			self.vel.reflect(&Vector{
-				x: self.pos.x,
-				y: -self.pos.y,
-			});
+			self.vel.reflect(&self.pos);
+			self.vel.x *= 0.5;
+			self.vel.y *= 0.5;
 		} else {
 			self.pos = next_pos;
 		}

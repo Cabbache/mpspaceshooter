@@ -795,13 +795,15 @@
 					const next_y = player.p.pos.y + player.p.vel.y*TIMESTEP;
 					if (next_x*next_x + next_y*next_y > dome_radius*dome_radius){
 						let mirror_x = player.p.pos.x;
-						let mirror_y = -player.p.pos.y;
+						let mirror_y = player.p.pos.y;
 						let mag = Math.sqrt(mirror_x*mirror_x + mirror_y*mirror_y);
 						mirror_x /= mag;
 						mirror_y /= mag;
 						let dot = player.p.vel.x*mirror_x + player.p.vel.y*mirror_y;
 						player.p.vel.x -= 2*dot*mirror_x;
 						player.p.vel.y -= 2*dot*mirror_y;
+						player.p.vel.x *= 0.5;
+						player.p.vel.y *= 0.5;
 					} else {
 						player.p.pos.x = next_x;
 						player.p.pos.y = next_y;
