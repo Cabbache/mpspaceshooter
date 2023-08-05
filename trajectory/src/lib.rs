@@ -9,7 +9,7 @@ use bincode::{serialize, deserialize};
 const ACCELERATION: f32 = 200.0; //player acceleration
 const PROPEL_DIRECTION: f32 = -PI/2.0;
 const RADIANS_PER_SECOND: f32 = PI; //player rotation speed
-const G: f32 = 20.0; //Gravitational constant
+const G: f32 = 2000.0; //Gravitational constant
 
 const TIMESTEP_FPS: u32 = 8; //around 20 is good
 const DRAG: f32 = 0.94; //velocity is multiplied by this every second
@@ -27,14 +27,14 @@ pub const BODIES: [Body; 2] = [
 			x: 0.0,
 			y: 0.0,
 		},
-		radius: 500.0,
+		radius: 50.0,
 	},
 	Body {
 		pos: Vector{
 			x: 500.0,
 			y: 300.0,
 		},
-		radius: 300.0,
+		radius: 30.0,
 	},
 ];
 

@@ -130,7 +130,7 @@
 		const invr2 = 0.7071067811865475;
 		const PI = 3.14159265358979323;
 		const ACCELERATION = 200.0;
-		const G = 20.0;
+		const G = 2000.0;
 		const TIMESTEP_FPS = 8;
 
 		const bullet_distance = 500;
@@ -428,13 +428,17 @@
 			Object.entries(state.bodies).forEach(([index, body]) => {
 				console.log(body);
 				var body_obj = new PIXI.Container();
-				var bodySprite = new PIXI.Sprite(PIXI.Texture.WHITE);
-				bodySprite.anchor.set(0.5);
-				bodySprite.width = 50;
-				bodySprite.height = 50;
-				bodySprite.anchor.set(0.5);
+
+				let circle = new PIXI.Graphics();
+				circle.beginFill(0x000000);
+				circle.drawCircle(0, 0, body.radius);//body.radius
+				circle.endFill();
+				let circleTexture = app.renderer.generateTexture(circle);
+				circle = new PIXI.Sprite(circleTexture);
+				circle.anchor.set(0.5);
+
 				body_obj.position.set(body.pos.x, body.pos.y);
-				body_obj.addChild(bodySprite);
+				body_obj.addChild(circle);
 				bodies_container.addChild(body_obj);
 				bodies.push(body);
 			});
