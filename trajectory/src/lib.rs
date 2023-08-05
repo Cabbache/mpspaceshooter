@@ -47,34 +47,28 @@ pub struct Trajectory{
 	pub spin: f32,
 	pub spin_direction: i8, //-1,0,1
 	pub time: u64,
+	pub collision: bool,
 }
 
 #[wasm_bindgen]
 impl Trajectory {
 	//euler's method
-	pub fn live(&self, time: u64) -> Trajectory{
-		let mut result = self.clone();
-		let spin_speed = (result.spin_direction as f32) * RADIANS_PER_SECOND;
-		let elapsed = (time - result.time) as u32; //casting to u32 is probably safe (500 hours need to pass)
+	pub fn live(&self, time: u64) -> Trajectory {
+		let mut clone = self.clone();
+		if clone.collision {
+			return clone;
+		}
+		let elapsed = (time - clone.time) as u32;
 		let ctr = elapsed / TIMESTEP_MILLIS;
 		for _ in 1..=ctr {
-			result.pos.x += result.vel.x * TIMESTEP_SECS;
-			result.pos.y += result.vel.y * TIMESTEP_SECS;
-			for body in BODIES {
-				let pull = body.pull(&result.pos);
-				result.vel.x += pull.x * TIMESTEP_SECS;
-				result.vel.y += pull.y * TIMESTEP_SECS;
+			clone.step();
+			clone.collision = clone.collides();
+			if clone.collision {
+				return clone;
 			}
-			result.spin += spin_speed * TIMESTEP_SECS;
-			if result.propelling {
-				result.vel.x += (result.spin + PROPEL_DIRECTION).cos()*ACCELERATION * TIMESTEP_SECS;
-				result.vel.y += (result.spin + PROPEL_DIRECTION).sin()*ACCELERATION * TIMESTEP_SECS;
-			}
-			//result.vel.x *= *DRAGSTEP;
-			//result.vel.y *= *DRAGSTEP;
 		}
-		result.time += (TIMESTEP_MILLIS * ctr) as u64;
-		result
+		clone.time += (TIMESTEP_MILLIS * ctr) as u64;
+		clone
 	}
 
 	//live rotation doesnt need mutation
@@ -101,6 +95,32 @@ impl Trajectory {
 		let vec: Vec<u8> = array.to_vec();
 		let trajectory: Trajectory = deserialize(&vec).unwrap();
 		trajectory
+	}
+
+	fn collides(&self) -> bool {
+		for body in BODIES{
+			if body.collides(&self.pos){
+				return true;
+			}
+		}
+		return false;
+	}
+
+	fn step(&mut self) {
+		self.pos.x += self.vel.x * TIMESTEP_SECS;
+		self.pos.y += self.vel.y * TIMESTEP_SECS;
+		for body in BODIES {
+			let pull = body.pull(&self.pos);
+			self.vel.x += pull.x * TIMESTEP_SECS;
+			self.vel.y += pull.y * TIMESTEP_SECS;
+		}
+		self.spin += (self.spin_direction as f32) * RADIANS_PER_SECOND * TIMESTEP_SECS;
+		if self.propelling {
+			self.vel.x += (self.spin + PROPEL_DIRECTION).cos()*ACCELERATION * TIMESTEP_SECS;
+			self.vel.y += (self.spin + PROPEL_DIRECTION).sin()*ACCELERATION * TIMESTEP_SECS;
+		}
+		//self.vel.x *= *DRAGSTEP;
+		//self.vel.y *= *DRAGSTEP;	
 	}
 }
 
@@ -139,6 +159,10 @@ impl Body {
 			x: mag * xdiff / dist,
 			y: mag * ydiff / dist,
 		}
+	}
+
+	fn collides(&self, pos: &Vector) -> bool {
+		self.radius.powf(2.0) < (pos.x - self.pos.x).powf(2.0) + (pos.y - self.pos.y).powf(2.0)
 	}
 
 	fn mass(&self) -> f32 {

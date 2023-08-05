@@ -91,6 +91,7 @@ fn default_state() -> PlayerState {
 			spin_direction: 0,
 			spin: 0.0,
 			time: current_time(),
+			collision: false,
 		}
 	}
 }
