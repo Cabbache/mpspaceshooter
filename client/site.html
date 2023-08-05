@@ -461,22 +461,29 @@
 			gameState[broadcaster].p.pos.x = content.pos.x;
 			gameState[broadcaster].p.pos.y = content.pos.y;
 
-			let emitJSON = JSON.parse(JSON.stringify(emitters["propel"])); //careful here
-			emitJSON.behaviors.push(
-				{
-					type: 'textureSingle',
-					config: {
-							texture: PIXI.Texture.WHITE
-						}
-				}
-			);
+			if (content.propel){
+				let emitJSON = JSON.parse(JSON.stringify(emitters["propel"])); //careful here
+				emitJSON.behaviors.push(
+					{
+						type: 'textureSingle',
+						config: {
+								texture: PIXI.Texture.WHITE
+							}
+					}
+				);
 
-			let emitter = new PIXI.particles.Emitter(
-				gameState[broadcaster].child,
-				emitJSON
-			);
-			emitter.emit = true;
-			emissions.push(emitter);
+				let emitter = new PIXI.particles.Emitter(
+					gameState[broadcaster].child,
+					emitJSON
+				);
+				emitter.emit = true;
+				emissions.push(emitter);
+				gameState[broadcaster].emitter = emitter;
+			} else {
+				if (gameState[broadcaster].emitter){
+					gameState[broadcaster].emitter.emit = false;
+				}
+			}
 		}
 
 		const handle_rotationupdate = function(content){
