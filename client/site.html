@@ -183,11 +183,18 @@
 		bodies_container.zIndex = 3;
 		loot_container.zIndex = 4;
 
+		const worldMask = new PIXI.Graphics();
+		worldMask.beginFill(0xffffff);
+		worldMask.drawCircle(0,0,2000);
+		worldMask.endFill();
+
 		world.addChild(players_container);
 		world.addChild(loot_container);
 		world.addChild(bullets_container);
 		world.addChild(bodies_container);
 		world.addChild(background);
+		world.addChild(worldMask);
+		world.mask = worldMask;
 
 		app.stage.addChild(world);
 
