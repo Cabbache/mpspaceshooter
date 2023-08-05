@@ -162,7 +162,7 @@ impl Body {
 	}
 
 	fn collides(&self, pos: &Vector) -> bool {
-		self.radius.powf(2.0) < (pos.x - self.pos.x).powf(2.0) + (pos.y - self.pos.y).powf(2.0)
+		self.radius.powf(2.0) > (pos.x - self.pos.x).powf(2.0) + (pos.y - self.pos.y).powf(2.0)
 	}
 
 	fn mass(&self) -> f32 {
