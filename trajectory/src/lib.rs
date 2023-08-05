@@ -8,6 +8,7 @@ use serde::{Deserialize,Serialize};
 use bincode::{serialize, deserialize};
 
 pub const PLAYER_RADIUS: f32 = 25.0;
+const DOME_RADIUS: f32 = 2000.0;
 const ACCELERATION: f32 = 200.0; //player acceleration
 const PROPEL_DIRECTION: f32 = -PI/2.0;
 const RADIANS_PER_SECOND: f32 = PI; //player rotation speed
@@ -29,7 +30,7 @@ pub const BODIES: [Body; 20] = [
       x: 0.0,
       y: 0.0,
     },  
-    radius: 50.0,
+    radius: 100.0,
   },  
   Body {
     pos: Vector{
@@ -252,6 +253,13 @@ impl Trajectory {
 	fn step(&mut self) {
 		self.pos.x += self.vel.x * TIMESTEP_SECS;
 		self.pos.y += self.vel.y * TIMESTEP_SECS;
+//		//if outside dome
+//		if self.pos.x.powf(2.0) + self.pos.y.powf(2.0) > DOME_RADIUS.powf(2.0) {
+//			self.vel.reflect(&Vector{
+//				x: self.pos.x,
+//				y: -self.pos.y,
+//			});
+//		}
 		let pull = Trajectory::pull_sum(&self.pos);
 		self.vel.x += pull.x;
 		self.vel.y += pull.y;
@@ -296,6 +304,31 @@ impl Hash for Trajectory {
 pub struct Vector{
 	pub x: f32,
 	pub y: f32,
+}
+
+impl Vector {
+	pub fn mag(&self) -> f32 {
+		(self.x.powf(2.0) + self.y.powf(2.0)).sqrt()
+	}
+
+	pub fn normalized(&self) -> Vector {
+		let mag = self.mag();
+		Vector{
+			x: self.x / mag,
+			y: self.y / mag,
+		}
+	}
+
+	pub fn reflect(&mut self, n: &Vector) {
+		let normalized = n.normalized();
+		let dot_product = self.dot(&normalized);
+		self.x = self.x - 2.0 * dot_product * normalized.x;
+		self.y = self.y - 2.0 * dot_product * normalized.y;
+	}
+
+	pub fn dot(&self, v: &Vector) -> f32 {
+		self.x*v.x + self.y*v.y
+	}
 }
 
 impl Hash for Vector {
