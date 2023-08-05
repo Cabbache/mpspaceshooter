@@ -76,6 +76,12 @@ pub struct Inventory{
 	pub weapons: HashMap<u8, Weapon>,
 }
 
+#[derive(Serialize, Debug, Clone)]
+pub struct LootDrop{
+	pub uuid: String,
+	pub object: LootObject,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct PlayerState {
 	pub name: String,
@@ -215,7 +221,7 @@ pub enum ServerMessage{
 	PropelUpdate { propel: bool, pos: Vector, vel: Vector, from: String },
 	RotationUpdate { direction: i8, spin: f32, from: String },
 	TrigUpdate {by: String, weptype: WeaponType, pressed: bool },
-	PlayerDeath {loot: LootObject, loot_uuid: String, from: String },
+	PlayerDeath {loot: Option<LootDrop>, from: String },
 	LootCollected {loot_id: String, collector: String },
 	LootReject(String),
 }
@@ -504,8 +510,10 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 							);
 							broadcast( //tell everyone that the player died and what loot they dropped
 								&ServerMessage::PlayerDeath{
-									loot: dropped_loot,
-									loot_uuid: dropped_loot_uuid,
+									loot: Some(LootDrop{
+										object: dropped_loot,
+										uuid: dropped_loot_uuid,
+									}),
 									from: playerstate.public_id,
 								},
 								&clr

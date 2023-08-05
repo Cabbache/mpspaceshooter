@@ -621,9 +621,12 @@
 		}
 
 		const handle_playerdeath = function(content){
+			console.log(content);
 			const is_self = content.from == public_id;
 			if (is_self){
-				summon_loot(content.loot_uuid, content.loot);
+				if (content.loot){
+					summon_loot(content.loot.uuid, content.loot.object);
+				}
 				alert("You died!");
 				socket.send(
 					JSON.stringify({
@@ -648,7 +651,9 @@
 				);
 				emitter.emit = true;
 				emissions.push(emitter);
-				summon_loot(content.loot_uuid, content.loot);
+				if (content.loot){
+					summon_loot(content.loot.uuid, content.loot.object);
+				}
 				handle_playerleave(content.from);
 			}
 		}
@@ -825,7 +830,6 @@
 					bullets_container.children[i].scale.x-fadeRate*deltaTime
 				);
 			}
-			console.log(bullets_container.children.length);
 			//remove the gunshots from memory
 			bullets_container.children = bullets_container.children.filter(child => child.scale.x > 0.01);
 
