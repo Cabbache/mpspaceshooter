@@ -19,6 +19,8 @@ use crate::game::Weapon;
 use crate::game::WeaponType;
 use crate::game::current_time;
 
+const SPAWN_PULL_MAX: f32 = 10.0;
+
 #[derive(Serialize, Debug)]
 pub struct RegisterResponse {
 	public: String,
@@ -63,12 +65,23 @@ pub async fn serve_page() -> Result<impl Reply> {
 	Ok(warp::reply::html(html))
 }
 
-fn default_state() -> PlayerState {
+fn gen_spawn() -> Vector {
 	let normal = Normal::new(-500.0, 500.0).unwrap();
-	let pos_x = normal.sample(&mut rand::thread_rng());
-	let pos_y = normal.sample(&mut rand::thread_rng());
-	println!("x: {}", pos_x);
-	println!("y: {}", pos_y);
+	let mut pos: Vector;
+	loop {
+		pos = Vector{
+			x: normal.sample(&mut rand::thread_rng()),
+			y: normal.sample(&mut rand::thread_rng()),
+		};
+		let psum = Trajectory::pull_sum(&pos);
+		if psum.x.powf(2.0) + psum.y.powf(2.0) < SPAWN_PULL_MAX.powf(2.0) {
+			break;
+		}
+	}
+	pos
+}
+
+fn default_state() -> PlayerState {
 	return PlayerState {
 		name: "".to_string(),
 		public_id: "".to_string(),
@@ -86,7 +99,7 @@ fn default_state() -> PlayerState {
 		},
 		trajectory: Trajectory{
 			propelling: false,
-			pos: Vector{ x: pos_x, y: pos_y},
+			pos: gen_spawn(),
 			vel: Vector{x: 0.0, y: 0.0},
 			spin_direction: 0,
 			spin: 0.0,

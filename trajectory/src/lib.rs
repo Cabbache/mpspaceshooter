@@ -23,21 +23,147 @@ lazy_static! {
 	static ref DRAGSTEP: f32 = DRAG.powf(1f32 / TIMESTEP_FPS as f32);
 }
 
-pub const BODIES: [Body; 2] = [
+pub const BODIES: [Body; 20] = [
+  Body {
+    pos: Vector{
+      x: 0.0,
+      y: 0.0,
+    },  
+    radius: 50.0,
+  },  
+  Body {
+    pos: Vector{
+      x: 500.0,
+      y: 300.0,
+    },  
+    radius: 30.0,
+  },
+  Body {
+    pos: Vector{
+      x: -1000.0,
+      y: 2000.0,
+    },
+    radius: 25.0,
+  },
+  Body {
+    pos: Vector{
+      x: 1500.0,
+      y: -500.0,
+    },
+    radius: 20.0,
+  },
+  Body {
+    pos: Vector{
+      x: -500.0,
+      y: -1500.0,
+    },
+    radius: 35.0,
+  },
+  Body {
+    pos: Vector{
+      x: -2500.0,
+      y: 1000.0,
+    },
+    radius: 40.0,
+  },
+  Body {
+    pos: Vector{
+      x: 2000.0,
+      y: -2000.0,
+    },
+    radius: 15.0,
+  },
+  Body {
+    pos: Vector{
+      x: -1500.0,
+      y: -2500.0,
+    },
+    radius: 30.0,
+  },
+  Body {
+    pos: Vector{
+      x: 2500.0,
+      y: 1500.0,
+    },
+    radius: 20.0,
+  },
+  Body {
+    pos: Vector{
+      x: 3000.0,
+      y: 0.0,
+    },
+    radius: 35.0,
+  },
 	Body {
-		pos: Vector{
-			x: 0.0,
-			y: 0.0,
-		},
-		radius: 50.0,
-	},
-	Body {
-		pos: Vector{
-			x: 500.0,
-			y: 300.0,
-		},
-		radius: 30.0,
-	},
+    pos: Vector{
+      x: -2800.0,
+      y: 600.0,
+    },
+    radius: 20.0,
+  },
+  Body {
+    pos: Vector{
+      x: 1500.0,
+      y: 2800.0,
+    },
+    radius: 40.0,
+  },
+  Body {
+    pos: Vector{
+      x: 500.0,
+      y: -2500.0,
+    },
+    radius: 35.0,
+  },
+  Body {
+    pos: Vector{
+      x: 2000.0,
+      y: -1200.0,
+    },
+    radius: 30.0,
+  },
+  Body {
+    pos: Vector{
+      x: -2200.0,
+      y: -1800.0,
+    },
+    radius: 40.0,
+  },
+  Body {
+    pos: Vector{
+      x: -1200.0,
+      y: 1500.0,
+    },
+    radius: 35.0,
+  },
+  Body {
+    pos: Vector{
+      x: 2800.0,
+      y: -800.0,
+    },
+    radius: 30.0,
+  },
+  Body {
+    pos: Vector{
+      x: -600.0,
+      y: -2800.0,
+    },
+    radius: 40.0,
+  },
+  Body {
+    pos: Vector{
+      x: 800.0,
+      y: 2200.0,
+    },
+    radius: 25.0,
+  },
+  Body {
+    pos: Vector{
+      x: -1800.0,
+      y: 500.0,
+    },
+    radius: 20.0,
+  },
 ];
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -108,14 +234,27 @@ impl Trajectory {
 		return false;
 	}
 
+	pub fn pull_sum(pos: &Vector) -> Vector{
+		let mut pull = Vector{
+			x: 0.0,
+			y: 0.0,
+		};
+		for body in BODIES {
+			let bod_pull = body.pull(&pos);
+			pull.x += bod_pull.x;
+			pull.y += bod_pull.y;
+		}
+		pull.x *= TIMESTEP_SECS;
+		pull.y *= TIMESTEP_SECS;
+		pull
+	}
+
 	fn step(&mut self) {
 		self.pos.x += self.vel.x * TIMESTEP_SECS;
 		self.pos.y += self.vel.y * TIMESTEP_SECS;
-		for body in BODIES {
-			let pull = body.pull(&self.pos);
-			self.vel.x += pull.x * TIMESTEP_SECS;
-			self.vel.y += pull.y * TIMESTEP_SECS;
-		}
+		let pull = Trajectory::pull_sum(&self.pos);
+		self.vel.x += pull.x;
+		self.vel.y += pull.y;
 		self.spin += (self.spin_direction as f32) * RADIANS_PER_SECOND * TIMESTEP_SECS;
 		if self.propelling {
 			self.vel.x += (self.spin + PROPEL_DIRECTION).cos()*ACCELERATION * TIMESTEP_SECS;
