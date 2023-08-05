@@ -1,11 +1,10 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use serde::Deserialize;
 use lazy_static::lazy_static;
 use wasm_bindgen::prelude::*;
 use std::f32::consts::{PI};
-use serde::{Serialize};
 use js_sys::Uint8Array;
+use serde::{Deserialize,Serialize};
 use bincode::{serialize, deserialize};
 
 pub const PLAYER_RADIUS: f32 = 25.0;
@@ -196,4 +195,29 @@ impl Body {
 	fn mass(&self) -> f32 {
 		self.radius*self.radius*PI
 	}
+}
+
+#[wasm_bindgen]
+#[derive(Serialize, Deserialize)]
+pub struct Envelope {
+	mtype: String,
+	m: Vec<u8>,
+}
+
+#[wasm_bindgen]
+pub fn deserialize_envelope(bytes: &[u8]) -> Result<Envelope, JsValue> {
+	bincode::deserialize(bytes).map_err(|e| e.to_string().into())
+}
+
+#[wasm_bindgen]
+pub fn deserialize_trajectory(bytes: &[u8]) -> Result<Trajectory, JsValue> {
+	bincode::deserialize(bytes).map_err(|e| e.to_string().into())
+}
+
+pub fn serialize_trajectory(trajectory: &Trajectory) -> Result<Envelope, Box<bincode::ErrorKind>> {
+	let payload = bincode::serialize(&trajectory)?;
+	Ok(Envelope {
+		mtype: "trajectory".to_string(),
+		m: payload,
+	})
 }
