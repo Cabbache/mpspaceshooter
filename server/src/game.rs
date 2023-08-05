@@ -19,9 +19,8 @@ use crate::Client;
 use crate::WorldLoot;
 use crate::handler::spawn_from_prev;
 
-use trajectory::{Trajectory, Body, Vector};
+use trajectory::{Trajectory, Body, Vector, PLAYER_RADIUS};
 
-const PLAYER_RADIUS: f32 = 25.0; //players have circular hitbox
 const LOOT_RADIUS: f32 = 25.0; //players must be within this distance to claim
 const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 
