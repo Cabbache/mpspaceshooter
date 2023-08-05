@@ -6,6 +6,7 @@
 	<link rel="stylesheet" href="static/styles.css">
 	<script src="static/pixi.js"></script> <!-- PIXI -->
 	<script src="static/pe.min.js"></script> <!-- Emitters -->
+	<script src="static/filters.js"></script> <!-- Filters -->
 </head>
 <body>
   <div class="modal" id="join-modal">
@@ -175,6 +176,11 @@
 		const loot_container = new PIXI.Container();
 		const bullets_container = new PIXI.Container();
 		const bodies_container = new PIXI.Container();
+
+		let twistFilter = new PIXI.filters.TwistFilter();
+		twistFilter.angle = 30;
+		twistFilter.radius = 1000;
+		background.filters = [twistFilter];
 
 		//higher zindex makes it appear on top
 		bullets_container.zIndex = 1;
