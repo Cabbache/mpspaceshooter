@@ -137,6 +137,7 @@
 		const bullet_distance = 500;
 		const player_speed = 200;
 		const player_radius = 25;
+		const dome_radius = 2000;
 		const fadeRate = 8;
 		const rotation_speed = PI;
 
@@ -790,8 +791,21 @@
 			while (physics_counter > TIMESTEP) {
 				physics_counter-=TIMESTEP;
 				Object.values(gameState).forEach(player => {
-					player.p.pos.x += player.p.vel.x * TIMESTEP;
-					player.p.pos.y += player.p.vel.y * TIMESTEP;
+					const next_x = player.p.pos.x + player.p.vel.x*TIMESTEP;
+					const next_y = player.p.pos.y + player.p.vel.y*TIMESTEP;
+					if (next_x*next_x + next_y*next_y > dome_radius*dome_radius){
+						let mirror_x = player.p.pos.x;
+						let mirror_y = -player.p.pos.y;
+						let mag = Math.sqrt(mirror_x*mirror_x + mirror_y*mirror_y);
+						mirror_x /= mag;
+						mirror_y /= mag;
+						let dot = player.p.vel.x*mirror_x + player.p.vel.y*mirror_y;
+						player.p.vel.x -= 2*dot*mirror_x;
+						player.p.vel.y -= 2*dot*mirror_y;
+					} else {
+						player.p.pos.x = next_x;
+						player.p.pos.y = next_y;
+					}
 					const [pull_x, pull_y] = bodies
 						.map(body => {
 							let xdiff = body.pos.x - player.p.pos.x;

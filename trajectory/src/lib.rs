@@ -252,14 +252,18 @@ impl Trajectory {
 	}
 
 	fn step(&mut self) {
-		self.pos.x += self.vel.x * TIMESTEP_SECS;
-		self.pos.y += self.vel.y * TIMESTEP_SECS;
+		let next_pos = Vector{
+			x: self.pos.x + self.vel.x*TIMESTEP_SECS,
+			y: self.pos.y + self.vel.y*TIMESTEP_SECS,
+		};
 		//if outside dome
-		if self.pos.x.powi(2) + self.pos.y.powi(2) > DOME_RADIUS.powi(2) {
+		if next_pos.x.powi(2) + next_pos.y.powi(2) > DOME_RADIUS.powi(2) {
 			self.vel.reflect(&Vector{
 				x: self.pos.x,
 				y: -self.pos.y,
 			});
+		} else {
+			self.pos = next_pos;
 		}
 		let pull = Trajectory::pull_sum(&self.pos);
 		self.vel.x += pull.x;
@@ -323,8 +327,8 @@ impl Vector {
 	pub fn reflect(&mut self, n: &Vector) {
 		let normalized = n.normalized();
 		let dot_product = self.dot(&normalized);
-		self.x = self.x - 2.0 * dot_product * normalized.x;
-		self.y = self.y - 2.0 * dot_product * normalized.y;
+		self.x -= 2.0 * dot_product * normalized.x;
+		self.y -= 2.0 * dot_product * normalized.y;
 	}
 
 	pub fn dot(&self, v: &Vector) -> f32 {
