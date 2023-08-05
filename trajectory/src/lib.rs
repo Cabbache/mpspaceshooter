@@ -1,3 +1,5 @@
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use serde::Deserialize;
 use lazy_static::lazy_static;
 use wasm_bindgen::prelude::*;
@@ -123,6 +125,12 @@ impl Trajectory {
 		//self.vel.x *= *DRAGSTEP;
 		//self.vel.y *= *DRAGSTEP;	
 	}
+
+	pub fn hash_str(&self) -> String {
+		let mut hasher = DefaultHasher::new();
+		self.hash(&mut hasher);
+		format!("{:x}", hasher.finish())
+	}
 }
 
 //this is not exposed to wasm
@@ -133,11 +141,30 @@ impl Trajectory {
 	}
 }
 
+impl Hash for Trajectory {
+	fn hash<H: Hasher>(&self, state: &mut H) {
+		self.propelling.hash(state);
+		self.pos.hash(state);
+		self.vel.hash(state);
+		self.spin.to_bits().hash(state); // Manually hash f32 field
+		self.spin_direction.hash(state);
+		self.time.hash(state);
+		self.collision.hash(state);
+	}
+}
+
 #[derive(Serialize, Debug, Clone, Copy, Deserialize)]
 #[wasm_bindgen]
 pub struct Vector{
 	pub x: f32,
 	pub y: f32,
+}
+
+impl Hash for Vector {
+	fn hash<H: Hasher>(&self, state: &mut H) {
+		self.x.to_bits().hash(state);
+		self.y.to_bits().hash(state);
+	}
 }
 
 #[derive(Serialize, Clone, Debug)]

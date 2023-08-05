@@ -327,7 +327,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				writeable.trajectory.update_propulsion(is_propel, current_time());
 				writeable.trajectory.clone()
 			};
-			println!("after {:?}", new_trajectory);
+			println!("hash: {}", new_trajectory.hash_str());
 			broadcast(
 				&ServerMessage::PropelUpdate{
 					propel: is_propel,
