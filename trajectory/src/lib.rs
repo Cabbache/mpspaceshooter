@@ -8,6 +8,7 @@ use serde::{Deserialize,Serialize};
 use bincode::{serialize, deserialize};
 
 pub const PLAYER_RADIUS: f32 = 25.0;
+const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 const DOME_RADIUS: f32 = 2000.0;
 const ACCELERATION: f32 = 200.0; //player acceleration
 const PROPEL_DIRECTION: f32 = -PI/2.0;
@@ -253,13 +254,13 @@ impl Trajectory {
 	fn step(&mut self) {
 		self.pos.x += self.vel.x * TIMESTEP_SECS;
 		self.pos.y += self.vel.y * TIMESTEP_SECS;
-//		//if outside dome
-//		if self.pos.x.powf(2.0) + self.pos.y.powf(2.0) > DOME_RADIUS.powf(2.0) {
-//			self.vel.reflect(&Vector{
-//				x: self.pos.x,
-//				y: -self.pos.y,
-//			});
-//		}
+		//if outside dome
+		if self.pos.x.powi(2) + self.pos.y.powi(2) > DOME_RADIUS.powi(2) {
+			self.vel.reflect(&Vector{
+				x: self.pos.x,
+				y: -self.pos.y,
+			});
+		}
 		let pull = Trajectory::pull_sum(&self.pos);
 		self.vel.x += pull.x;
 		self.vel.y += pull.y;
@@ -308,7 +309,7 @@ pub struct Vector{
 
 impl Vector {
 	pub fn mag(&self) -> f32 {
-		(self.x.powf(2.0) + self.y.powf(2.0)).sqrt()
+		(self.x.powi(2) + self.y.powi(2)).sqrt()
 	}
 
 	pub fn normalized(&self) -> Vector {
@@ -351,7 +352,7 @@ impl Body {
 	fn pull(&self, pos: &Vector) -> Vector{
 		let xdiff = self.pos.x - pos.x;
 		let ydiff = self.pos.y - pos.y;
-		let powsum = xdiff.powf(2.0) + ydiff.powf(2.0);
+		let powsum = xdiff.powi(2) + ydiff.powi(2);
 		let mag = G * self.mass() / powsum;
 		let dist = powsum.sqrt();
 		Vector{
@@ -361,7 +362,7 @@ impl Body {
 	}
 
 	fn collides(&self, pos: &Vector) -> bool {
-		(self.radius+PLAYER_RADIUS).powf(2.0) > (pos.x - self.pos.x).powf(2.0) + (pos.y - self.pos.y).powf(2.0)
+		(self.radius+PLAYER_RADIUS).powi(2) > (pos.x - self.pos.x).powi(2) + (pos.y - self.pos.y).powi(2)
 	}
 
 	fn mass(&self) -> f32 {
@@ -392,4 +393,28 @@ pub fn serialize_trajectory(trajectory: &Trajectory) -> Result<Envelope, Box<bin
 		mtype: "trajectory".to_string(),
 		m: payload,
 	})
+}
+
+pub fn line_intersects_circle(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> bool {
+	//shift everything to make line start from origin
+	let a = xc - xp;
+	let b = yc - yp;
+	let rot_90 = rot - PI/2f32;
+
+	//compute the quadratic's 'b' coefficient (for variable r in polar form)
+	let qb = -(2f32*a*rot_90.cos() + 2f32*b*rot_90.sin());
+	let discriminant: f32 = qb.powi(2) - 4f32*(a.powi(2) + b.powi(2) - PLAYER_RADIUS.powi(2));
+	if discriminant < 0f32{ //no real roots (no line-circle intersection)
+		return false;
+	}
+
+	let root = discriminant.sqrt();
+
+	let r1 = (root - qb)/2f32;
+	let r2 = (-root - qb)/2f32;
+
+	let r1_good = PISTOL_REACH > r1 && r1 > 0f32;
+	let r2_good = PISTOL_REACH > r2 && r2 > 0f32;
+
+	r1_good || r2_good
 }

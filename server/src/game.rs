@@ -1,10 +1,8 @@
 use std::collections::HashMap;
 use std::error::Error;
-use std::f32::consts::PI;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use futures::future::join_all;
-use num_traits::{Pow};
 use serde::{Deserialize, Serialize, Serializer};
 use serde_json::{from_str, json, to_string, Value};
 use warp::ws::Message;
@@ -19,10 +17,9 @@ use crate::Client;
 use crate::WorldLoot;
 use crate::handler::spawn_from_prev;
 
-use trajectory::{Trajectory, Body, Vector, PLAYER_RADIUS};
+use trajectory::{Trajectory, Body, Vector};
 
 const LOOT_RADIUS: f32 = 25.0; //players must be within this distance to claim
-const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 
 #[derive(Serialize, Debug, Clone)]
 pub enum LootContent{
@@ -232,30 +229,6 @@ pub async fn broadcast(msg: &ServerMessage, clients_readlock: &tokio::sync::RwLo
 			eprintln!("Error transmitting message: {}", e);
 		}
 	}
-}
-
-fn line_circle_intersect(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> bool{
-	//shift everything to make line start from origin
-	let a = xc - xp;
-	let b = yc - yp;
-	let rot_90 = rot - PI/2f32;
-
-	//compute the quadratic's 'b' coefficient (for variable r in polar form)
-	let qb = -(2f32*a*rot_90.cos() + 2f32*b*rot_90.sin());
-	let discriminant: f32 = qb.pow(2) - 4f32*(a.pow(2) + b.pow(2) - PLAYER_RADIUS.pow(2));
-	if discriminant < 0f32{ //no real roots (no line-circle intersection)
-		return false;
-	}
-
-	let root = discriminant.sqrt();
-
-	let r1 = (root - qb)/2f32;
-	let r2 = (-root - qb)/2f32;
-
-	let r1_good = PISTOL_REACH > r1 && r1 > 0f32;
-	let r2_good = PISTOL_REACH > r2 && r2 > 0f32;
-
-	r1_good || r2_good
 }
 
 //TODO capture the current time and pass it to live_pos and live_rot
@@ -475,7 +448,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 							continue;
 						}
 						let pp = playerstate.trajectory.pos;
-						let hit = line_circle_intersect(ss.x, ss.y, pp.x, pp.y, rr);
+						let hit = trajectory::line_intersects_circle(ss.x, ss.y, pp.x, pp.y, rr);
 						if !hit{
 							continue;
 						}
@@ -540,7 +513,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 						writable.trajectory.update(current_time());
 						writable.trajectory.pos.clone()
 					};
-					if (pp.y - loot_obj.y).pow(2) + (pp.x - loot_obj.x).pow(2) > LOOT_RADIUS.pow(2){
+					if (pp.y - loot_obj.y).powi(2) + (pp.x - loot_obj.x).powi(2) > LOOT_RADIUS.powi(2){
 						if let Some(client) = clr.get(private_id){
 							client.transmit(&ServerMessage::LootReject(loot_id), Some(format!("{:x}", xxh3_64(private_id.as_bytes())))).await?;
 						} else {
