@@ -231,8 +231,6 @@ pub async fn broadcast(msg: &ServerMessage, clients_readlock: &tokio::sync::RwLo
 	}
 }
 
-//TODO capture the current time and pass it to live_pos and live_rot
-//This will improve accuracy due to lock acquire times
 pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clients, world_loot: &WorldLoot) -> Result<(), Box<dyn Error>>{
 	let message: ClientMessage = match from_str(message) {
 		Ok(v) => v,
@@ -313,7 +311,6 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 		},
 		ClientMessage::Rotation { dir } => {
 			if sender_state.read().await.clone().trajectory.spin_direction == dir {
-				eprintln!("modded client detected (redundant propel update)");
 				return Ok(());
 			}
 			let new_trajectory = {

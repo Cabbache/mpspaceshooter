@@ -191,6 +191,7 @@ impl Trajectory {
 		let elapsed = (time - clone.time) as u32;
 		let ctr = elapsed / TIMESTEP_MILLIS;
 		for _ in 1..=ctr {
+			//TODO consider when velocity exceeds radius, use line_intersects_circle?
 			clone.step();
 			clone.collision = clone.collides();
 			if clone.collision {
