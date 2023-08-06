@@ -373,6 +373,30 @@ impl Body {
 	}
 }
 
+pub fn line_intersects_circle(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> bool {
+	//shift everything to make line start from origin
+	let a = xc - xp;
+	let b = yc - yp;
+	let rot_90 = rot - PI/2f32;
+
+	//compute the quadratic's 'b' coefficient (for variable r in polar form)
+	let qb = -(2f32*a*rot_90.cos() + 2f32*b*rot_90.sin());
+	let discriminant: f32 = qb.powi(2) - 4f32*(a.powi(2) + b.powi(2) - PLAYER_RADIUS.powi(2));
+	if discriminant < 0f32{ //no real roots (no line-circle intersection)
+		return false;
+	}
+
+	let root = discriminant.sqrt();
+
+	let r1 = (root - qb)/2f32;
+	let r2 = (-root - qb)/2f32;
+
+	let r1_good = PISTOL_REACH > r1 && r1 > 0f32;
+	let r2_good = PISTOL_REACH > r2 && r2 > 0f32;
+
+	r1_good || r2_good
+}
+
 #[wasm_bindgen]
 #[derive(Serialize, Deserialize)]
 pub struct Envelope {
@@ -396,28 +420,4 @@ pub fn serialize_trajectory(trajectory: &Trajectory) -> Result<Envelope, Box<bin
 		mtype: "trajectory".to_string(),
 		m: payload,
 	})
-}
-
-pub fn line_intersects_circle(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> bool {
-	//shift everything to make line start from origin
-	let a = xc - xp;
-	let b = yc - yp;
-	let rot_90 = rot - PI/2f32;
-
-	//compute the quadratic's 'b' coefficient (for variable r in polar form)
-	let qb = -(2f32*a*rot_90.cos() + 2f32*b*rot_90.sin());
-	let discriminant: f32 = qb.powi(2) - 4f32*(a.powi(2) + b.powi(2) - PLAYER_RADIUS.powi(2));
-	if discriminant < 0f32{ //no real roots (no line-circle intersection)
-		return false;
-	}
-
-	let root = discriminant.sqrt();
-
-	let r1 = (root - qb)/2f32;
-	let r2 = (-root - qb)/2f32;
-
-	let r1_good = PISTOL_REACH > r1 && r1 > 0f32;
-	let r2_good = PISTOL_REACH > r2 && r2 > 0f32;
-
-	r1_good || r2_good
 }
