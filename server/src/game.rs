@@ -17,7 +17,7 @@ use crate::Client;
 use crate::WorldLoot;
 use crate::handler::spawn_from_prev;
 
-use trajectory::{Trajectory, Body, Vector};
+use utils::{Trajectory, Body, Vector};
 
 const LOOT_RADIUS: f32 = 25.0; //players must be within this distance to claim
 
@@ -355,7 +355,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 					&ServerMessage::GameState{
 						pstates: players,
 						worldloot: world_loot.read().await.clone(),
-						bodies: trajectory::BODIES.to_vec(),
+						bodies: utils::BODIES.to_vec(),
 					},
 					Some(public_id)
 				).await?;
@@ -445,7 +445,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 							continue;
 						}
 						let pp = playerstate.trajectory.pos;
-						let hit = trajectory::line_intersects_circle(ss.x, ss.y, pp.x, pp.y, rr);
+						let hit = utils::line_intersects_circle(ss.x, ss.y, pp.x, pp.y, rr);
 						if !hit{
 							continue;
 						}

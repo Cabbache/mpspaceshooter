@@ -1,4 +1,4 @@
 #!/bin/bash
 cargo build --release
-cd trajectory
+cd utils
 wasm-pack build

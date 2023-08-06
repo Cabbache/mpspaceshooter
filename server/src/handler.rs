@@ -13,7 +13,7 @@ use std::fs;
 use crate::PlayerState;
 use crate::WorldLoot;
 use crate::game::Color;
-use trajectory::{Trajectory, Vector};
+use utils::{Trajectory, Vector};
 use crate::game::Inventory;
 use crate::game::Weapon;
 use crate::game::WeaponType;
