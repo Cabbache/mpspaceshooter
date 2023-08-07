@@ -74,15 +74,6 @@ impl Client {
 	}
 }
 
-pub async fn broadcast(msg: &ServerMessage, clients_readlock: &tokio::sync::RwLockReadGuard<'_, HashMap<std::string::String, Client>>){
-	for (private_id, client) in clients_readlock.iter(){
-		let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
-		if let Err(e) = client.transmit(msg, Some(public_id)).await {
-			eprintln!("Error transmitting message: {}", e);
-		}
-	}
-}
-
 pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clients, world_loot: &WorldLoot) -> Result<(), Box<dyn Error>>{
 	let message: ClientMessage = match from_str(message) {
 		Ok(v) => v,
@@ -410,4 +401,13 @@ pub fn current_time() -> u64 {
 	let now = SystemTime::now();
 	let current_time = now.duration_since(UNIX_EPOCH).expect("Broken clock");
 	current_time.as_millis() as u64
+}
+
+pub async fn broadcast(msg: &ServerMessage, clients_readlock: &tokio::sync::RwLockReadGuard<'_, HashMap<std::string::String, Client>>){
+	for (private_id, client) in clients_readlock.iter(){
+		let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
+		if let Err(e) = client.transmit(msg, Some(public_id)).await {
+			eprintln!("Error transmitting message: {}", e);
+		}
+	}
 }
