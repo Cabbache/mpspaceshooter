@@ -6,7 +6,7 @@ use warp::ws::{Message, WebSocket};
 use xxhash_rust::xxh3::xxh3_64;
 
 use crate::game::handle_game_message;
-use crate::game::ServerMessage;
+use utils::gameobjects::ServerMessage;
 use crate::WorldLoot;
 //use crate::game::broadcast;
 use crate::game::broadcast;

@@ -1,5 +1,3 @@
-mod trajectory;
-pub use trajectory::*;
-
-mod envelope;
-pub use envelope::*;
+pub mod trajectory;
+pub mod envelope;
+pub mod gameobjects;

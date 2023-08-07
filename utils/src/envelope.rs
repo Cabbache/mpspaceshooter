@@ -1,7 +1,7 @@
 use wasm_bindgen::prelude::*;
 use serde::{Deserialize,Serialize};
 use bincode::{serialize, deserialize};
-use crate::Trajectory;
+use crate::trajectory::*;
 
 #[wasm_bindgen]
 #[derive(Serialize, Deserialize)]

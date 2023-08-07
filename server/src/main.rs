@@ -8,8 +8,7 @@ mod handler;
 mod game;
 mod ws;
 
-use crate::game::PlayerState;
-use crate::game::LootObject;
+use utils::gameobjects::{PlayerState, LootObject};
 
 type Result<T> = std::result::Result<T, Rejection>;
 type Clients = Arc<RwLock<HashMap<String, Client>>>;

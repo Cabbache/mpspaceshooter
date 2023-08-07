@@ -12,11 +12,8 @@ use std::fs;
 
 use crate::PlayerState;
 use crate::WorldLoot;
-use crate::game::Color;
-use utils::{Trajectory, Vector};
-use crate::game::Inventory;
-use crate::game::Weapon;
-use crate::game::WeaponType;
+use utils::gameobjects::*;
+use utils::trajectory::*;
 use crate::game::current_time;
 
 const SPAWN_PULL_MAX: f32 = 10.0;
