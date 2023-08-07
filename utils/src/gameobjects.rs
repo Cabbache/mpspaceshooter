@@ -70,82 +70,32 @@ pub struct PlayerState {
 	pub color: Color,
 	pub inventory: Inventory,
 	pub trigger_pressed: bool,
-	#[serde(skip_serializing)]
 	pub trajectory: Trajectory,
 }
 
-impl PlayerState {
-	pub fn encode_other(&self) -> Value{
-		//TODO consider implementing live() in Trajectory - an immutable version of reset() and use that instead
-		let pos = &self.trajectory.pos;
-		let vel = &self.trajectory.vel;
-		let spin = &self.trajectory.spin;
-		return json!({
-			"name": &self.name,
-			"public_id": &self.public_id,
-			"color": &self.color,
-			"propelling": &self.trajectory.propelling,
-			"pos": &pos,
-			"vel": &vel,
-			"spin": &spin,
-			"spinDir": &self.trajectory.spin_direction,
-		});
-	}
+#[derive(Debug, Clone, Serialize)]
+pub struct PlayerStateOther {
+	pub name: String,
+	pub public_id: String,
+	pub fuel: u32,
+	pub color: Color,
+	pub trigger_pressed: bool,
+	pub trajectory: Trajectory,
+}
 
-	pub fn encode(&self, as_self: bool) -> Value{
-		if !as_self {
-			return self.encode_other();
+impl From<PlayerState> for PlayerStateOther {
+	fn from(player_state: PlayerState) -> Self {
+		PlayerStateOther {
+			name: player_state.name,
+			public_id: player_state.public_id,
+			fuel: player_state.fuel,
+			color: player_state.color,
+			trigger_pressed: player_state.trigger_pressed,
+			trajectory: player_state.trajectory,
 		}
-		let mut result = self.encode_other();
-		let additional = json!({
-			"inventory": &self.inventory,
-			"health": &self.health,
-			"cash": &self.cash,
-		});
-		result
-		.as_object_mut()
-		.unwrap()
-		.extend(
-			additional
-			.as_object().
-			unwrap()
-			.clone()
-		);
-		return result;
 	}
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 #[serde(tag = "t", content = "c")]
-pub enum ClientMessage{
-	Ping,
-	AckPong,
-	Propel,
-	PropelStop,
-	Rotation {dir: i8},
-	ChangeSlot {slot: u8},
-	TrigUpdate {pressed: bool},
-	ClaimLoot {loot_id: String},
-	StateQuery,
-	Spawn,
-}
 
-#[derive(Serialize, Debug)]
-#[serde(tag = "t", content = "c")]
-pub enum ServerMessage{
-	Pong,
-	PlayerJoin(PlayerState),
-	PlayerLeave(String),
-	HealthUpdate(f32),
-	GameState{
-		pstates: Vec<PlayerState>,
-		worldloot: HashMap<String, LootObject>,
-		bodies: Vec<Body>,
-	},
-	PropelUpdate { propel: bool, pos: Vector, vel: Vector, from: String },
-	RotationUpdate { direction: i8, spin: f32, from: String },
-	TrigUpdate {by: String, weptype: WeaponType, pressed: bool },
-	PlayerDeath {loot: Option<LootDrop>, from: String },
-	LootCollected {loot_id: String, collector: String },
-	LootReject(String),
-}
