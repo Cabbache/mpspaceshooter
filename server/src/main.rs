@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::sync::Arc;
+use std::env;
 use tokio::sync::{mpsc, RwLock};
 use warp::{ws::Message, Filter, Rejection};
 
@@ -60,11 +61,17 @@ async fn main() {
 		.or(assets)
 		.with(warp::cors().allow_any_origin());
 
+	const USAGE: &str = "Usage: ./binary <port>";
+	let port: u16 = env::args().nth(1)
+		.expect(USAGE)
+		.parse()
+		.expect(USAGE);
+
 	warp::serve(routes)
 	//.tls()
 	//.cert_path("cert.pem")
 	//.key_path("key.rsa")
-	.run(([0, 0, 0, 0], 80)).await;
+	.run(([0, 0, 0, 0], port)).await;
 }
 
 fn with_clients(clients: Clients) -> impl Filter<Extract = (Clients,), Error = Infallible> + Clone {
