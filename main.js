@@ -785,7 +785,7 @@ async function runClient(player_nick, player_color){
 				}
 
 				if (player.p.public_id != public_id)
-					continue;
+					return;
 
 				for (let i = 0;i < bodies.length;++i){
 					const xdiff = (player.p.pos.x - bodies[i].pos.x);
