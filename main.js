@@ -783,6 +783,16 @@ async function runClient(player_nick, player_color){
 					player.p.vel.x += Math.cos(player.p.spin - PI/2)*ACCELERATION * TIMESTEP;
 					player.p.vel.y += Math.sin(player.p.spin - PI/2)*ACCELERATION * TIMESTEP;
 				}
+
+				for (let i = 0;i < bodies.length;++i){
+					const xdiff = (player.p.pos.x - bodies[i].pos.x);
+					const ydiff = (player.p.pos.y - bodies[i].pos.y);
+					const distSq = (bodies[i].radius+player_radius)*(bodies[i].radius+player_radius);
+					if (xdiff*xdiff + ydiff*ydiff < distSq){
+						alert("You crashed");
+						window.location.reload();
+					}
+				}
 			});
 			graphics_counter = 0;
 		}
