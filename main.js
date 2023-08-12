@@ -248,8 +248,8 @@ async function runClient(player_nick, player_color){
 	}
 
 	const openWebSocket = function(){
-		//fetch(`https://${window.location.hostname}/register`, {
-		fetch(`http://${window.location.hostname}/register`, {
+		fetch(`https://${window.location.hostname}/register`, {
+		//fetch(`http://${window.location.hostname}/register`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
@@ -264,8 +264,8 @@ async function runClient(player_nick, player_color){
 		.then(response => response.json())
 		.then(result => {
 			public_id = result['public'];
-			//socket = new WebSocket(`wss://${window.location.hostname}/ws/`+result['private']);
-			socket = new WebSocket(`ws://${window.location.hostname}/ws/`+result['private']);
+			socket = new WebSocket(`wss://${window.location.hostname}/ws/`+result['private']);
+			//socket = new WebSocket(`ws://${window.location.hostname}/ws/`+result['private']);
 			socket.onmessage = recvFn;
 			socket.onopen = () => {
 				opened=true;

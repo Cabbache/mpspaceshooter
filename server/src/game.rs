@@ -18,7 +18,7 @@ use crate::handler::spawn_from_prev;
 
 use utils::gameobjects::*;
 
-const LOOT_RADIUS: f32 = 25.0; //players must be within this distance to claim
+const LOOT_RADIUS: f32 = 60.0; //players must be within this distance to claim
 
 impl Client {
 	pub async fn transmit(&self, msg: &ServerMessage, public_id: Option<String>) -> Result<(), Box<dyn Error>> {
