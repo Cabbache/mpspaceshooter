@@ -7,4 +7,6 @@
 
 cargo build --release
 cd utils
-wasm-pack build
+wasm-pack build --target web
+cd ../
+cp -r utils/pkg client/
