@@ -2,24 +2,6 @@ import init, { Trajectory } from './pkg/utils.js';
 async function runAll(){
 	await init();
 
-	let tnow = 100;
-	let tinstance = new Trajectory(BigInt(tnow));
-	console.log(tinstance.pos.x);
-	console.log(tinstance.vel.x);
-	console.log(tinstance.hash_str());
-	console.log(tinstance.collision);
-	tnow += 125;
-	tinstance.advance(BigInt(tnow));
-	console.log(tinstance.collision);
-	console.log(tinstance.pos.x);
-	console.log(tinstance.vel.x);
-	console.log(tinstance.hash_str());
-	tnow += 200;
-	tinstance.advance(BigInt(tnow));
-	console.log(tinstance.pos.x);
-	console.log(tinstance.vel.x);
-	console.log(tinstance.hash_str());
-
 	// Get the modal
 	const joinmodal = document.getElementById("join-modal");
 	const form = joinmodal.querySelector('form');
@@ -305,10 +287,10 @@ async function runAll(){
 
 		const getPlayerSprite = function(player){
 			var player_container = new PIXI.Container();
-			player_container.position.set(player.pos.x, player.pos.y);
+			player_container.position.set(player.trajectory.pos.x, player.trajectory.pos.y);
 
 			let actualBody = new PIXI.Container();
-			actualBody.rotation = player.spin;
+			actualBody.rotation = player.trajectory.spin;
 			var text = new PIXI.Text(player.name, { fontFamily: "Arial", fontSize: 16, fill: 0xffffff });
 			text.anchor.set(0.5);
 			text.position.set(0, -60);
@@ -383,12 +365,14 @@ async function runAll(){
 			worldLoot = {};
 			bodies = [];
 			state.players.forEach((p) => {
+				p.trajectory = new Trajectory(p.trajectory);
+
 				const square = getPlayerSprite(p);
 				if (p.public_id == public_id){
 					square.container.x = app.screen.width/2;
 					square.container.y = app.screen.height/2;
-					world.pivot.x = p.pos.x;
-					world.pivot.y = p.pos.y;
+					world.pivot.x = p.trajectory.pos.x;
+					world.pivot.y = p.trajectory.pos.y;
 					app.stage.addChild(square.container);
 					ammo_text.text = p.inventory.weapons[0].ammo;
 					cash_text.text = p.cash;
@@ -436,11 +420,12 @@ async function runAll(){
 
 		const handle_propelupdate = function(content){
 			let broadcaster = content["from"];
-			gameState[broadcaster].p.propelling = content.propel;
-			gameState[broadcaster].p.vel.x = content.vel.x;
-			gameState[broadcaster].p.vel.y = content.vel.y;
-			gameState[broadcaster].p.pos.x = content.pos.x;
-			gameState[broadcaster].p.pos.y = content.pos.y;
+			gameState[broadcaster].p.trajectory.update_propulsion(content.propel, BigInt(Date.now()));
+			//gameState[broadcaster].p.propelling = content.propel;
+			//gameState[broadcaster].p.vel.x = content.vel.x;
+			//gameState[broadcaster].p.vel.y = content.vel.y;
+			//gameState[broadcaster].p.pos.x = content.pos.x;
+			//gameState[broadcaster].p.pos.y = content.pos.y;
 
 			if (content.propel){
 				let emitJSON = JSON.parse(JSON.stringify(emitters["propel"])); //careful here
@@ -469,8 +454,9 @@ async function runAll(){
 
 		const handle_rotationupdate = function(content){
 			let broadcaster = content["from"];
-			gameState[broadcaster].p.spinDir = content.direction;
-			gameState[broadcaster].p.spin = content.spin;
+			//gameState[broadcaster].p.spinDir = content.direction;
+			//gameState[broadcaster].p.spin = content.spin;
+			gameState[broadcaster].p.trajectory.update_rotation(content.direction, BigInt(Date.now()));
 		}
 
 		const handle_trigUpdate = function(content){
@@ -562,10 +548,10 @@ async function runAll(){
 
 		const handle_playerjoin = function(content){
 			if (content.public_id == public_id){ //this happens when spawning
-				world.pivot.x = content.pos.x;
-				world.pivot.y = content.pos.y;
+				world.pivot.x = content.trajectory.pos.x;
+				world.pivot.y = content.trajectory.pos.y;
 				gameState[public_id].p = content;
-				gameState[public_id].child.rotation = content.spin;
+				gameState[public_id].child.rotation = content.trajectory.spin;
 				
 				//update coords text
 				coords_text.text = `x: ${Math.round(world.pivot.x)}, y: ${-Math.round(world.pivot.y)}`;
@@ -617,8 +603,8 @@ async function runAll(){
 			} else {
 				const emitJSON = JSON.parse(JSON.stringify(emitters["explosion"]));
 				emitJSON.pos = {
-					x: gameState[content.from].p.pos.x,
-					y: gameState[content.from].p.pos.y
+					x: gameState[content.from].p.trajectory.pos.x,
+					y: gameState[content.from].p.trajectory.pos.y
 				};
 				emitJSON.behaviors.push({
 					type: 'textureSingle',
@@ -757,79 +743,26 @@ async function runAll(){
 		document.body.appendChild(app.view);
 		openWebSocket();
 
-		var physics_counter = 0;
-		var graphics_counter = 0;
 		const GraphicsTicker = PIXI.Ticker.shared.add(delta => {
 			fps_text.text = `fps: ${Math.round(PIXI.Ticker.shared.FPS)}`;
 
 			const deltaTime = delta / (1000*PIXI.settings.TARGET_FPMS);
 
-			graphics_counter += deltaTime;
-			physics_counter += deltaTime;
-			while (physics_counter > TIMESTEP) {
-				physics_counter-=TIMESTEP;
-				Object.values(gameState).forEach(player => {
-					const next_x = player.p.pos.x + player.p.vel.x*TIMESTEP;
-					const next_y = player.p.pos.y + player.p.vel.y*TIMESTEP;
-					if (next_x*next_x + next_y*next_y > dome_radius*dome_radius){
-						let mirror_x = player.p.pos.x;
-						let mirror_y = player.p.pos.y;
-						let mag = Math.sqrt(mirror_x*mirror_x + mirror_y*mirror_y);
-						mirror_x /= mag;
-						mirror_y /= mag;
-						let dot = player.p.vel.x*mirror_x + player.p.vel.y*mirror_y;
-						player.p.vel.x -= 2*dot*mirror_x;
-						player.p.vel.y -= 2*dot*mirror_y;
-						player.p.vel.x *= 0.5;
-						player.p.vel.y *= 0.5;
-					} else {
-						player.p.pos.x = next_x;
-						player.p.pos.y = next_y;
-					}
-					const [pull_x, pull_y] = bodies
-						.map(body => {
-							let xdiff = body.pos.x - player.p.pos.x;
-							let ydiff = body.pos.y - player.p.pos.y;
-							let powsum = xdiff*xdiff + ydiff*ydiff;
-							let mag = G * body.radius*body.radius*PI / powsum;
-							let dist = Math.sqrt(powsum);
-							return [mag * xdiff / dist, mag * ydiff / dist];
-						})
-						.reduce(([a,b],[c,d]) => [a+c,b+d]);
-					player.p.vel.x += pull_x * TIMESTEP;
-					player.p.vel.y += pull_y * TIMESTEP;
-
-					const current_rotation_speed = rotation_speed * player.p.spinDir;
-					player.p.spin += current_rotation_speed * TIMESTEP;
-					if (player.p.propelling){
-						player.p.vel.x += Math.cos(player.p.spin - PI/2)*ACCELERATION * TIMESTEP;
-						player.p.vel.y += Math.sin(player.p.spin - PI/2)*ACCELERATION * TIMESTEP;
-					}
-
-					if (player.p.public_id != public_id)
-						return;
-
-					for (let i = 0;i < bodies.length;++i){
-						const xdiff = (player.p.pos.x - bodies[i].pos.x);
-						const ydiff = (player.p.pos.y - bodies[i].pos.y);
-						const distSq = (bodies[i].radius+player_radius)*(bodies[i].radius+player_radius);
-						if (xdiff*xdiff + ydiff*ydiff < distSq){
-							alert("You crashed");
-							window.location.reload();
-						}
-					}
-				});
-				graphics_counter = 0;
-			}
+			Object.values(gameState).forEach(player => {
+				player.p.trajectory.advance(BigInt(Date.now()));
+			});
 			
 			Object.values(gameState).forEach(player => {
+				if (player.p.trajectory.collision)
+					return;
 				const shallow_copy = player.p.public_id == public_id ? world.pivot:player.graphics
 
 				//lerp the positions
-				const current_rotation_speed = rotation_speed * player.p.spinDir;
-				shallow_copy.x = player.p.pos.x + player.p.vel.x*graphics_counter;
-				shallow_copy.y = player.p.pos.y + player.p.vel.y*graphics_counter;
-				player.child.rotation = player.p.spin + current_rotation_speed*graphics_counter;
+				const tdiff = Number(BigInt(Date.now()) - player.p.trajectory.time)/1000;
+				const current_rotation_speed = rotation_speed * player.p.trajectory.spin_direction;
+				shallow_copy.x = player.p.trajectory.pos.x + player.p.trajectory.vel.x*tdiff;
+				shallow_copy.y = player.p.trajectory.pos.y + player.p.trajectory.vel.y*tdiff;
+				player.child.rotation = player.p.trajectory.spin + current_rotation_speed*tdiff;
 			});
 
 			const tile_x = Math.floor(world.pivot.x / seamless_texture.width);

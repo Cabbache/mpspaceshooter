@@ -6,6 +6,7 @@ use std::f32::consts::{PI};
 use js_sys::Uint8Array;
 use serde::{Deserialize,Serialize};
 use bincode::{serialize, deserialize};
+use base64::{engine::general_purpose, Engine as _};
 
 pub const PLAYER_RADIUS: f32 = 25.0;
 const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
@@ -182,53 +183,37 @@ pub struct Trajectory{
 
 #[wasm_bindgen]
 impl Trajectory {
+
 	#[wasm_bindgen(constructor)]
-	pub fn new(time: u64) -> Trajectory {
-		Trajectory{
-			propelling: true,
-			pos: Vector{
-				x: 0f32,
-				y: 0f32
-			},
-			vel: Vector{
-				x: 5.2f32,
-				y: 3f32,
-			},
-			spin: 5f32,
-			spin_direction: 1,
-			time: time,
-			collision: false,
-		}
+	pub fn from_b64(data: String) -> Trajectory {
+		deserialize(&general_purpose::STANDARD.decode(&data).unwrap()).unwrap()
+	}
+
+	pub fn to_b64(&self) -> String {
+		general_purpose::STANDARD.encode(serialize(&self).unwrap())
 	}
 
 	//euler's method
-	pub fn live(&self, time: u64) -> Trajectory {
-		let mut clone = self.clone();
-		if clone.collision {
-			return clone;
-		}
-		let elapsed = (time - clone.time) as u32;
+	pub fn advance(&mut self, time: u64) -> bool {
+		let elapsed = (time - self.time) as u32;
 		let ctr = elapsed / TIMESTEP_MILLIS;
+		let mut chpos = false;
 		for _ in 1..=ctr {
-			//TODO consider when velocity exceeds radius, use line_intersects_circle?
-			clone.step();
-			clone.collision = clone.collides();
-			if clone.collision {
-				return clone;
+			if self.collision {
+				return chpos;
 			}
+			self.step();
+			self.collision = self.collides();
+			chpos = true;
 		}
-		clone.time += (TIMESTEP_MILLIS * ctr) as u64;
-		clone
+		self.time += (TIMESTEP_MILLIS * ctr) as u64;
+		chpos
 	}
 
 	//live rotation doesnt need mutation
 	pub fn live_rot(&self, time: u64) -> f32 {
 		let elapsed = (time - self.time) as f32 /1000f32;
 		(self.spin_direction as f32) * elapsed * RADIANS_PER_SECOND + self.spin
-	}
-
-	pub fn advance(&mut self, time: u64){
-		*self = self.live(time);
 	}
 
 	pub fn update_rotation(&mut self, new_direction: i8, time: u64){
@@ -247,6 +232,7 @@ impl Trajectory {
 		trajectory
 	}
 
+	//TODO consider when velocity exceeds radius, use line_intersects_circle?
 	fn collides(&self) -> bool {
 		for body in BODIES{
 			if body.collides(&self.pos){

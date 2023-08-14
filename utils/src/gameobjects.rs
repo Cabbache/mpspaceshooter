@@ -75,20 +75,13 @@ pub struct PlayerState {
 }
 
 impl PlayerState {
-	pub fn encode_other(&self) -> Value{
+	pub fn encode_other(&self) -> Value {
 		//TODO consider implementing live() in Trajectory - an immutable version of reset() and use that instead
-		let pos = &self.trajectory.pos;
-		let vel = &self.trajectory.vel;
-		let spin = &self.trajectory.spin;
 		return json!({
 			"name": &self.name,
 			"public_id": &self.public_id,
 			"color": &self.color,
-			"propelling": &self.trajectory.propelling,
-			"pos": &pos,
-			"vel": &vel,
-			"spin": &spin,
-			"spinDir": &self.trajectory.spin_direction,
+			"trajectory": &self.trajectory.to_b64(),
 		});
 	}
 

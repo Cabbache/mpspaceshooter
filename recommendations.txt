@@ -1,0 +1,4 @@
+Planets of safe harbour.
+scroll to zoom in and out, on mobile use two two touches for this
+increase ammo collection range
+player crash causes explosion (knockbacking others?)
