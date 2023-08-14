@@ -182,6 +182,25 @@ pub struct Trajectory{
 
 #[wasm_bindgen]
 impl Trajectory {
+	#[wasm_bindgen(constructor)]
+	pub fn new(time: u64) -> Trajectory {
+		Trajectory{
+			propelling: true,
+			pos: Vector{
+				x: 0f32,
+				y: 0f32
+			},
+			vel: Vector{
+				x: 5.2f32,
+				y: 3f32,
+			},
+			spin: 5f32,
+			spin_direction: 1,
+			time: time,
+			collision: false,
+		}
+	}
+
 	//euler's method
 	pub fn live(&self, time: u64) -> Trajectory {
 		let mut clone = self.clone();
@@ -208,17 +227,17 @@ impl Trajectory {
 		(self.spin_direction as f32) * elapsed * RADIANS_PER_SECOND + self.spin
 	}
 
-	pub fn update(&mut self, time: u64){
+	pub fn advance(&mut self, time: u64){
 		*self = self.live(time);
 	}
 
 	pub fn update_rotation(&mut self, new_direction: i8, time: u64){
-		self.update(time);
+		self.advance(time);
 		self.spin_direction = new_direction;
 	}
 
 	pub fn update_propulsion(&mut self, on: bool, time: u64){
-		self.update(time);
+		self.advance(time);
 		self.propelling = on;
 	}
 

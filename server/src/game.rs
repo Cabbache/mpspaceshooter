@@ -182,7 +182,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			let players: Vec<_> = join_all(players_futures).await
 				.into_iter()
 				.filter_map(|mut lock| {
-					lock.trajectory.update(current_time());
+					lock.trajectory.advance(current_time());
 					let clone = lock.clone();
 					match clone.health > 0.0 { //to only send the living ones
 						true => Some(clone),
@@ -267,7 +267,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 
 					let (ss, rr) = {
 						let mut writeable = sender_state.write().await;
-						writeable.trajectory.update(current_time());
+						writeable.trajectory.advance(current_time());
 						(writeable.trajectory.pos.clone(), writeable.trajectory.spin)
 					};
 
@@ -279,7 +279,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 
 						let playerstate = {
 							let mut writable = value.state.write().await;
-							writable.trajectory.update(current_time());
+							writable.trajectory.advance(current_time());
 							writable.clone()
 						};
 
@@ -350,7 +350,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				Some(loot_obj) => {
 					let pp = {
 						let mut writable = sender_state.write().await;
-						writable.trajectory.update(current_time());
+						writable.trajectory.advance(current_time());
 						writable.trajectory.pos.clone()
 					};
 					if (pp.y - loot_obj.y).powi(2) + (pp.x - loot_obj.x).powi(2) > LOOT_RADIUS.powi(2){
