@@ -69,6 +69,8 @@ async function runAll(){
 		const keyup = "w";
 		const keyshoot = " ";
 		const keyshop = "escape";
+		const keyzoomin = "arrowup";
+		const keyzoomout = "arrowdown";
 
 		var keymap = {
 			[keyleft]: false,
@@ -76,6 +78,8 @@ async function runAll(){
 			[keyup]: false,
 			[keyshoot]: false,
 			[keyshop]: false,
+			[keyzoomin]: false,
+			[keyzoomout]: false,
 		};
 
 		const invr2 = 0.7071067811865475;
@@ -94,6 +98,7 @@ async function runAll(){
 		const healthbar_maxwidth = 0.15; //This gets multiplied by the  screen width
 
 		var pingInterval = null;
+		var lastPing = 0;
 
 		const app = new PIXI.Application({
 				width: window.innerWidth,
@@ -156,14 +161,14 @@ async function runAll(){
 		healthbar.width = app.screen.width * healthbar_maxwidth;
 		healthbar.height = 20;
 		healthbar.tint = 0x00ff00;
-		healthbar.position.set(app.screen.width*0.02, app.screen.height*0.98 - 20);
+		healthbar.position.set(app.screen.width*0.01, app.screen.height*0.98 - 20);
 		app.stage.addChild(healthbar);
 
 		//Add the hearth next to the healthbar TODO reduce the hard coded values and make a container for the healthbar and the heart
 		var heart_sprite = new PIXI.Sprite(heart_texture);
 		heart_sprite.scale.set(0.7,0.7);
 		heart_sprite.position.set(
-			app.screen.width * (healthbar_maxwidth+0.03),
+			app.screen.width * (healthbar_maxwidth+0.02),
 			app.screen.height*0.98 - 10 - heart_sprite.height/2
 		);
 		app.stage.addChild(heart_sprite);
@@ -171,13 +176,13 @@ async function runAll(){
 		//add the coords text
 		var coords_text = new PIXI.Text("x: -, y: -", { fontFamily: "Arial", fontSize: 18, fill: 0x88ff88 });
 		coords_text.anchor.set(0.5);
-		coords_text.position.set(app.screen.width * 0.9, app.screen.height*0.02 + 20);
+		coords_text.position.set(app.screen.width * 0.93, app.screen.height*0.02);
 		app.stage.addChild(coords_text);
 
 		//add the fps text
 		var fps_text = new PIXI.Text("fps: -", { fontFamily: "Arial", fontSize: 18, fill: 0x88ff88 });
 		fps_text.anchor.set(0.5);
-		fps_text.position.set(app.screen.width * 0.9, app.screen.height*0.02 + 40);
+		fps_text.position.set(app.screen.width * 0.93, app.screen.height*0.02 + 20);
 		app.stage.addChild(fps_text);
 
 		//add the cash text
@@ -275,6 +280,7 @@ async function runAll(){
 					opened=true;
 					pingInterval = setInterval(() => {
 						socket.send(JSON.stringify({"t": "Ping"}));
+						lastPing = Date.now();
 					}, 6000);
 					socket.send(JSON.stringify({"t":"StateQuery"}));
 				};
@@ -631,7 +637,8 @@ async function runAll(){
 		}
 
 		const handle_pong = function(content){
-			
+			const latency = (Date.now() - lastPing);
+			console.log(latency);
 		}
 
 		const handle_lootcollection = function(content){
@@ -692,6 +699,7 @@ async function runAll(){
 			if (!opened || repeated) return;
 
 			name = name.toLowerCase();
+			console.log(name);
 			if (keymap[name] === undefined)
 				return;
 
@@ -737,6 +745,12 @@ async function runAll(){
 				);
 			} else if (name == keyshop) {
 				document.getElementById("shop-modal").style.display = keymap[name] ? "flex":"none";
+			} else if (name == keyzoomout) {
+				world.scale.set(0.5, 0.5);
+				gameState[public_id].graphics.scale.set(0.5,0.5);
+			} else if (name == keyzoomin) {
+				world.scale.set(1, 1);
+				gameState[public_id].graphics.scale.set(1,1);
 			}
 		};
 
