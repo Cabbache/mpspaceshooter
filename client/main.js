@@ -431,14 +431,15 @@ async function runAll(){
 
 		const handle_propelupdate = function(content){
 			let broadcaster = content["from"];
-			gameState[broadcaster].p.trajectory.update_propulsion(content.propel, BigInt(Date.now()));
-			//gameState[broadcaster].p.propelling = content.propel;
-			//gameState[broadcaster].p.vel.x = content.vel.x;
-			//gameState[broadcaster].p.vel.y = content.vel.y;
-			//gameState[broadcaster].p.pos.x = content.pos.x;
-			//gameState[broadcaster].p.pos.y = content.pos.y;
+			if (broadcaster == public_id)
+				return;
 
-			if (content.propel){
+			gameState[broadcaster].p.trajectory.set_propulsion(content.propel);
+			change_propulsion_emitter(broadcaster, content.propel);
+		}
+
+		const change_propulsion_emitter = (pid, is_emitting) => {
+			if (is_emitting){
 				let emitJSON = JSON.parse(JSON.stringify(emitters["propel"])); //careful here
 				emitJSON.behaviors.push(
 					{
@@ -450,24 +451,24 @@ async function runAll(){
 				);
 
 				let emitter = new PIXI.particles.Emitter(
-					gameState[broadcaster].child,
+					gameState[pid].child,
 					emitJSON
 				);
 				emitter.emit = true;
 				emissions.push(emitter);
-				gameState[broadcaster].emitter = emitter;
+				gameState[pid].emitter = emitter;
 			} else {
-				if (gameState[broadcaster].emitter){
-					gameState[broadcaster].emitter.emit = false;
+				if (gameState[pid].emitter){
+					gameState[pid].emitter.emit = false;
 				}
-			}
+			}		
 		}
 
 		const handle_rotationupdate = function(content){
 			let broadcaster = content["from"];
-			//gameState[broadcaster].p.spinDir = content.direction;
-			//gameState[broadcaster].p.spin = content.spin;
-			gameState[broadcaster].p.trajectory.update_rotation(content.direction, BigInt(Date.now()));
+			if (broadcaster == public_id)
+				return;
+			gameState[broadcaster].p.trajectory.set_rotation(content.direction);
 		}
 
 		const handle_trigUpdate = function(content){
@@ -719,18 +720,28 @@ async function runAll(){
 				} else if (keymap[keyright]){
 					response = 1;
 				}
+				const chAt = gameState[public_id].p.trajectory.hash_str();
+				gameState[public_id].p.trajectory.set_rotation(response);
 				socket.send(
 					JSON.stringify({
 						"t":"Rotation",
 						"c":{
 							"dir": response,
+							"at": chAt,
 						 }
 					})
 				);
 			} else if (name == keyup) {
+				const chAt = gameState[public_id].p.trajectory.hash_str();
+				gameState[public_id].p.trajectory.set_propulsion(!up);
+				change_propulsion_emitter(public_id, !up);
 				socket.send(
 					JSON.stringify({
-						"t":(up ? "PropelStop":"Propel")
+						"t":"PropelUpdate",
+						"c": {
+							"on": !up,
+							"at": chAt,
+						}
 					})
 				);			
 			} else if (name == keyshoot) {

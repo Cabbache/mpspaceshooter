@@ -116,41 +116,48 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				&clr
 			).await; //broadcast playerjoin
 		},
-		ClientMessage::Propel |
-		ClientMessage::PropelStop => {
-			let is_propel = message == ClientMessage::Propel;
-			if sender_state.read().await.clone().trajectory.propelling == is_propel{ //nothing changed
+		ClientMessage::PropelUpdate { on, at } => {
+			if sender_state.read().await.clone().trajectory.propelling == on { //nothing changed
 				eprintln!("modded client detected (redundant propel update)");
 				return Ok(());
 			}
+			let successful: bool;
 			let new_trajectory = {
 				let mut writeable = sender_state.write().await;
-				println!("before {:?}", writeable.trajectory);
-				writeable.trajectory.update_propulsion(is_propel, current_time());
+				successful = writeable.trajectory.update_propulsion(on, at.clone(), current_time());
 				writeable.trajectory.clone()
 			};
 			println!("hash: {}", new_trajectory.hash_str());
+			if !successful{
+				eprintln!("COULD NOT FIND HASH");
+			}
 			broadcast(
 				&ServerMessage::PropelUpdate{
-					propel: is_propel,
+					propel: on,
+					at: at,
 					from: format!("{:x}", xxh3_64(private_id.as_bytes())),
 				},
 				&clr,
 			).await;
 		},
-		ClientMessage::Rotation { dir } => {
+		ClientMessage::Rotation { dir, at } => {
 			if sender_state.read().await.clone().trajectory.spin_direction == dir {
 				return Ok(());
 			}
+			let successful: bool;
 			let new_trajectory = {
 				let mut writeable = sender_state.write().await;
-				writeable.trajectory.update_rotation(dir, current_time());
+				successful = writeable.trajectory.update_rotation(dir, at.clone(), current_time());
 				&writeable.trajectory.clone()
 			};
 			println!("hash: {}", new_trajectory.hash_str());
+			if !successful {
+				eprintln!("COULD NOT FIND HASH");
+			}
 			broadcast(
 				&ServerMessage::RotationUpdate {
 					direction: dir,
+					at: at,
 					from: format!("{:x}", xxh3_64(private_id.as_bytes())),
 				},
 				&clr

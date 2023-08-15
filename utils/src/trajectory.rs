@@ -15,7 +15,8 @@ const PROPEL_DIRECTION: f32 = -PI/2.0;
 const RADIANS_PER_SECOND: f32 = PI; //player rotation speed
 const G: f32 = 2000.0; //Gravitational constant
 
-const TIMESTEP_FPS: u32 = 8; //around 20 is good
+//const TIMESTEP_FPS: u32 = 8; //around 20 is good
+const TIMESTEP_FPS: u32 = 30; //around 20 is good
 //const DRAG: f32 = 0.94; //velocity is multiplied by this every second
 
 //Calculated
@@ -223,7 +224,37 @@ impl Trajectory {
 			self.vel.x += (self.spin + PROPEL_DIRECTION).cos()*ACCELERATION * TIMESTEP_SECS;
 			self.vel.y += (self.spin + PROPEL_DIRECTION).sin()*ACCELERATION * TIMESTEP_SECS;
 		}
+		self.time += TIMESTEP_MILLIS as u64;
 		self.collision = self.collides();
+		true
+	}
+	
+	//returns true if hash found
+	pub fn advance_to(&mut self, hash: String, time: u64) -> bool {
+		let elapsed = (time - self.time) as u32;
+		let steps = elapsed / TIMESTEP_MILLIS;
+		for _ in 1..=steps {
+			if self.hash_str() == hash {
+				return true;
+			}
+			self.step();
+		}
+		self.hash_str() == hash
+	}
+
+	pub fn update_rotation(&mut self, new_direction: i8, hash: String, time: u64) -> bool {
+		if !self.advance_to(hash, time) {
+			return false;
+		}
+		self.spin_direction = new_direction;
+		true
+	}
+
+	pub fn update_propulsion(&mut self, on: bool, hash: String, time: u64) -> bool {
+		if !self.advance_to(hash, time) {
+			return false;
+		}
+		self.propelling = on;
 		true
 	}
 }
@@ -237,17 +268,17 @@ impl Trajectory {
 	}
 
 	//euler's method
+	//returns true if change occured
 	pub fn advance(&mut self, time: u64) -> bool {
 		let elapsed = (time - self.time) as u32;
-		let ctr = elapsed / TIMESTEP_MILLIS;
+		let steps = elapsed / TIMESTEP_MILLIS;
 		let mut chpos = false;
-		for _ in 1..=ctr {
+		for _ in 1..=steps {
 			if !self.step() {
 				return chpos;
 			}
 			chpos = true;
 		}
-		self.time += (TIMESTEP_MILLIS * ctr) as u64;
 		true
 	}
 
@@ -257,16 +288,6 @@ impl Trajectory {
 	}
 
 	pub fn set_propulsion(&mut self, on: bool) {
-		self.propelling = on;
-	}
-
-	pub fn update_rotation(&mut self, new_direction: i8, time: u64){
-		self.advance(time);
-		self.spin_direction = new_direction;
-	}
-
-	pub fn update_propulsion(&mut self, on: bool, time: u64){
-		self.advance(time);
 		self.propelling = on;
 	}
 
