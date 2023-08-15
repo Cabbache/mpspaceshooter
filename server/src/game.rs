@@ -51,18 +51,6 @@ impl Client {
 								"c": pstate.encode(pstate.public_id == public_id),
 							}))?
 						},
-//						ServerMessage::LootCollected{ loot_id, collector } => {
-//							let mut content: Value = json!({
-//								"loot_id": loot_id
-//							});
-//							if *collector == public_id {
-//								content["receiver"] = json!(1);
-//							}
-//							to_string(&json!({
-//								"t": "LootCollected",
-//								"c": content,
-//							}))?
-//						}
 						_ => String::new()
 					}
 				},  
@@ -145,8 +133,6 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			broadcast(
 				&ServerMessage::PropelUpdate{
 					propel: is_propel,
-					pos: new_trajectory.pos,
-					vel: new_trajectory.vel,
 					from: format!("{:x}", xxh3_64(private_id.as_bytes())),
 				},
 				&clr,
@@ -165,7 +151,6 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			broadcast(
 				&ServerMessage::RotationUpdate {
 					direction: dir,
-					spin: new_trajectory.spin,
 					from: format!("{:x}", xxh3_64(private_id.as_bytes())),
 				},
 				&clr
