@@ -250,12 +250,6 @@ impl Trajectory {
 		chpos
 	}
 
-	//live rotation doesnt need mutation
-	pub fn live_rot(&self, time: u64) -> f32 {
-		let elapsed = (time - self.time) as f32 /1000f32;
-		(self.spin_direction as f32) * elapsed * RADIANS_PER_SECOND + self.spin
-	}
-
 	pub fn update_rotation(&mut self, new_direction: i8, time: u64){
 		self.advance(time);
 		self.spin_direction = new_direction;
