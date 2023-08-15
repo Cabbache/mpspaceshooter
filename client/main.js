@@ -378,7 +378,6 @@ async function runAll(){
 			bodies = [];
 			state.players.forEach((p) => {
 				p.trajectory = new Trajectory(p.trajectory);
-
 				const square = getPlayerSprite(p);
 				if (p.public_id == public_id){
 					square.container.x = app.screen.width/2;
@@ -559,6 +558,7 @@ async function runAll(){
 		}
 
 		const handle_playerjoin = function(content){
+			content.trajectory = new Trajectory(content.trajectory);
 			if (content.public_id == public_id){ //this happens when spawning
 				world.pivot.x = content.trajectory.pos.x;
 				world.pivot.y = content.trajectory.pos.y;
@@ -705,7 +705,6 @@ async function runAll(){
 			if (!opened || repeated) return;
 
 			name = name.toLowerCase();
-			console.log(name);
 			if (keymap[name] === undefined)
 				return;
 

@@ -3,7 +3,6 @@ use std::hash::{Hash, Hasher};
 use lazy_static::lazy_static;
 use wasm_bindgen::prelude::*;
 use std::f32::consts::{PI};
-use js_sys::Uint8Array;
 use serde::{Deserialize,Serialize};
 use bincode::{serialize, deserialize};
 use base64::{engine::general_purpose, Engine as _};
@@ -181,68 +180,12 @@ pub struct Trajectory{
 	pub collision: bool,
 }
 
-#[wasm_bindgen]
 impl Trajectory {
-
-	#[wasm_bindgen(constructor)]
-	pub fn from_b64(data: String) -> Trajectory {
-		deserialize(&general_purpose::STANDARD.decode(&data).unwrap()).unwrap()
-	}
-
 	pub fn to_b64(&self) -> String {
 		general_purpose::STANDARD.encode(serialize(&self).unwrap())
 	}
 
-	//euler's method
-	pub fn advance(&mut self, time: u64) -> bool {
-		let elapsed = (time - self.time) as u32;
-		let ctr = elapsed / TIMESTEP_MILLIS;
-		let mut chpos = false;
-		for _ in 1..=ctr {
-			if self.collision {
-				return chpos;
-			}
-			self.step();
-			self.collision = self.collides();
-			chpos = true;
-		}
-		self.time += (TIMESTEP_MILLIS * ctr) as u64;
-		chpos
-	}
-
-	//live rotation doesnt need mutation
-	pub fn live_rot(&self, time: u64) -> f32 {
-		let elapsed = (time - self.time) as f32 /1000f32;
-		(self.spin_direction as f32) * elapsed * RADIANS_PER_SECOND + self.spin
-	}
-
-	pub fn update_rotation(&mut self, new_direction: i8, time: u64){
-		self.advance(time);
-		self.spin_direction = new_direction;
-	}
-
-	pub fn update_propulsion(&mut self, on: bool, time: u64){
-		self.advance(time);
-		self.propelling = on;
-	}
-
-	pub fn decode_trajectory(array: Uint8Array) -> Trajectory {
-		let vec: Vec<u8> = array.to_vec();
-		let trajectory: Trajectory = deserialize(&vec).unwrap();
-		trajectory
-	}
-
-	//TODO consider when velocity exceeds radius, use line_intersects_circle?
-	fn collides(&self) -> bool {
-		for body in BODIES{
-			if body.collides(&self.pos){
-				return true;
-			}
-		}
-		return false;
-	}
-
-	pub fn pull_sum(pos: &Vector) -> Vector{
+	pub fn pull_sum(pos: &Vector) -> Vector {
 		let mut pull = Vector{
 			x: 0.0,
 			y: 0.0,
@@ -278,21 +221,65 @@ impl Trajectory {
 			self.vel.y += (self.spin + PROPEL_DIRECTION).sin()*ACCELERATION * TIMESTEP_SECS;
 		}
 		//self.vel.x *= *DRAGSTEP;
-		//self.vel.y *= *DRAGSTEP;	
+		//self.vel.y *= *DRAGSTEP;
+	}
+}
+
+#[wasm_bindgen]
+impl Trajectory {
+
+	#[wasm_bindgen(constructor)]
+	pub fn from_b64(data: String) -> Trajectory {
+		deserialize(&general_purpose::STANDARD.decode(&data).unwrap()).unwrap()
+	}
+
+	//euler's method
+	pub fn advance(&mut self, time: u64) -> bool {
+		let elapsed = (time - self.time) as u32;
+		let ctr = elapsed / TIMESTEP_MILLIS;
+		let mut chpos = false;
+		for _ in 1..=ctr {
+			if self.collision {
+				return chpos;
+			}
+			self.step();
+			self.collision = self.collides();
+			chpos = true;
+		}
+		self.time += (TIMESTEP_MILLIS * ctr) as u64;
+		chpos
+	}
+
+	//live rotation doesnt need mutation
+	pub fn live_rot(&self, time: u64) -> f32 {
+		let elapsed = (time - self.time) as f32 /1000f32;
+		(self.spin_direction as f32) * elapsed * RADIANS_PER_SECOND + self.spin
+	}
+
+	pub fn update_rotation(&mut self, new_direction: i8, time: u64){
+		self.advance(time);
+		self.spin_direction = new_direction;
+	}
+
+	pub fn update_propulsion(&mut self, on: bool, time: u64){
+		self.advance(time);
+		self.propelling = on;
+	}
+
+	//TODO consider when velocity exceeds radius, use line_intersects_circle?
+	fn collides(&self) -> bool {
+		for body in BODIES{
+			if body.collides(&self.pos){
+				return true;
+			}
+		}
+		return false;
 	}
 
 	pub fn hash_str(&self) -> String {
 		let mut hasher = DefaultHasher::new();
 		self.hash(&mut hasher);
 		format!("{:x}", hasher.finish())
-	}
-}
-
-//this is not exposed to wasm
-impl Trajectory {
-	pub fn encode(&self) -> Uint8Array {
-		let encoded = serialize(&self).unwrap();
-		Uint8Array::from(&encoded[..])
 	}
 }
 
