@@ -161,6 +161,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				writeable.trajectory.update_rotation(dir, current_time());
 				&writeable.trajectory.clone()
 			};
+			println!("hash: {}", new_trajectory.hash_str());
 			broadcast(
 				&ServerMessage::RotationUpdate {
 					direction: dir,

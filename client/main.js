@@ -185,6 +185,12 @@ async function runAll(){
 		fps_text.position.set(app.screen.width * 0.93, app.screen.height*0.02 + 20);
 		app.stage.addChild(fps_text);
 
+		//add the latency text
+		var latency_text = new PIXI.Text("latency: ", { fontFamily: "Arial", fontSize: 18, fill: 0x88ff88 });
+		latency_text.anchor.set(0.5);
+		latency_text.position.set(app.screen.width * 0.93, app.screen.height*0.02 + 40);
+		app.stage.addChild(latency_text);
+
 		//add the cash text
 		var cash_text = new PIXI.Text("?", {
 			fill: "#e5a50a",
@@ -638,7 +644,7 @@ async function runAll(){
 
 		const handle_pong = function(content){
 			const latency = (Date.now() - lastPing);
-			console.log(latency);
+			latency_text.text = `latency: ${latency}ms`;
 		}
 
 		const handle_lootcollection = function(content){
