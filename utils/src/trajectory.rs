@@ -16,14 +16,14 @@ const RADIANS_PER_SECOND: f32 = PI; //player rotation speed
 const G: f32 = 2000.0; //Gravitational constant
 
 const TIMESTEP_FPS: u32 = 8; //around 20 is good
-const DRAG: f32 = 0.94; //velocity is multiplied by this every second
+//const DRAG: f32 = 0.94; //velocity is multiplied by this every second
 
 //Calculated
 const TIMESTEP_MILLIS: u32 = 1000 / TIMESTEP_FPS;
 const TIMESTEP_SECS: f32 = 1f32 / TIMESTEP_FPS as f32;
-lazy_static! {
-	static ref DRAGSTEP: f32 = DRAG.powf(1f32 / TIMESTEP_FPS as f32);
-}
+//lazy_static! {
+//	static ref DRAGSTEP: f32 = DRAG.powf(1f32 / TIMESTEP_FPS as f32);
+//}
 
 pub const BODIES: [Body; 20] = [
   Body {
@@ -200,7 +200,10 @@ impl Trajectory {
 		pull
 	}
 
-	fn step(&mut self) {
+	fn step(&mut self) -> bool{
+		if self.collision {
+			return false;
+		}
 		let next_pos = Vector{
 			x: self.pos.x + self.vel.x*TIMESTEP_SECS,
 			y: self.pos.y + self.vel.y*TIMESTEP_SECS,
@@ -220,8 +223,8 @@ impl Trajectory {
 			self.vel.x += (self.spin + PROPEL_DIRECTION).cos()*ACCELERATION * TIMESTEP_SECS;
 			self.vel.y += (self.spin + PROPEL_DIRECTION).sin()*ACCELERATION * TIMESTEP_SECS;
 		}
-		//self.vel.x *= *DRAGSTEP;
-		//self.vel.y *= *DRAGSTEP;
+		self.collision = self.collides();
+		true
 	}
 }
 
@@ -239,15 +242,22 @@ impl Trajectory {
 		let ctr = elapsed / TIMESTEP_MILLIS;
 		let mut chpos = false;
 		for _ in 1..=ctr {
-			if self.collision {
+			if !self.step() {
 				return chpos;
 			}
-			self.step();
-			self.collision = self.collides();
 			chpos = true;
 		}
 		self.time += (TIMESTEP_MILLIS * ctr) as u64;
-		chpos
+		true
+	}
+
+	//these 2, only for wasm
+	pub fn set_rotation(&mut self, new_direction: i8) {
+		self.spin_direction = new_direction;
+	}
+
+	pub fn set_propulsion(&mut self, on: bool) {
+		self.propelling = on;
 	}
 
 	pub fn update_rotation(&mut self, new_direction: i8, time: u64){
