@@ -6,8 +6,11 @@ use serde::{Deserialize,Serialize};
 use bincode::{serialize, deserialize};
 use base64::{engine::general_purpose, Engine as _};
 use std::collections::HashMap;
-use std::time::{SystemTime, UNIX_EPOCH};
+
+#[cfg(not(target_arch = "wasm32"))]
 use rand_distr::{Normal, Distribution};
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub const PLAYER_RADIUS: f32 = 25.0;
 const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
@@ -15,7 +18,6 @@ const DOME_RADIUS: f32 = 6000.0;
 const ACCELERATION: f32 = 200.0; //player acceleration
 const PROPEL_DIRECTION: f32 = -PI/2.0;
 const RADIANS_PER_SECOND: f32 = PI; //player rotation speed
-const SPAWN_PULL_MAX: f32 = 10.0; //Maximum gravity pull at spawn point
 const G: f32 = 2000.0; //Gravitational constant
 
 //const TIMESTEP_FPS: u32 = 8; //around 20 is good
@@ -24,6 +26,9 @@ const TIMESTEP_FPS: u32 = 30; //around 20 is good
 //Calculated
 const TIMESTEP_MILLIS: u32 = 1000 / TIMESTEP_FPS;
 const TIMESTEP_SECS: f32 = 1f32 / TIMESTEP_FPS as f32;
+
+#[cfg(not(target_arch = "wasm32"))]
+const SPAWN_PULL_MAX: f32 = 10.0; //Maximum gravity pull at spawn point
 
 pub const BODIES: [Body; 20] = [
   Body {
@@ -258,6 +263,7 @@ impl Trajectory {
 		true
 	}
 
+	#[cfg(not(target_arch = "wasm32"))]
 	fn gen_spawn() -> Vector {
 		let normal = Normal::new(DOME_RADIUS/4.0, DOME_RADIUS/4.0).unwrap();
 		let mut pos: Vector;
@@ -275,6 +281,7 @@ impl Trajectory {
 	}
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for Trajectory {
 	fn default() -> Self {
 		Trajectory {
@@ -448,6 +455,7 @@ pub fn line_intersects_circle(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> 
 	r1_good || r2_good
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn current_time() -> u64 {
 	let now = SystemTime::now();
 	let current_time = now.duration_since(UNIX_EPOCH).expect("Broken clock");
