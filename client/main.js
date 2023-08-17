@@ -284,10 +284,12 @@ async function runAll(){
 				socket.onmessage = recvFn;
 				socket.onopen = () => {
 					opened=true;
-					pingInterval = setInterval(() => {
+					const pingFn = () => { //TODO: instead of using ping, use other things to measure latency
 						socket.send(JSON.stringify({"t": "Ping"}));
 						lastPing = Date.now();
-					}, 6000);
+						setTimeout(pingFn, 5000+(Math.random()*5000));
+					}
+					setTimeout(pingFn, 200);
 					socket.send(JSON.stringify({"t":"StateQuery"}));
 				};
 				socket.onclose = (event)=>{
