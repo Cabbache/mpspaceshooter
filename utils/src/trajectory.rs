@@ -1,11 +1,13 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use lazy_static::lazy_static;
 use wasm_bindgen::prelude::*;
 use std::f32::consts::{PI};
 use serde::{Deserialize,Serialize};
 use bincode::{serialize, deserialize};
 use base64::{engine::general_purpose, Engine as _};
+use std::collections::HashMap;
+use std::time::{SystemTime, UNIX_EPOCH};
+use rand_distr::{Normal, Distribution};
 
 pub const PLAYER_RADIUS: f32 = 25.0;
 const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
@@ -13,18 +15,15 @@ const DOME_RADIUS: f32 = 6000.0;
 const ACCELERATION: f32 = 200.0; //player acceleration
 const PROPEL_DIRECTION: f32 = -PI/2.0;
 const RADIANS_PER_SECOND: f32 = PI; //player rotation speed
+const SPAWN_PULL_MAX: f32 = 10.0; //Maximum gravity pull at spawn point
 const G: f32 = 2000.0; //Gravitational constant
 
 //const TIMESTEP_FPS: u32 = 8; //around 20 is good
 const TIMESTEP_FPS: u32 = 30; //around 20 is good
-//const DRAG: f32 = 0.94; //velocity is multiplied by this every second
 
 //Calculated
 const TIMESTEP_MILLIS: u32 = 1000 / TIMESTEP_FPS;
 const TIMESTEP_SECS: f32 = 1f32 / TIMESTEP_FPS as f32;
-//lazy_static! {
-//	static ref DRAGSTEP: f32 = DRAG.powf(1f32 / TIMESTEP_FPS as f32);
-//}
 
 pub const BODIES: [Body; 20] = [
   Body {
@@ -179,6 +178,7 @@ pub struct Trajectory{
 	pub spin_direction: i8, //-1,0,1
 	pub time: u64,
 	pub collision: bool,
+	internal: HashMap<String, String>,
 }
 
 impl Trajectory {
@@ -257,6 +257,37 @@ impl Trajectory {
 		self.propelling = on;
 		true
 	}
+
+	fn gen_spawn() -> Vector {
+		let normal = Normal::new(DOME_RADIUS/4.0, DOME_RADIUS/4.0).unwrap();
+		let mut pos: Vector;
+		loop {
+			pos = Vector{
+				x: normal.sample(&mut rand::thread_rng()),
+				y: normal.sample(&mut rand::thread_rng()),
+			};
+			let psum = Trajectory::pull_sum(&pos);
+			if psum.x.powf(2.0) + psum.y.powf(2.0) < SPAWN_PULL_MAX.powf(2.0) {
+				break;
+			}
+		}
+		pos
+	}
+}
+
+impl Default for Trajectory {
+	fn default() -> Self {
+		Trajectory {
+			propelling: false,
+			pos: Trajectory::gen_spawn(),
+			vel: Vector{x: 0.0, y: 0.0},
+			spin_direction: 0,
+			spin: 0.0,
+			time: current_time(),
+			collision: false,
+			internal: HashMap::new(),
+		}
+	}
 }
 
 #[wasm_bindgen]
@@ -270,6 +301,9 @@ impl Trajectory {
 	//euler's method
 	//returns true if change occured
 	pub fn advance(&mut self, time: u64) -> bool {
+		if time <= self.time {
+			return false;
+		}
 		let elapsed = (time - self.time) as u32;
 		let steps = elapsed / TIMESTEP_MILLIS;
 		let mut chpos = false;
@@ -412,4 +446,10 @@ pub fn line_intersects_circle(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> 
 	let r2_good = PISTOL_REACH > r2 && r2 > 0f32;
 
 	r1_good || r2_good
+}
+
+pub fn current_time() -> u64 {
+	let now = SystemTime::now();
+	let current_time = now.duration_since(UNIX_EPOCH).expect("Broken clock");
+	current_time.as_millis() as u64
 }

@@ -1,7 +1,6 @@
 use crate::{ws, Client, Clients, Result};
 use serde::{Serialize, Deserialize};
 use warp::{http::StatusCode, reply::json, Reply};
-use rand_distr::{Normal, Distribution};
 use xxhash_rust::xxh3::xxh3_64;
 use uuid::Uuid;
 use serde_json::Value;
@@ -14,9 +13,6 @@ use crate::PlayerState;
 use crate::WorldLoot;
 use utils::gameobjects::*;
 use utils::trajectory::*;
-use crate::game::current_time;
-
-const SPAWN_PULL_MAX: f32 = 10.0;
 
 #[derive(Serialize, Debug)]
 pub struct RegisterResponse {
@@ -62,24 +58,8 @@ pub async fn serve_page() -> Result<impl Reply> {
 	Ok(warp::reply::html(html))
 }
 
-fn gen_spawn() -> Vector {
-	let normal = Normal::new(-500.0, 500.0).unwrap();
-	let mut pos: Vector;
-	loop {
-		pos = Vector{
-			x: normal.sample(&mut rand::thread_rng()),
-			y: normal.sample(&mut rand::thread_rng()),
-		};
-		let psum = Trajectory::pull_sum(&pos);
-		if psum.x.powf(2.0) + psum.y.powf(2.0) < SPAWN_PULL_MAX.powf(2.0) {
-			break;
-		}
-	}
-	pos
-}
-
 fn default_state() -> PlayerState {
-	return PlayerState {
+	PlayerState {
 		name: "".to_string(),
 		public_id: "".to_string(),
 		health: 100.0,
@@ -94,15 +74,7 @@ fn default_state() -> PlayerState {
 				(1, Weapon{ weptype: WeaponType::Grenade {press_time: current_time() as f32}, ammo: 2 }),
 			])
 		},
-		trajectory: Trajectory{
-			propelling: false,
-			pos: gen_spawn(),
-			vel: Vector{x: 0.0, y: 0.0},
-			spin_direction: 0,
-			spin: 0.0,
-			time: current_time(),
-			collision: false,
-		}
+		trajectory: Trajectory::default()
 	}
 }
 

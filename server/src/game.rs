@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::error::Error;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use futures::future::join_all;
 use serde_json::{from_str, json, to_string, Value};
@@ -17,6 +16,7 @@ use crate::WorldLoot;
 use crate::handler::spawn_from_prev;
 
 use utils::gameobjects::*;
+use utils::trajectory::*;
 
 const LOOT_RADIUS: f32 = 60.0; //players must be within this distance to claim
 
@@ -390,11 +390,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 	Ok(())
 }
 
-pub fn current_time() -> u64 {
-	let now = SystemTime::now();
-	let current_time = now.duration_since(UNIX_EPOCH).expect("Broken clock");
-	current_time.as_millis() as u64
-}
+
 
 pub async fn broadcast(msg: &ServerMessage, clients_readlock: &tokio::sync::RwLockReadGuard<'_, HashMap<std::string::String, Client>>){
 	for (private_id, client) in clients_readlock.iter(){
