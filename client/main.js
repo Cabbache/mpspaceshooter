@@ -99,6 +99,7 @@ async function runAll(){
 
 		var pingInterval = null;
 		var lastPing = 0;
+		var current_rtt = 0;
 
 		const app = new PIXI.Application({
 				width: window.innerWidth,
@@ -431,16 +432,28 @@ async function runAll(){
 			};
 		}
 
-		const handle_propelupdate = function(content){
+		const handle_rotationupdate = function(content){
 			let broadcaster = content["from"];
+			let chAt = content["at"];
 			if (broadcaster == public_id)
 				return;
 
-			gameState[broadcaster].p.trajectory.set_propulsion(content.propel);
-			change_propulsion_emitter(broadcaster, content.propel);
+			gameState[broadcaster].p.trajectory.insert_rotation_update(chAt, content.direction);
+		}
+
+		const handle_propelupdate = function(content){
+			let broadcaster = content["from"];
+			let chAt = content["at"];
+			if (broadcaster == public_id)
+				return;
+
+			gameState[broadcaster].p.trajectory.insert_propel_update(chAt, content.propel);
 		}
 
 		const change_propulsion_emitter = (pid, is_emitting) => {
+			if (gameState[pid].emitter && gameState[pid].emitter.emit == is_emitting){ //do nothing if already in that state
+				return;
+			}
 			if (is_emitting){
 				let emitJSON = JSON.parse(JSON.stringify(emitters["propel"])); //careful here
 				emitJSON.behaviors.push(
@@ -458,19 +471,13 @@ async function runAll(){
 				);
 				emitter.emit = true;
 				emissions.push(emitter);
+				delete gameState[pid].emitter;
 				gameState[pid].emitter = emitter;
 			} else {
 				if (gameState[pid].emitter){
 					gameState[pid].emitter.emit = false;
 				}
 			}		
-		}
-
-		const handle_rotationupdate = function(content){
-			let broadcaster = content["from"];
-			if (broadcaster == public_id)
-				return;
-			gameState[broadcaster].p.trajectory.set_rotation(content.direction);
 		}
 
 		const handle_trigUpdate = function(content){
@@ -646,8 +653,8 @@ async function runAll(){
 		}
 
 		const handle_pong = function(content){
-			const latency = (Date.now() - lastPing);
-			latency_text.text = `latency: ${latency}ms`;
+			current_rtt = (Date.now() - lastPing);
+			latency_text.text = `latency: ${current_rtt}ms`;
 		}
 
 		const handle_lootcollection = function(content){
@@ -780,8 +787,17 @@ async function runAll(){
 
 			const deltaTime = delta / (1000*PIXI.settings.TARGET_FPMS);
 
-			Object.values(gameState).forEach(player => {
-				player.p.trajectory.advance(BigInt(Date.now()));
+			Object.entries(gameState).forEach(([pid, player]) => {
+				if (player.p.trajectory.collision)
+					return;
+				if (pid == public_id){
+					player.p.trajectory.advance(BigInt(Date.now()));
+					return;
+				}
+				const ptime = BigInt(Date.now() - (200 + current_rtt*3));
+				if (!player.p.trajectory.advance(ptime))
+					return;
+				change_propulsion_emitter(pid, player.p.trajectory.propelling);
 			});
 			
 			Object.values(gameState).forEach(player => {

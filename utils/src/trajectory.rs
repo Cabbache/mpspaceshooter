@@ -3,12 +3,19 @@ use std::hash::{Hash, Hasher};
 use wasm_bindgen::prelude::*;
 use std::f32::consts::{PI};
 use serde::{Deserialize,Serialize};
-use bincode::{serialize, deserialize};
 use base64::{engine::general_purpose, Engine as _};
+
+#[cfg(target_arch = "wasm32")]
 use std::collections::HashMap;
 
 #[cfg(not(target_arch = "wasm32"))]
+use bincode::serialize;
+#[cfg(target_arch = "wasm32")]
+use bincode::deserialize;
+
+#[cfg(not(target_arch = "wasm32"))]
 use rand_distr::{Normal, Distribution};
+
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -173,7 +180,8 @@ pub const BODIES: [Body; 20] = [
   },
 ];
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(Clone, Debug))]
+#[derive(Deserialize, Serialize)]
 #[wasm_bindgen]
 pub struct Trajectory{
 	pub propelling: bool,
@@ -183,10 +191,20 @@ pub struct Trajectory{
 	pub spin_direction: i8, //-1,0,1
 	pub time: u64,
 	pub collision: bool,
-	internal: HashMap<String, String>,
+
+	#[cfg(target_arch = "wasm32")]
+	#[serde(skip)]
+	updates: HashMap<String, Vec<TrajectoryUpdate>>,
+}
+
+#[cfg(target_arch = "wasm32")]
+enum TrajectoryUpdate {
+	Rotation{direction: i8},
+	Propulsion{on: bool}
 }
 
 impl Trajectory {
+	#[cfg(not(target_arch = "wasm32"))]
 	pub fn to_b64(&self) -> String {
 		general_purpose::STANDARD.encode(serialize(&self).unwrap())
 	}
@@ -235,6 +253,7 @@ impl Trajectory {
 	}
 	
 	//returns true if hash found
+	#[cfg(not(target_arch = "wasm32"))]
 	pub fn advance_to(&mut self, hash: String, time: u64) -> bool {
 		let elapsed = (time - self.time) as u32;
 		let steps = elapsed / TIMESTEP_MILLIS;
@@ -247,6 +266,7 @@ impl Trajectory {
 		self.hash_str() == hash
 	}
 
+	#[cfg(not(target_arch = "wasm32"))]
 	pub fn update_rotation(&mut self, new_direction: i8, hash: String, time: u64) -> bool {
 		if !self.advance_to(hash, time) {
 			return false;
@@ -255,6 +275,7 @@ impl Trajectory {
 		true
 	}
 
+	#[cfg(not(target_arch = "wasm32"))]
 	pub fn update_propulsion(&mut self, on: bool, hash: String, time: u64) -> bool {
 		if !self.advance_to(hash, time) {
 			return false;
@@ -292,21 +313,23 @@ impl Default for Trajectory {
 			spin: 0.0,
 			time: current_time(),
 			collision: false,
-			internal: HashMap::new(),
 		}
 	}
 }
 
 #[wasm_bindgen]
 impl Trajectory {
-
 	#[wasm_bindgen(constructor)]
+	#[cfg(target_arch = "wasm32")]
 	pub fn from_b64(data: String) -> Trajectory {
-		deserialize(&general_purpose::STANDARD.decode(&data).unwrap()).unwrap()
+		let mut result: Trajectory = deserialize(&general_purpose::STANDARD.decode(&data).unwrap()).unwrap();
+		result.updates = HashMap::new();
+		result
 	}
 
 	//euler's method
 	//returns true if change occured
+	#[cfg(not(target_arch = "wasm32"))]
 	pub fn advance(&mut self, time: u64) -> bool {
 		if time <= self.time {
 			return false;
@@ -323,13 +346,44 @@ impl Trajectory {
 		true
 	}
 
-	//these 2, only for wasm
-	pub fn set_rotation(&mut self, new_direction: i8) {
-		self.spin_direction = new_direction;
+	#[cfg(target_arch = "wasm32")]
+	pub fn advance(&mut self, time: u64) -> bool {
+		if time <= self.time {
+			return false;
+		}
+		let elapsed = (time - self.time) as u32;
+		let steps = elapsed / TIMESTEP_MILLIS;
+		let mut had_update = false;
+		for _ in 1..=steps {
+			let hashstr = self.hash_str(); 
+			let content = self.updates.get(&hashstr);
+			if let Some(updates) = content {
+				for update in updates {
+					match update {
+						TrajectoryUpdate::Rotation {direction} => {self.spin_direction = *direction;},
+						TrajectoryUpdate::Propulsion {on} => {self.propelling = *on;},
+					}
+				}
+				had_update = true;
+				self.updates.remove(&hashstr);
+			}
+			self.step();
+		}
+		had_update
 	}
 
-	pub fn set_propulsion(&mut self, on: bool) {
-		self.propelling = on;
+	#[cfg(target_arch = "wasm32")]
+	pub fn insert_rotation_update(&mut self, hash: String, spin_direction: i8) {
+		self.updates.entry(hash)
+		.or_default()
+		.push(TrajectoryUpdate::Rotation { direction: spin_direction });
+	}
+
+	#[cfg(target_arch = "wasm32")]
+	pub fn insert_propel_update(&mut self, hash: String, on: bool) {
+		self.updates.entry(hash)
+		.or_default()
+		.push(TrajectoryUpdate::Propulsion { on: on });
 	}
 
 	//TODO consider when velocity exceeds radius, use line_intersects_circle?
