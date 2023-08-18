@@ -27,17 +27,17 @@ const PROPEL_DIRECTION: f32 = -PI/2.0;
 const RADIANS_PER_SECOND: f32 = PI; //player rotation speed
 const G: f32 = 2000.0; //Gravitational constant
 
-//const TIMESTEP_FPS: u32 = 8; //around 20 is good
-const TIMESTEP_FPS: u32 = 30; //around 20 is good
+const TIMESTEP_FPS: u32 = 10; //around 20 is good
+//const TIMESTEP_FPS: u32 = 30; //around 20 is good
 
 //Calculated
 const TIMESTEP_MILLIS: u32 = 1000 / TIMESTEP_FPS;
 const TIMESTEP_SECS: f32 = 1f32 / TIMESTEP_FPS as f32;
 
 #[cfg(not(target_arch = "wasm32"))]
-const SPAWN_PULL_MAX: f32 = 10.0; //Maximum gravity pull at spawn point
+const SPAWN_PULL_MAX: f32 = 5.0; //Maximum gravity pull at spawn point
 
-pub const BODIES: [Body; 20] = [
+pub const BODIES: [Body; 1] = [
   Body {
     pos: Vector{
       x: 0.0,
@@ -45,139 +45,6 @@ pub const BODIES: [Body; 20] = [
     },  
     radius: 100.0,
   },  
-  Body {
-    pos: Vector{
-      x: 500.0,
-      y: 300.0,
-    },  
-    radius: 30.0,
-  },
-  Body {
-    pos: Vector{
-      x: -1000.0,
-      y: 2000.0,
-    },
-    radius: 25.0,
-  },
-  Body {
-    pos: Vector{
-      x: 1500.0,
-      y: -500.0,
-    },
-    radius: 20.0,
-  },
-  Body {
-    pos: Vector{
-      x: -500.0,
-      y: -1500.0,
-    },
-    radius: 35.0,
-  },
-  Body {
-    pos: Vector{
-      x: -2500.0,
-      y: 1000.0,
-    },
-    radius: 40.0,
-  },
-  Body {
-    pos: Vector{
-      x: 2000.0,
-      y: -2000.0,
-    },
-    radius: 15.0,
-  },
-  Body {
-    pos: Vector{
-      x: -1500.0,
-      y: -2500.0,
-    },
-    radius: 30.0,
-  },
-  Body {
-    pos: Vector{
-      x: 2500.0,
-      y: 1500.0,
-    },
-    radius: 20.0,
-  },
-  Body {
-    pos: Vector{
-      x: 3000.0,
-      y: 0.0,
-    },
-    radius: 35.0,
-  },
-	Body {
-    pos: Vector{
-      x: -2800.0,
-      y: 600.0,
-    },
-    radius: 20.0,
-  },
-  Body {
-    pos: Vector{
-      x: 1500.0,
-      y: 2800.0,
-    },
-    radius: 40.0,
-  },
-  Body {
-    pos: Vector{
-      x: 500.0,
-      y: -2500.0,
-    },
-    radius: 35.0,
-  },
-  Body {
-    pos: Vector{
-      x: 2000.0,
-      y: -1200.0,
-    },
-    radius: 30.0,
-  },
-  Body {
-    pos: Vector{
-      x: -2200.0,
-      y: -1800.0,
-    },
-    radius: 40.0,
-  },
-  Body {
-    pos: Vector{
-      x: -1200.0,
-      y: 1500.0,
-    },
-    radius: 35.0,
-  },
-  Body {
-    pos: Vector{
-      x: 2800.0,
-      y: -800.0,
-    },
-    radius: 30.0,
-  },
-  Body {
-    pos: Vector{
-      x: -600.0,
-      y: -2800.0,
-    },
-    radius: 40.0,
-  },
-  Body {
-    pos: Vector{
-      x: 800.0,
-      y: 2200.0,
-    },
-    radius: 25.0,
-  },
-  Body {
-    pos: Vector{
-      x: -1800.0,
-      y: 500.0,
-    },
-    radius: 20.0,
-  },
 ];
 
 #[cfg_attr(not(target_arch = "wasm32"), derive(Clone, Debug))]
@@ -355,7 +222,7 @@ impl Trajectory {
 		let steps = elapsed / TIMESTEP_MILLIS;
 		let mut had_update = false;
 		for _ in 1..=steps {
-			let hashstr = self.hash_str(); 
+			let hashstr = self.hash_str();
 			let content = self.updates.get(&hashstr);
 			if let Some(updates) = content {
 				for update in updates {
@@ -370,6 +237,17 @@ impl Trajectory {
 			self.step();
 		}
 		had_update
+	}
+
+	#[cfg(target_arch = "wasm32")]
+	pub fn set_rotation(&mut self, new_direction: i8) {
+		self.spin_direction = new_direction;
+	}
+
+
+	#[cfg(target_arch = "wasm32")]
+	pub fn set_propulsion(&mut self, on: bool) {
+		self.propelling = on;
 	}
 
 	#[cfg(target_arch = "wasm32")]

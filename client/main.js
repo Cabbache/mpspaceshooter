@@ -438,6 +438,9 @@ async function runAll(){
 			if (broadcaster == public_id)
 				return;
 
+			if (content["time"] < Number(gameState[broadcaster].p.trajectory.time)) {
+				console.error(`update is in the past`);
+			}
 			gameState[broadcaster].p.trajectory.insert_rotation_update(chAt, content.direction);
 		}
 
@@ -447,6 +450,10 @@ async function runAll(){
 			if (broadcaster == public_id)
 				return;
 
+			console.log(content);
+			if (content["time"] < Number(gameState[broadcaster].p.trajectory.time)) {
+				console.error(`update is in the past`);
+			}
 			gameState[broadcaster].p.trajectory.insert_propel_update(chAt, content.propel);
 		}
 
@@ -730,6 +737,7 @@ async function runAll(){
 					response = 1;
 				}
 				const chAt = gameState[public_id].p.trajectory.hash_str();
+				const time = Number(gameState[public_id].p.trajectory.time);
 				gameState[public_id].p.trajectory.set_rotation(response);
 				socket.send(
 					JSON.stringify({
@@ -737,11 +745,13 @@ async function runAll(){
 						"c":{
 							"dir": response,
 							"at": chAt,
+							"time": time,
 						 }
 					})
 				);
 			} else if (name == keyup) {
 				const chAt = gameState[public_id].p.trajectory.hash_str();
+				const time = Number(gameState[public_id].p.trajectory.time);
 				gameState[public_id].p.trajectory.set_propulsion(!up);
 				change_propulsion_emitter(public_id, !up);
 				socket.send(
@@ -750,6 +760,7 @@ async function runAll(){
 						"c": {
 							"on": !up,
 							"at": chAt,
+							"time": time,
 						}
 					})
 				);			

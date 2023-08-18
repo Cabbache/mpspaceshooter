@@ -116,7 +116,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				&clr
 			).await; //broadcast playerjoin
 		},
-		ClientMessage::PropelUpdate { on, at } => {
+		ClientMessage::PropelUpdate { on, at, time } => {
 			if sender_state.read().await.clone().trajectory.propelling == on { //nothing changed
 				eprintln!("modded client detected (redundant propel update)");
 				return Ok(());
@@ -135,12 +135,13 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				&ServerMessage::PropelUpdate{
 					propel: on,
 					at: at,
+					time: time,
 					from: format!("{:x}", xxh3_64(private_id.as_bytes())),
 				},
 				&clr,
 			).await;
 		},
-		ClientMessage::Rotation { dir, at } => {
+		ClientMessage::Rotation { dir, at, time } => {
 			if sender_state.read().await.clone().trajectory.spin_direction == dir {
 				return Ok(());
 			}
@@ -158,6 +159,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				&ServerMessage::RotationUpdate {
 					direction: dir,
 					at: at,
+					time: time,
 					from: format!("{:x}", xxh3_64(private_id.as_bytes())),
 				},
 				&clr
