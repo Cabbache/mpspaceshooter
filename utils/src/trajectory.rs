@@ -91,7 +91,7 @@ impl Trajectory {
 		pull
 	}
 
-	fn step(&mut self) -> bool{
+	pub fn step(&mut self) -> bool{
 		if self.collision {
 			return false;
 		}
