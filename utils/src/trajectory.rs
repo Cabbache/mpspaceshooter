@@ -19,6 +19,30 @@ use rand_distr::{Normal, Distribution};
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[wasm_bindgen]
+extern "C" {
+    // Use `js_namespace` here to bind `console.log(..)` instead of just
+    // `log(..)`
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+
+    // The `console.log` is quite polymorphic, so we can bind it with multiple
+    // signatures. Note that we need to use `js_name` to ensure we always call
+    // `log` in JS.
+    #[wasm_bindgen(js_namespace = console, js_name = log)]
+    fn log_u32(a: u32);
+
+    // Multiple arguments too!
+    #[wasm_bindgen(js_namespace = console, js_name = log)]
+    fn log_many(a: &str, b: &str);
+}
+
+macro_rules! console_log {
+    // Note that this is using the `log` function imported above during
+    // `bare_bones`
+    ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
+}
+
 pub const PLAYER_RADIUS: f32 = 25.0;
 const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 const DOME_RADIUS: f32 = 6000.0;
@@ -27,8 +51,8 @@ const PROPEL_DIRECTION: f32 = -PI/2.0;
 const RADIANS_PER_SECOND: f32 = PI; //player rotation speed
 const G: f32 = 2000.0; //Gravitational constant
 
-const TIMESTEP_FPS: u32 = 10; //around 20 is good
-//const TIMESTEP_FPS: u32 = 30; //around 20 is good
+//const TIMESTEP_FPS: u32 = 10; //around 20 is good
+const TIMESTEP_FPS: u32 = 30; //around 20 is good
 
 //Calculated
 const TIMESTEP_MILLIS: u32 = 1000 / TIMESTEP_FPS;
@@ -37,15 +61,17 @@ const TIMESTEP_SECS: f32 = 1f32 / TIMESTEP_FPS as f32;
 #[cfg(not(target_arch = "wasm32"))]
 const SPAWN_PULL_MAX: f32 = 5.0; //Maximum gravity pull at spawn point
 
-pub const BODIES: [Body; 1] = [
-  Body {
-    pos: Vector{
-      x: 0.0,
-      y: 0.0,
-    },  
-    radius: 100.0,
-  },  
-];
+//pub const BODIES: [Body; 1] = [
+//  Body {
+//    pos: Vector{
+//      x: 0.0,
+//      y: 0.0,
+//    },  
+//    radius: 100.0,
+//  },  
+//];
+
+pub const BODIES: [Body; 0] = [];
 
 #[cfg_attr(not(target_arch = "wasm32"), derive(Clone, Debug))]
 #[derive(Deserialize, Serialize)]
@@ -61,13 +87,13 @@ pub struct Trajectory{
 
 	#[cfg(target_arch = "wasm32")]
 	#[serde(skip)]
-	updates: HashMap<String, Vec<TrajectoryUpdate>>,
+	updates: HashMap<u64, Vec<TrajectoryUpdate>>,
 }
 
 #[cfg(target_arch = "wasm32")]
 enum TrajectoryUpdate {
-	Rotation{direction: i8},
-	Propulsion{on: bool}
+	Rotation{direction: i8, hash: String},
+	Propulsion{on: bool, hash: String}
 }
 
 impl Trajectory {
@@ -111,8 +137,8 @@ impl Trajectory {
 		self.vel.y += pull.y;
 		self.spin += (self.spin_direction as f32) * RADIANS_PER_SECOND * TIMESTEP_SECS;
 		if self.propelling {
-			self.vel.x += (self.spin + PROPEL_DIRECTION).cos()*ACCELERATION * TIMESTEP_SECS;
-			self.vel.y += (self.spin + PROPEL_DIRECTION).sin()*ACCELERATION * TIMESTEP_SECS;
+			self.vel.x += -fastapprox::faster::cos(normalize_angle(self.spin + PROPEL_DIRECTION))*ACCELERATION * TIMESTEP_SECS;
+			self.vel.y += fastapprox::faster::sin(normalize_angle(self.spin + PROPEL_DIRECTION))*ACCELERATION * TIMESTEP_SECS;
 		}
 		self.time += TIMESTEP_MILLIS as u64;
 		self.collision = self.collides();
@@ -125,11 +151,17 @@ impl Trajectory {
 		let elapsed = (time - self.time) as u32;
 		let steps = elapsed / TIMESTEP_MILLIS;
 		for _ in 1..=steps {
-			if self.hash_str() == hash {
+			let current_hash = self.hash_str();
+			println!("{}: {} == {} ?", self.time, current_hash, hash);
+			println!("{}", self.dump());
+			if current_hash == hash {
 				return true;
 			}
 			self.step();
 		}
+		let current_hash = self.hash_str();
+		println!("{}: {} == {} ?", self.time, current_hash, hash);
+		println!("{}", self.dump());
 		self.hash_str() == hash
 	}
 
@@ -214,7 +246,7 @@ impl Trajectory {
 	}
 
 	#[cfg(target_arch = "wasm32")]
-	pub fn advance(&mut self, time: u64) -> bool {
+	pub fn advance(&mut self, time: u64, doprint: bool) -> bool {
 		if time <= self.time {
 			return false;
 		}
@@ -223,20 +255,37 @@ impl Trajectory {
 		let mut had_update = false;
 		for _ in 1..=steps {
 			let hashstr = self.hash_str();
-			let content = self.updates.get(&hashstr);
+			if doprint {
+				console_log!("{} ({})", self.dump(), hashstr);
+			}
+			let content = self.updates.get(&self.time);
 			if let Some(updates) = content {
 				for update in updates {
 					match update {
-						TrajectoryUpdate::Rotation {direction} => {self.spin_direction = *direction;},
-						TrajectoryUpdate::Propulsion {on} => {self.propelling = *on;},
+						TrajectoryUpdate::Rotation {direction, hash} => {
+							if *hash != hashstr {
+								console_log!("Hash mismatch! request was {} but got {}", hash, hashstr);
+							}
+							self.spin_direction = *direction;
+						},
+						TrajectoryUpdate::Propulsion {on, hash} => {
+							if *hash != hashstr {
+								console_log!("Hash mismatch! request was {} but got {}", hash, hashstr);
+							}
+							self.propelling = *on;
+						},
 					}
 				}
 				had_update = true;
-				self.updates.remove(&hashstr);
+				self.updates.remove(&self.time);
 			}
 			self.step();
 		}
 		had_update
+	}
+
+	pub fn dump(&self) -> String {
+		format!("{},{:x},{:x},{:x},{:x},{:x},{},{},{}", self.propelling, self.pos.x.to_bits(), self.pos.y.to_bits(), self.vel.x.to_bits(), self.vel.y.to_bits(), self.spin.to_bits(), self.spin_direction, self.time, self.collision)
 	}
 
 	#[cfg(target_arch = "wasm32")]
@@ -251,17 +300,17 @@ impl Trajectory {
 	}
 
 	#[cfg(target_arch = "wasm32")]
-	pub fn insert_rotation_update(&mut self, hash: String, spin_direction: i8) {
-		self.updates.entry(hash)
+	pub fn insert_rotation_update(&mut self, hash: String, spin_direction: i8, time: u64) {
+		self.updates.entry(time)
 		.or_default()
-		.push(TrajectoryUpdate::Rotation { direction: spin_direction });
+		.push(TrajectoryUpdate::Rotation { direction: spin_direction, hash: hash});
 	}
 
 	#[cfg(target_arch = "wasm32")]
-	pub fn insert_propel_update(&mut self, hash: String, on: bool) {
-		self.updates.entry(hash)
+	pub fn insert_propel_update(&mut self, hash: String, on: bool, time: u64) {
+		self.updates.entry(time)
 		.or_default()
-		.push(TrajectoryUpdate::Propulsion { on: on });
+		.push(TrajectoryUpdate::Propulsion { on: on, hash: hash });
 	}
 
 	//TODO consider when velocity exceeds radius, use line_intersects_circle?
@@ -392,4 +441,9 @@ pub fn current_time() -> u64 {
 	let now = SystemTime::now();
 	let current_time = now.duration_since(UNIX_EPOCH).expect("Broken clock");
 	current_time.as_millis() as u64
+}
+
+fn normalize_angle(x: f32) -> f32 {
+	let modded = ((x % (2f32*PI)) + (2f32*PI)) % (2f32*PI);
+	PI - modded
 }

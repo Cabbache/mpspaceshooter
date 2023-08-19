@@ -6,249 +6,249 @@ wasm_bindgen_test_configure!(run_in_browser);
 
 #[wasm_bindgen_test]
 fn pass() {
-	let mut testing = Trajectory::from_b64("ACZCP0RuXw9FAABAQAAAgMAAAAAAABF06QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	let mut testing = Trajectory::from_b64("AZv9vEVcYrJDYuRCwUB9a0HoXH7BAfw/og+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "6c532d13cd530eb7");
-	let mut testing = Trajectory::from_b64("AEBSBkXWrl5EAADAQAAAAMEAAAAAAFp06QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "5d5d31282062fd49");
+	let mut testing = Trajectory::from_b64("ABwWSEWKUYlEAA0KPhR6ksEY2DRBAE5Gog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "cd78a2c4cfe1eba4");
-	let mut testing = Trajectory::from_b64("AHSHI0XLkwhFAAAQQQAAQMEAAAAAAKJ06QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "5720767167ebc342");
+	let mut testing = Trajectory::from_b64("AaFkY0UKx9tEiFl2QRidR8AQugdC/5VGog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "3c9643929510632f");
-	let mut testing = Trajectory::from_b64("AGRwtMQLW2xFAABAQQAAgMEAAAAAAOp06QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "bd8b375ddbb231fe");
+	let mut testing = Trajectory::from_b64("Aa/VwER0UUlFmNnnQCtXXME4qbVBAEFHog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "3b44b5f77e8fd176");
-	let mut testing = Trajectory::from_b64("AER/3MPhRAhFAABwQQAAoMEAAAAAADN16QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "6aa05fcb224d02b5");
+	let mut testing = Trajectory::from_b64("AFh1H8RIgStFQKl2QdelSMFkDL1CAftMog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "791092a5e7f2f484");
-	let mut testing = Trajectory::from_b64("AMi9xURfY+dEAACQQQAAwMEAAAAAAHN16QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "5b2a25c803b3cdda");
+	let mut testing = Trajectory::from_b64("AM+vPkTUMk1EMFuNQPCfFkFQ5jBBAENNog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "f1a832e008b8ce2e");
-	let mut testing = Trajectory::from_b64("AEZdPUXA5ChEAACoQQAA4MEAAAAAALR16QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "b4321b1bc66f23b");
+	let mut testing = Trajectory::from_b64("AYkQ60Qk8btEmb5AwfyIwMC41KpC/4pNog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "12b4a0a1aa20daa3");
-	let mut testing = Trajectory::from_b64("AK5+1MSsrrNEAADAQQAAAMIAAAAAAPV16QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "84216b02e5c5c23d");
+	let mut testing = Trajectory::from_b64("AIzxukRHQ2NF5voHQcjDhEHSJlXCAdJNog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "fbc1bdb30204d081");
-	let mut testing = Trajectory::from_b64("AHoO2ET2K4JFAADYQQAAEMIAAAAAADd26QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "3a2d3e04bc67fc26");
+	let mut testing = Trajectory::from_b64("AVDKh0UAICBFZHqjwCCWXsCYRM/BABpOog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "93a3655efdd0ed96");
-	let mut testing = Trajectory::from_b64("ALQMlEXxtBVFAADwQQAAIMIAAAAAAIJ56QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "dd6ef0db2c5494be");
+	let mut testing = Trajectory::from_b64("AZInnUST56ZEAgKFwSjIz0Ap8W3CAZdTog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "e00fb4d2b15c28c3");
-	let mut testing = Trajectory::from_b64("AIryf0SUpEhFAAAEQgAAMMIAAAAAABx96QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "2fbd01d6591ae36f");
+	let mut testing = Trajectory::from_b64("AZbdUUVoZjJErLuwQCi5y0AgqJJAAeBTog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "24f3e309bd423d4b");
-	let mut testing = Trajectory::from_b64("AKC+nkLuqMxEAAAQQgAAQMIAAAAAAGeA6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "c1318392390741b4");
+	let mut testing = Trajectory::from_b64("AZkAzEQfdYhEIIhAQMUUhcHYOJhBAFBWog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "88403765dde8d33a");
-	let mut testing = Trajectory::from_b64("ACbST0WA4J7EAAAcQgAAUMIAAAAAAKeA6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "b828b939d96db1c");
+	let mut testing = Trajectory::from_b64("AfBzUcS9vAxFgEnoP4DnGL/mqaXCARFcog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "b43c07e04c103bf9");
-	let mut testing = Trajectory::from_b64("ABwijMQjaGFFAAAoQgAAYMIAAAAAACWB6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "d8b3ad42862b2507");
+	let mut testing = Trajectory::from_b64("AGj+9ENTWKRFKth8wRoyJEG8op3CAFpcog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "451607578a9be74d");
-	let mut testing = Trajectory::from_b64("ANs63kTSYYFEAAA0QgAAcMIAAAAAAGeB6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "cddcfafd6dca40a9");
+	let mut testing = Trajectory::from_b64("ASImLUVA0vDBMcFfwbhdPEGwQLbBAKJcog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "25a90bd82370280b");
-	let mut testing = Trajectory::from_b64("AFxmA0VwVaJDAABAQgAAgMIAAAAAAK2E6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "961a75676c138d48");
+	let mut testing = Trajectory::from_b64("ASTSk0TAJCnFsiGEQeA9T0E8uZFCADpiog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "b97d6ba0fb7e36b5");
-	let mut testing = Trajectory::from_b64("AHoOM0UgrHpCAABMQgAAiMIAAAAAAOiH6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "8794bec332d8ab91");
+	let mut testing = Trajectory::from_b64("Af0FqkSt3adEwDjFwIw7U8HgLpbBADZoog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "49e8d4f6b6bebaab");
-	let mut testing = Trajectory::from_b64("ADz5h0Mz5VJFAABYQgAAkMIAAAAAACOL6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "bee50bb4d4e2dacf");
+	let mut testing = Trajectory::from_b64("ASj3ZcO4PpJEwMA7QEBHG0D2q6lC/9Jtog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "e933c2ad52833f0d");
-	let mut testing = Trajectory::from_b64("AKpO+kTcKd5DAABkQgAAmMIAAAAAAGaO6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "811446679092c8");
+	let mut testing = Trajectory::from_b64("ABb0K0V0a3ZFuNcwwLnxFcEaLQ/C/xtuog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "9079eebbf879d7a0");
-	let mut testing = Trajectory::from_b64("AELi9EP9ymNFAABwQgAAoMIAAAAAAJ+R6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "8b8b1f401372a1de");
+	let mut testing = Trajectory::from_b64("AMB6FESAu57DNNiYwVAPH0GI7KpCAWVuog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "4c4bb117636938bc");
-	let mut testing = Trajectory::from_b64("AFLV+kQ0fllFAAB8QgAAqMIAAAAAAOCU6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "e3fef48d63ee2889");
+	let mut testing = Trajectory::from_b64("AeITLkVYMlVFaGB6wcJjVMH2rjnC/65uog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "e6cc977ba191a886");
-	let mut testing = Trajectory::from_b64("AFt4Z0VkQYhEAACEQgAAsMIAAAAAACOY6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "e741a1817d39411a");
+	let mut testing = Trajectory::from_b64("AWOYuEQ8FI1FoJFOQaRd+MCwuI3C//huog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "8c94053969eb44f1");
-	let mut testing = Trajectory::from_b64("AHpKKEUnMgJFAACKQgAAuMIAAAAAAHab6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "f4308104e1f86e48");
+	let mut testing = Trajectory::from_b64("ATmMzkQCBflECGcaQNhESkHXv7TC/0Jvog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "924a0b13ba9d3c1e");
-	let mut testing = Trajectory::from_b64("AKw1B0V6v55FAACQQgAAwMIAAAAAANye6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "119423b06956108f");
+	let mut testing = Trajectory::from_b64("AKBFfEQibpVFBP9NQTpMdsFOP13CAYtvog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "294e955529e45927");
-	let mut testing = Trajectory::from_b64("APOp10QVBudEAACWQgAAyMIAAAAAAB6f6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "1df42defd049efb8");
+	let mut testing = Trajectory::from_b64("Acn6dUVhmAdFhPOMQMBgd8AiHXPCAdVvog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "d67ec9033571968");
-	let mut testing = Trajectory::from_b64("ADx9nURukwRFAACcQgAA0MIAAAAAAI2i6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "c022a4ec2ce83731");
+	let mut testing = Trajectory::from_b64("AXtAAESW9zRFO587wcrhkkGoWJ1BAN5wog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "465f9244b06460bc");
-	let mut testing = Trajectory::from_b64("AFoLDcW2ZFxEAACiQgAA2MIAAAAAAPOl6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "d37f0a0c9bf17ff8");
+	let mut testing = Trajectory::from_b64("APAAssIK1HREnBAnQX6qhkHyb6BC/8R2og+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "2ff9caf2317d383");
-	let mut testing = Trajectory::from_b64("AEoCD0R6dndEAACoQgAA4MIAAAAAAFup6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "83a8573c15181ced");
+	let mut testing = Trajectory::from_b64("AeDqD0I3F8lEPJkEwag4e8EyPrPC/w93og+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "d240941987cdc16f");
-	let mut testing = Trajectory::from_b64("AOUjL0Vq7hlFAACuQgAA6MIAAAAAAMms6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "53288318467abe40");
+	let mut testing = Trajectory::from_b64("AMXBAEUEunREXHxlQYX2ksEre6/C/1l3og+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "43616f19b80fb8c0");
-	let mut testing = Trajectory::from_b64("AIhXQ0VDTgtFAAC0QgAA8MIAAAAAABGt6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "5d196991a6145dea");
+	let mut testing = Trajectory::from_b64("AeplA0UJ8mZF1iqQwBCfhUF0JaFCAaV3og+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "90672a4252dca5c3");
-	let mut testing = Trajectory::from_b64("AIBOE0Ug2WXCAAC6QgAA+MIAAAAAAFWt6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "7dd8899ef6801f43");
+	let mut testing = Trajectory::from_b64("Ad/t40TgpGjC4AWwv+SLTEEwNAPBAAN4og+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "e99cd23aac832efd");
-	let mut testing = Trajectory::from_b64("ANoem0RkTNXDAADAQgAAAMMAAAAAAMmw6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "af2bceccfbf9bf78");
+	let mut testing = Trajectory::from_b64("AHGGdkUEbjZEcjN6wRCZdEGZwKzCAa99og+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "48d9eaf807d367ca");
-	let mut testing = Trajectory::from_b64("AKIG7MTciwBFAADGQgAABMMAAAAAAAyx6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "6a9972ff0db34d9");
+	let mut testing = Trajectory::from_b64("AfAwWMQAIEvBQE9jwdCyacD40VPBAfl9og+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "65e45dcccdd04c22");
-	let mut testing = Trajectory::from_b64("AB5BZkVIRORDAADMQgAACMMAAAAAAFGx6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "406b5b27d22287d6");
+	let mut testing = Trajectory::from_b64("AcQdO0WYgpxDlAQEQdB0T8CYOAFCAEN+og+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "a13d7629b4857196");
-	let mut testing = Trajectory::from_b64("AMjJ1EOYARlFAADSQgAADMMAAAAAAJWx6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "957d4e437579a41b");
+	let mut testing = Trajectory::from_b64("AeuVF0WA3OZBLv0mQUCamD5ATOa//ziEog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "d861b9234415020d");
-	let mut testing = Trajectory::from_b64("AF4AC0W8n8RDAADYQgAAEMMAAAAAAPe06QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "32e2633fc0aa8ffc");
+	let mut testing = Trajectory::from_b64("AAqkckSmzpBEhECkQCB8hUHtU1fCAY6Eog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "5ffd04eb98a9f413");
-	let mut testing = Trajectory::from_b64("AE3TCkUXbxBFAADeQgAAFMMAAAAAAFu46QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "93829158be605b94");
+	let mut testing = Trajectory::from_b64("ATgbKkUUU89E6Kg5QQBwl0ACDhHC/9mEog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "53d1112e565176e8");
-	let mut testing = Trajectory::from_b64("AKOA70TwtSJFAADkQgAAGMMAAAAAAJ+46QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "8a8dcd83fef888e0");
+	let mut testing = Trajectory::from_b64("ATJ0n8TwunzDMJ16QBDdZUEgYHdC/yOFog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "c410312ce1ca4d88");
-	let mut testing = Trajectory::from_b64("AD9y/kRUkj7EAADqQgAAHMMAAAAAAOW46QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "742f4cf607448e12");
+	let mut testing = Trajectory::from_b64("ABCzXsQMMo7DGH1vQdDkkkAMQsHCAW2Fog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "9152dfc44b2a9827");
-	let mut testing = Trajectory::from_b64("AAOxbEVJJupEAADwQgAAIMMAAAAAAG286QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "bfb760e52c213fad");
+	let mut testing = Trajectory::from_b64("AHJJJETmOxVFK1+EwWQanUHACzLA/7eFog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "cc08806f4eea9b60");
-	let mut testing = Trajectory::from_b64("AJopBsU8eV9FAAD2QgAAJMMAAAAAALW86QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "3aeaf161f76e8b89");
+	let mut testing = Trajectory::from_b64("ALCTC0UcXllFAhufwWBWFMCyDHrCAQKGog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "263990149bbe0c46");
-	let mut testing = Trajectory::from_b64("ACKqXUWvSs1EAAD8QgAAKMMAAAAAAP286QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "15f5f4e57f6093d");
+	let mut testing = Trajectory::from_b64("Adhab0O0cSNFpji3wADmET9QHBbBAUyGog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "7ae6ad5bb503c81a");
-	let mut testing = Trajectory::from_b64("AEBOFEXcEiNFAAABQwAALMMAAAAAAEW96QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "ad6269f6c38c26ef");
+	let mut testing = Trajectory::from_b64("AYszwURM87ZE+Ai6QKBGicGPF7fCAZaGog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "bb69467b7d519502");
-	let mut testing = Trajectory::from_b64("AH5bU0VV/25FAAAEQwAAMMMAAAAAAI296QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "4d839a0397ad160e");
+	let mut testing = Trajectory::from_b64("AOzRiUUuqDtEUDIrwAA8B70ARGs/AeGGog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "79121a46fa89c27b");
-	let mut testing = Trajectory::from_b64("AJhIqcMLAARFAAAHQwAANMMAAAAAANa96QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "5ba3a2261031cd20");
+	let mut testing = Trajectory::from_b64("AayOkUSd8SxEpvnrwGA06kBgoMPB/yyHog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "62293caacd464850");
-	let mut testing = Trajectory::from_b64("AHCStUQFwgFFAAAKQwAAOMMAAAAAAB6+6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "752d05e0220a3857");
+	let mut testing = Trajectory::from_b64("AH4tQkXUDBJFvWSXwUjDy0CALNE/AXaHog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "8a7ad799c15eef11");
-	let mut testing = Trajectory::from_b64("ALAxJ0WizAxFAAANQwAAPMMAAAAAAGa+6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "9e8964153921619d");
+	let mut testing = Trajectory::from_b64("ALk7XkVeESdFMN2bQZDgE8BQMP9AAMCHog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "eb9ceb25fecec7e8");
-	let mut testing = Trajectory::from_b64("ANhlsERTMZpEAAAQQwAAQMMAAAAAAK6+6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "ae67297aad9fd83");
+	let mut testing = Trajectory::from_b64("AKEwHkVH5BZFeQQlwQSb9kAYD71CAAuIog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "3a98406d04e02f45");
-	let mut testing = Trajectory::from_b64("AEKwSkVRs5VEAAATQwAARMMAAAAAAPa+6QiKAQAAAA==".to_string());
-	for _ in 1..1000 {
+	assert_eq!(testing.hash_str(), "8728d95db5ee9b06");
+	let mut testing = Trajectory::from_b64("APuWcUQINQ5FXJAawXgujsGwKK3AAFeIog+KAQAAAA==".to_string());
+	for _ in 1..10000000 {
 		testing.step();
 	}
-	assert_eq!(testing.hash_str(), "3bcd9539e1f82660");
+	assert_eq!(testing.hash_str(), "623fdf77f8a980b1");
 }

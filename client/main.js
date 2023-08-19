@@ -441,7 +441,7 @@ async function runAll(){
 			if (content["time"] < Number(gameState[broadcaster].p.trajectory.time)) {
 				console.error(`update is in the past`);
 			}
-			gameState[broadcaster].p.trajectory.insert_rotation_update(chAt, content.direction);
+			gameState[broadcaster].p.trajectory.insert_rotation_update(chAt, content.direction, BigInt(content["time"]));
 		}
 
 		const handle_propelupdate = function(content){
@@ -454,7 +454,7 @@ async function runAll(){
 			if (content["time"] < Number(gameState[broadcaster].p.trajectory.time)) {
 				console.error(`update is in the past`);
 			}
-			gameState[broadcaster].p.trajectory.insert_propel_update(chAt, content.propel);
+			gameState[broadcaster].p.trajectory.insert_propel_update(chAt, content.propel, BigInt(content["time"]));
 		}
 
 		const change_propulsion_emitter = (pid, is_emitting) => {
@@ -737,6 +737,7 @@ async function runAll(){
 					response = 1;
 				}
 				const chAt = gameState[public_id].p.trajectory.hash_str();
+				//console.log(`${gameState[public_id].p.trajectory.dump()} (${chAt})`);
 				const time = Number(gameState[public_id].p.trajectory.time);
 				gameState[public_id].p.trajectory.set_rotation(response);
 				socket.send(
@@ -751,6 +752,7 @@ async function runAll(){
 				);
 			} else if (name == keyup) {
 				const chAt = gameState[public_id].p.trajectory.hash_str();
+				//console.log(`${gameState[public_id].p.trajectory.dump()} (${chAt})`);
 				const time = Number(gameState[public_id].p.trajectory.time);
 				gameState[public_id].p.trajectory.set_propulsion(!up);
 				change_propulsion_emitter(public_id, !up);
@@ -802,11 +804,11 @@ async function runAll(){
 				if (player.p.trajectory.collision)
 					return;
 				if (pid == public_id){
-					player.p.trajectory.advance(BigInt(Date.now()));
+					player.p.trajectory.advance(BigInt(Date.now()), false);
 					return;
 				}
 				const ptime = BigInt(Date.now() - (200 + current_rtt*3));
-				if (!player.p.trajectory.advance(ptime))
+				if (!player.p.trajectory.advance(ptime, true))
 					return;
 				change_propulsion_emitter(pid, player.p.trajectory.propelling);
 			});
@@ -817,7 +819,14 @@ async function runAll(){
 				const shallow_copy = player.p.public_id == public_id ? world.pivot:player.graphics
 
 				//lerp the positions
-				const tdiff = Number(BigInt(Date.now()) - player.p.trajectory.time)/1000;
+				let now;
+				if (player.p.public_id == public_id){
+					now = Date.now();
+				} else {
+					now = Date.now() - (200 + current_rtt*3);
+				}
+				const tdiff = Number(BigInt(now) - player.p.trajectory.time)/1000;
+
 				const current_rotation_speed = rotation_speed * player.p.trajectory.spin_direction;
 				shallow_copy.x = player.p.trajectory.pos.x + player.p.trajectory.vel.x*tdiff;
 				shallow_copy.y = player.p.trajectory.pos.y + player.p.trajectory.vel.y*tdiff;

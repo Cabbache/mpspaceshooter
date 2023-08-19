@@ -117,10 +117,10 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			).await; //broadcast playerjoin
 		},
 		ClientMessage::PropelUpdate { on, at, time } => {
-			if sender_state.read().await.clone().trajectory.propelling == on { //nothing changed
-				eprintln!("modded client detected (redundant propel update)");
-				return Ok(());
-			}
+			//if sender_state.read().await.clone().trajectory.propelling == on { //nothing changed
+			//	eprintln!("modded client detected (redundant propel update)");
+			//	return Ok(());
+			//}
 			let successful: bool;
 			let new_trajectory = {
 				let mut writeable = sender_state.write().await;
@@ -129,7 +129,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			};
 			println!("hash: {}", new_trajectory.hash_str());
 			if !successful{
-				eprintln!("COULD NOT FIND HASH");
+				eprintln!("COULD NOT FIND HASH: {:?}", new_trajectory);
 			}
 			broadcast(
 				&ServerMessage::PropelUpdate{
@@ -142,9 +142,9 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			).await;
 		},
 		ClientMessage::Rotation { dir, at, time } => {
-			if sender_state.read().await.clone().trajectory.spin_direction == dir {
-				return Ok(());
-			}
+			//if sender_state.read().await.clone().trajectory.spin_direction == dir {
+			//	return Ok(());
+			//}
 			let successful: bool;
 			let new_trajectory = {
 				let mut writeable = sender_state.write().await;
@@ -153,7 +153,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			};
 			println!("hash: {}", new_trajectory.hash_str());
 			if !successful {
-				eprintln!("COULD NOT FIND HASH");
+				eprintln!("COULD NOT FIND HASH: {:?}", new_trajectory);
 			}
 			broadcast(
 				&ServerMessage::RotationUpdate {
