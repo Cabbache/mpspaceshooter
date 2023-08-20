@@ -256,7 +256,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 						}
 						let pp = playerstate.trajectory.pos;
 						let hit = utils::trajectory::line_intersects_circle(ss.x, ss.y, pp.x, pp.y, rr);
-						if !hit{
+						if !hit {
 							continue;
 						}
 

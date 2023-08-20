@@ -49,7 +49,9 @@ pub const PLAYER_RADIUS: f32 = 25.0;
 const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 const DOME_RADIUS: f32 = 6000.0;
 const ACCELERATION: f32 = 200.0; //player acceleration
-const PROPEL_DIRECTION: f32 = -PI/2.0;
+const TWOPI: f32 = 2f32*PI;
+const HALFPI: f32 = PI/2f32;
+const PROPEL_DIRECTION: f32 = -HALFPI;
 const RADIANS_PER_SECOND: f32 = PI; //player rotation speed
 const G: f32 = 2000.0; //Gravitational constant
 
@@ -61,19 +63,31 @@ const TIMESTEP_MILLIS: u32 = 1000 / TIMESTEP_FPS;
 const TIMESTEP_SECS: f32 = 1f32 / TIMESTEP_FPS as f32;
 
 #[cfg(not(target_arch = "wasm32"))]
-const SPAWN_PULL_MAX: f32 = 5.0; //Maximum gravity pull at spawn point
+const SPAWN_PULL_MAX: f32 = 2.0; //Maximum gravity pull at spawn point
 
-//pub const BODIES: [Body; 1] = [
-//  Body {
-//    pos: Vector{
-//      x: 0.0,
-//      y: 0.0,
-//    },  
-//    radius: 100.0,
-//  },  
-//];
-
-pub const BODIES: [Body; 0] = [];
+pub const BODIES: [Body; 3] = [
+  Body {
+    pos: Vector{
+      x: -2000.0,
+      y: 0.0,
+    },  
+    radius: 100.0,
+  },
+  Body {
+    pos: Vector{
+      x: 2000.0,
+      y: 0.0,
+    },  
+    radius: 100.0,
+  },
+  Body {
+    pos: Vector{
+      x: 0.0,
+      y: 2000.0,
+    },  
+    radius: 100.0,
+  },
+];
 
 #[cfg_attr(not(target_arch = "wasm32"), derive(Clone, Debug))]
 #[derive(Deserialize, Serialize)]
@@ -92,7 +106,6 @@ pub struct Trajectory{
 	updates: VecDeque<TrajectoryUpdate>,
 }
 
-//#[serde(tag = "t", content = "c")]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[wasm_bindgen]
 pub enum MotionUpdate {
@@ -167,16 +180,16 @@ impl Trajectory {
 		let steps = elapsed / TIMESTEP_MILLIS;
 		for _ in 1..=steps {
 			let current_hash = self.hash_str();
-			println!("{}: {} == {} ?", self.time, current_hash, hash);
-			println!("{}", self.dump());
+//			println!("{}: {} == {} ?", self.time, current_hash, hash);
+//			println!("{}", self.dump());
 			if current_hash == hash {
 				return true;
 			}
 			self.step();
 		}
-		let current_hash = self.hash_str();
-		println!("{}: {} == {} ?", self.time, current_hash, hash);
-		println!("{}", self.dump());
+//		let current_hash = self.hash_str();
+//		println!("{}: {} == {} ?", self.time, current_hash, hash);
+//		println!("{}", self.dump());
 		self.hash_str() == hash
 	}
 
@@ -199,7 +212,7 @@ impl Trajectory {
 				y: normal.sample(&mut rand::thread_rng()),
 			};
 			let psum = Trajectory::pull_sum(&pos);
-			if psum.x.powf(2.0) + psum.y.powf(2.0) < SPAWN_PULL_MAX.powf(2.0) {
+			if psum.x.powf(2.0) + psum.y.powf(2.0) < SPAWN_PULL_MAX.powf(2.0) && pos.mag() < DOME_RADIUS {
 				break;
 			}
 		}
@@ -290,17 +303,6 @@ impl Trajectory {
 
 	pub fn dump(&self) -> String {
 		format!("{},{:x},{:x},{:x},{:x},{:x},{},{},{}", self.propelling, self.pos.x.to_bits(), self.pos.y.to_bits(), self.vel.x.to_bits(), self.vel.y.to_bits(), self.spin.to_bits(), self.spin_direction, self.time, self.collision)
-	}
-
-	#[cfg(target_arch = "wasm32")]
-	pub fn set_rotation(&mut self, new_direction: i8) {
-		self.spin_direction = new_direction;
-	}
-
-
-	#[cfg(target_arch = "wasm32")]
-	pub fn set_propulsion(&mut self, on: bool) {
-		self.propelling = on;
 	}
 
 	#[cfg(target_arch = "wasm32")]
@@ -427,7 +429,7 @@ pub fn line_intersects_circle(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> 
 	//shift everything to make line start from origin
 	let a = xc - xp;
 	let b = yc - yp;
-	let rot_90 = rot - PI/2f32;
+	let rot_90 = rot - HALFPI;
 
 	//compute the quadratic's 'b' coefficient (for variable r in polar form)
 	let qb = -(2f32*a*rot_90.cos() + 2f32*b*rot_90.sin());
@@ -455,6 +457,6 @@ pub fn current_time() -> u64 {
 }
 
 fn normalize_angle(x: f32) -> f32 {
-	let modded = ((x % (2f32*PI)) + (2f32*PI)) % (2f32*PI);
+	let modded = ((x % TWOPI) + TWOPI) % TWOPI;
 	PI - modded
 }

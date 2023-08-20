@@ -382,7 +382,7 @@ async function runAll(){
 			state.players.forEach((p) => {
 				p.trajectory = new Trajectory(p.trajectory);
 				const square = getPlayerSprite(p);
-				if (p.public_id == public_id){
+				if (p.public_id == public_id) {
 					square.container.x = app.screen.width/2;
 					square.container.y = app.screen.height/2;
 					world.pivot.x = p.trajectory.pos.x;
@@ -769,12 +769,16 @@ async function runAll(){
 				);
 			} else if (name == keyshop) {
 				document.getElementById("shop-modal").style.display = keymap[name] ? "flex":"none";
-			} else if (name == keyzoomout) {
-				world.scale.set(0.5, 0.5);
-				gameState[public_id].graphics.scale.set(0.5,0.5);
-			} else if (name == keyzoomin) {
-				world.scale.set(1, 1);
-				gameState[public_id].graphics.scale.set(1,1);
+			} else if (name == keyzoomout && !up) {
+				world.scale.x *= 0.5;
+				world.scale.y *= 0.5;
+				gameState[public_id].graphics.scale.x *= 0.5;
+				gameState[public_id].graphics.scale.y *= 0.5;
+			} else if (name == keyzoomin && !up) {
+				world.scale.x *= 2;
+				world.scale.y *= 2;
+				gameState[public_id].graphics.scale.x *= 2;
+				gameState[public_id].graphics.scale.y *= 2;
 			}
 		};
 
@@ -794,7 +798,7 @@ async function runAll(){
 					return;
 				}
 				const ptime = BigInt(Date.now() - (200 + current_rtt*3));
-				if (!player.p.trajectory.advance(ptime, true))
+				if (!player.p.trajectory.advance(ptime, false))
 					return;
 				change_propulsion_emitter(pid, player.p.trajectory.propelling);
 			});
