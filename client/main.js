@@ -287,7 +287,7 @@ async function runAll(){
 					opened=true;
 					const pingFn = () => { //TODO: instead of using ping, use other things to measure latency
 						socket.send(JSON.stringify({"t": "Ping"}));
-						lastPing = Date.now();
+						lastPing = current_time();
 						setTimeout(pingFn, 5000+(Math.random()*5000));
 					}
 					setTimeout(pingFn, 200);
@@ -646,7 +646,7 @@ async function runAll(){
 		}
 
 		const handle_pong = function(content){
-			current_rtt = (Date.now() - lastPing);
+			current_rtt = (current_time() - lastPing);
 			latency_text.text = `latency: ${current_rtt}ms`;
 		}
 
@@ -794,10 +794,10 @@ async function runAll(){
 				if (player.p.trajectory.collision)
 					return;
 				if (pid == public_id){
-					player.p.trajectory.advance(BigInt(Date.now()), false);
+					player.p.trajectory.advance(BigInt(current_time()), false);
 					return;
 				}
-				const ptime = BigInt(Date.now() - (200 + current_rtt*3));
+				const ptime = BigInt(current_time() - (200 + current_rtt*3));
 				if (!player.p.trajectory.advance(ptime, false))
 					return;
 				change_propulsion_emitter(pid, player.p.trajectory.propelling);
@@ -811,9 +811,9 @@ async function runAll(){
 				//lerp the positions
 				let now;
 				if (player.p.public_id == public_id){
-					now = Date.now();
+					now = current_time();
 				} else {
-					now = Date.now() - (200 + current_rtt*3);
+					now = current_time() - (200 + current_rtt*3);
 				}
 				const tdiff = Number(BigInt(now) - player.p.trajectory.time)/1000;
 
@@ -871,3 +871,7 @@ async function runAll(){
 	}
 }
 runAll();
+
+function current_time(){
+	return Date.now() + 50;
+}
