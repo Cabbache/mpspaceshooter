@@ -89,6 +89,15 @@ pub const BODIES: [Body; 3] = [
   },
 ];
 
+
+#[wasm_bindgen]
+#[cfg(target_arch = "wasm32")]
+pub struct State {
+	pub x: f32,
+	pub y: f32,
+	pub r: f32,
+}
+
 #[cfg_attr(not(target_arch = "wasm32"), derive(Clone, Debug))]
 #[derive(Deserialize, Serialize)]
 #[wasm_bindgen]
@@ -299,6 +308,17 @@ impl Trajectory {
 			self.step();
 		}
 		had_update
+	}
+
+	#[cfg(target_arch = "wasm32")]
+	pub fn lerp(&self, time: u64) -> State {
+		let delta_millis = time - self.time;
+		let delta_secs = delta_millis as f32 / 1000f32;
+		State {
+			x: self.pos.x + self.vel.x*delta_secs,
+			y: self.pos.y + self.vel.y*delta_secs,
+			r: self.spin + (self.spin_direction as f32) * RADIANS_PER_SECOND * delta_secs,
+		}
 	}
 
 	pub fn dump(&self) -> String {

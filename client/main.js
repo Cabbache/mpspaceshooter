@@ -409,7 +409,7 @@ async function runAll(){
 				var body_obj = new PIXI.Container();
 
 				let circle = new PIXI.Graphics();
-				circle.beginFill(0x000000);
+				circle.beginFill(0xffffff);
 				circle.drawCircle(0, 0, body.radius);//body.radius
 				circle.endFill();
 				let circleTexture = app.renderer.generateTexture(circle);
@@ -774,16 +774,15 @@ async function runAll(){
 				);
 			} else if (name == keyshop) {
 				document.getElementById("shop-modal").style.display = keymap[name] ? "flex":"none";
-			} else if (name == keyzoomout && !up) {
-				world.scale.x *= 0.5;
-				world.scale.y *= 0.5;
-				gameState[public_id].graphics.scale.x *= 0.5;
-				gameState[public_id].graphics.scale.y *= 0.5;
-			} else if (name == keyzoomin && !up) {
-				world.scale.x *= 2;
-				world.scale.y *= 2;
-				gameState[public_id].graphics.scale.x *= 2;
-				gameState[public_id].graphics.scale.y *= 2;
+			} else if ((name == keyzoomout || name == keyzoomin) && !up) {
+				let multiplier = 1.5;
+				if (name == keyzoomout){
+					multiplier = 1 / multiplier;
+				}
+				world.scale.x *= multiplier;
+				world.scale.y *= multiplier;
+				gameState[public_id].graphics.scale.x *= multiplier;
+				gameState[public_id].graphics.scale.y *= multiplier;
 			}
 		};
 
@@ -805,7 +804,7 @@ async function runAll(){
 					player.p.trajectory.advance(BigInt(server_time()), false);
 					return;
 				}
-				const ptime = BigInt(server_time() - (50 + current_rtt));
+				const ptime = BigInt(server_time() - (200 + 3*current_rtt));
 				if (!player.p.trajectory.advance(ptime, false))
 					return;
 				change_propulsion_emitter(pid, player.p.trajectory.propelling);
@@ -821,14 +820,13 @@ async function runAll(){
 				if (player.p.public_id == public_id){
 					now = server_time();
 				} else {
-					now = server_time() - (50 + current_rtt);
+					now = server_time() - (200 + 3*current_rtt);
 				}
-				const tdiff = Number(BigInt(now) - player.p.trajectory.time)/1000;
 
-				const current_rotation_speed = rotation_speed * player.p.trajectory.spin_direction;
-				shallow_copy.x = player.p.trajectory.pos.x + player.p.trajectory.vel.x*tdiff;
-				shallow_copy.y = player.p.trajectory.pos.y + player.p.trajectory.vel.y*tdiff;
-				player.child.rotation = player.p.trajectory.spin + current_rotation_speed*tdiff;
+				const lerped = player.p.trajectory.lerp(BigInt(now));
+				shallow_copy.x = lerped.x;
+				shallow_copy.y = lerped.y;
+				player.child.rotation = lerped.r;
 			});
 
 			const tile_x = Math.floor(world.pivot.x / seamless_texture.width);
