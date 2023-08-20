@@ -6,7 +6,7 @@ use serde::{Deserialize,Serialize};
 use base64::{engine::general_purpose, Engine as _};
 
 #[cfg(target_arch = "wasm32")]
-use std::collections::HashMap;
+use std::collections::VecDeque;
 
 #[cfg(not(target_arch = "wasm32"))]
 use bincode::serialize;
@@ -89,13 +89,13 @@ pub struct Trajectory{
 
 	#[cfg(target_arch = "wasm32")]
 	#[serde(skip)]
-	updates: HashMap<u64, Vec<TrajectoryUpdate>>,
+	updates: VecDeque<TrajectoryUpdate>,
 }
 
 #[cfg(target_arch = "wasm32")]
 enum TrajectoryUpdate {
-	Rotation{direction: i8, hash: String},
-	Propulsion{on: bool, hash: String}
+	Rotation{direction: i8, hash: String, update_time: u64},
+	Propulsion{on: bool, hash: String, update_time: u64},
 }
 
 impl Trajectory {
@@ -224,7 +224,7 @@ impl Trajectory {
 	#[cfg(target_arch = "wasm32")]
 	pub fn from_b64(data: String) -> Trajectory {
 		let mut result: Trajectory = deserialize(&general_purpose::STANDARD.decode(&data).unwrap()).unwrap();
-		result.updates = HashMap::new();
+		result.updates = VecDeque::new();
 		result
 	}
 
@@ -256,30 +256,47 @@ impl Trajectory {
 		let steps = elapsed / TIMESTEP_MILLIS;
 		let mut had_update = false;
 		for _ in 1..=steps {
-			let hashstr = self.hash_str();
+			let mut hashstr = self.hash_str();
 			if doprint {
 				console_log!("{} ({})", self.dump(), hashstr);
 			}
-			let content = self.updates.get(&self.time);
-			if let Some(updates) = content {
-				for update in updates {
-					match update {
-						TrajectoryUpdate::Rotation {direction, hash} => {
-							if *hash != hashstr {
-								console_log!("Hash mismatch! request was {} but got {}", hash, hashstr);
+			loop {
+				if let Some(next_update) = self.updates.front() {
+					match next_update {
+						TrajectoryUpdate::Rotation {direction, hash, update_time} => {
+							console_log!("rotation update: @{} ({}) <-> {}", *update_time, hash, self.time);
+							if *update_time == self.time {
+								if *hash != hashstr {
+									console_log!("Hash mismatch! request was {} but got {}", hash, hashstr);
+									self.collision = true;
+								}
+								had_update = true;
+								self.spin_direction = *direction;
+								hashstr = self.hash_str();
+								self.updates.pop_front();
+							} else {
+								break;
 							}
-							self.spin_direction = *direction;
 						},
-						TrajectoryUpdate::Propulsion {on, hash} => {
-							if *hash != hashstr {
-								console_log!("Hash mismatch! request was {} but got {}", hash, hashstr);
+						TrajectoryUpdate::Propulsion {on, hash, update_time} => {
+							console_log!("propulsion update: @{} ({}) <-> {}", *update_time, hash, self.time);
+							if *update_time == self.time {
+								if *hash != hashstr {
+									console_log!("Hash mismatch! request was {} but got {}", hash, hashstr);
+									self.collision = true;
+								}
+								had_update = true;
+								self.propelling = *on;
+								hashstr = self.hash_str();
+								self.updates.pop_front();
+							} else {
+								break;
 							}
-							self.propelling = *on;
-						},
+						},				
 					}
+				} else {
+					break;
 				}
-				had_update = true;
-				self.updates.remove(&self.time);
 			}
 			self.step();
 		}
@@ -303,16 +320,12 @@ impl Trajectory {
 
 	#[cfg(target_arch = "wasm32")]
 	pub fn insert_rotation_update(&mut self, hash: String, spin_direction: i8, time: u64) {
-		self.updates.entry(time)
-		.or_default()
-		.push(TrajectoryUpdate::Rotation { direction: spin_direction, hash: hash});
+		self.updates.push_back(TrajectoryUpdate::Rotation { direction: spin_direction, hash: hash, update_time: time});
 	}
 
 	#[cfg(target_arch = "wasm32")]
 	pub fn insert_propel_update(&mut self, hash: String, on: bool, time: u64) {
-		self.updates.entry(time)
-		.or_default()
-		.push(TrajectoryUpdate::Propulsion { on: on, hash: hash });
+		self.updates.push_back(TrajectoryUpdate::Propulsion { on: on, hash: hash, update_time: time });
 	}
 
 	//TODO consider when velocity exceeds radius, use line_intersects_circle?
