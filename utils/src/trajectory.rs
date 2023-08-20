@@ -92,10 +92,23 @@ pub struct Trajectory{
 	updates: VecDeque<TrajectoryUpdate>,
 }
 
+//#[serde(tag = "t", content = "c")]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[wasm_bindgen]
+pub enum MotionUpdate {
+	RotStop,
+	RotCw,
+	RotCcw,
+	PropOn,
+	PropOff,
+}
+
 #[cfg(target_arch = "wasm32")]
-enum TrajectoryUpdate {
-	Rotation{direction: i8, hash: String, update_time: u64},
-	Propulsion{on: bool, hash: String, update_time: u64},
+#[derive(Serialize, Debug, Clone)]
+struct TrajectoryUpdate {
+	time: u64,
+	hash: String,
+	change: MotionUpdate,
 }
 
 impl Trajectory {
@@ -168,20 +181,11 @@ impl Trajectory {
 	}
 
 	#[cfg(not(target_arch = "wasm32"))]
-	pub fn update_rotation(&mut self, new_direction: i8, hash: String, time: u64) -> bool {
+	pub fn update(&mut self, change: MotionUpdate, hash: String, time: u64) -> bool {
 		if !self.advance_to(hash, time) {
 			return false;
 		}
-		self.spin_direction = new_direction;
-		true
-	}
-
-	#[cfg(not(target_arch = "wasm32"))]
-	pub fn update_propulsion(&mut self, on: bool, hash: String, time: u64) -> bool {
-		if !self.advance_to(hash, time) {
-			return false;
-		}
-		self.propelling = on;
+		self.apply_change(change);
 		true
 	}
 
@@ -256,44 +260,25 @@ impl Trajectory {
 		let steps = elapsed / TIMESTEP_MILLIS;
 		let mut had_update = false;
 		for _ in 1..=steps {
-			let mut hashstr = self.hash_str();
 			if doprint {
-				console_log!("{} ({})", self.dump(), hashstr);
+				console_log!("{} ({})", self.dump(), self.hash_str());
 			}
 			loop {
-				if let Some(next_update) = self.updates.front() {
-					match next_update {
-						TrajectoryUpdate::Rotation {direction, hash, update_time} => {
-							console_log!("rotation update: @{} ({}) <-> {}", *update_time, hash, self.time);
-							if *update_time == self.time {
-								if *hash != hashstr {
-									console_log!("Hash mismatch! request was {} but got {}", hash, hashstr);
-									self.collision = true;
-								}
-								had_update = true;
-								self.spin_direction = *direction;
-								hashstr = self.hash_str();
-								self.updates.pop_front();
-							} else {
-								break;
-							}
-						},
-						TrajectoryUpdate::Propulsion {on, hash, update_time} => {
-							console_log!("propulsion update: @{} ({}) <-> {}", *update_time, hash, self.time);
-							if *update_time == self.time {
-								if *hash != hashstr {
-									console_log!("Hash mismatch! request was {} but got {}", hash, hashstr);
-									self.collision = true;
-								}
-								had_update = true;
-								self.propelling = *on;
-								hashstr = self.hash_str();
-								self.updates.pop_front();
-							} else {
-								break;
-							}
-						},				
+				if let Some(next_update) = self.updates.front().cloned() {
+					if doprint {
+						console_log!("{} <-> {}", next_update.time, self.time);
 					}
+					if next_update.time != self.time {
+						break;
+					}
+					if next_update.hash != self.hash_str() {
+						console_log!("Hash mismatch! request was {} but got {}", next_update.hash, self.hash_str());
+						self.collision = true;
+						break;
+					}
+					self.apply_change(next_update.change);
+					self.updates.pop_front();
+					had_update = true;
 				} else {
 					break;
 				}
@@ -319,13 +304,14 @@ impl Trajectory {
 	}
 
 	#[cfg(target_arch = "wasm32")]
-	pub fn insert_rotation_update(&mut self, hash: String, spin_direction: i8, time: u64) {
-		self.updates.push_back(TrajectoryUpdate::Rotation { direction: spin_direction, hash: hash, update_time: time});
-	}
-
-	#[cfg(target_arch = "wasm32")]
-	pub fn insert_propel_update(&mut self, hash: String, on: bool, time: u64) {
-		self.updates.push_back(TrajectoryUpdate::Propulsion { on: on, hash: hash, update_time: time });
+	pub fn insert_update(&mut self, change: MotionUpdate, hash: String, time: u64) {
+		self.updates.push_back(
+			TrajectoryUpdate {
+				time: time,
+				hash: hash,
+				change: change,
+			}
+		);
 	}
 
 	//TODO consider when velocity exceeds radius, use line_intersects_circle?
@@ -342,6 +328,16 @@ impl Trajectory {
 		let mut hasher = DefaultHasher::new();
 		self.hash(&mut hasher);
 		format!("{:x}", hasher.finish())
+	}
+
+	pub fn apply_change(&mut self, change: MotionUpdate){
+		match change {
+			MotionUpdate::RotStop => {self.spin_direction = 0;},
+			MotionUpdate::RotCw => {self.spin_direction = 1;},
+			MotionUpdate::RotCcw => {self.spin_direction = -1;},
+			MotionUpdate::PropOn => {self.propelling = true;},
+			MotionUpdate::PropOff => {self.propelling = false;},
+		}
 	}
 }
 

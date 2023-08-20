@@ -108,13 +108,12 @@ impl PlayerState {
 	}
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug)]
 #[serde(tag = "t", content = "c")]
 pub enum ClientMessage{
 	Ping,
 	AckPong,
-	PropelUpdate {on: bool, at: String, time: u64},
-	Rotation {dir: i8, at: String, time: u64},
+	TrajectoryUpdate {change: MotionUpdate, at: String, time: u64},
 	ChangeSlot {slot: u8},
 	TrigUpdate {pressed: bool},
 	ClaimLoot {loot_id: String},
@@ -134,8 +133,7 @@ pub enum ServerMessage{
 		worldloot: HashMap<String, LootObject>,
 		bodies: Vec<Body>,
 	},
-	PropelUpdate { propel: bool, at: String, from: String, time: u64 },
-	RotationUpdate { direction: i8, at: String, from: String, time: u64 },
+	TrajectoryUpdate {change: MotionUpdate, time: u64, at: String, from: String},
 	TrigUpdate {by: String, weptype: WeaponType, pressed: bool },
 	PlayerDeath {loot: Option<LootDrop>, from: String },
 	LootCollected {loot_id: String, collector: String },

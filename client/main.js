@@ -1,4 +1,4 @@
-import init, { Trajectory } from './pkg/utils.js';
+import init, { Trajectory, MotionUpdate } from './pkg/utils.js';
 async function runAll(){
 	await init();
 
@@ -432,29 +432,15 @@ async function runAll(){
 			};
 		}
 
-		const handle_rotationupdate = function(content){
+		const handle_update = function(content){
 			let broadcaster = content["from"];
-			let chAt = content["at"];
 			if (broadcaster == public_id)
 				return;
 
 			if (content["time"] < Number(gameState[broadcaster].p.trajectory.time)) {
 				console.error(`update is in the past`);
 			}
-			gameState[broadcaster].p.trajectory.insert_rotation_update(chAt, content.direction, BigInt(content["time"]));
-		}
-
-		const handle_propelupdate = function(content){
-			let broadcaster = content["from"];
-			let chAt = content["at"];
-			if (broadcaster == public_id)
-				return;
-
-			console.log(content);
-			if (content["time"] < Number(gameState[broadcaster].p.trajectory.time)) {
-				console.error(`update is in the past`);
-			}
-			gameState[broadcaster].p.trajectory.insert_propel_update(chAt, content.propel, BigInt(content["time"]));
+			gameState[broadcaster].p.trajectory.insert_update(MotionUpdate[content.change], content["at"], BigInt(content["time"]));
 		}
 
 		const change_propulsion_emitter = (pid, is_emitting) => {
@@ -704,8 +690,7 @@ async function runAll(){
 				"PlayerLeave": handle_playerleave,
 				"HealthUpdate": handle_healthUpdate,
 				"GameState": handle_gamestate,
-				"PropelUpdate": handle_propelupdate,
-				"RotationUpdate": handle_rotationupdate,
+				"TrajectoryUpdate": handle_update,
 				"PlayerDeath": handle_playerdeath,
 				"LootCollected": handle_lootcollection,
 				"TrigUpdate": handle_trigUpdate,
@@ -730,21 +715,21 @@ async function runAll(){
 			if (name == keyright || name == keyleft){
 				let response = "";
 				if (keymap[keyleft] == keymap[keyright]){
-					response = 0;
+					response = "RotStop";
 				} else if (keymap[keyleft]){
-					response = -1;
+					response = "RotCcw";
 				} else if (keymap[keyright]){
-					response = 1;
+					response = "RotCw";
 				}
 				const chAt = gameState[public_id].p.trajectory.hash_str();
 				//console.log(`${gameState[public_id].p.trajectory.dump()} (${chAt})`);
 				const time = Number(gameState[public_id].p.trajectory.time);
-				gameState[public_id].p.trajectory.set_rotation(response);
+				gameState[public_id].p.trajectory.apply_change(MotionUpdate[response]);
 				socket.send(
 					JSON.stringify({
-						"t":"Rotation",
+						"t":"TrajectoryUpdate",
 						"c":{
-							"dir": response,
+							"change": response,
 							"at": chAt,
 							"time": time,
 						 }
@@ -754,13 +739,14 @@ async function runAll(){
 				const chAt = gameState[public_id].p.trajectory.hash_str();
 				//console.log(`${gameState[public_id].p.trajectory.dump()} (${chAt})`);
 				const time = Number(gameState[public_id].p.trajectory.time);
-				gameState[public_id].p.trajectory.set_propulsion(!up);
+				let change = up ? "PropOff":"PropOn";
+				gameState[public_id].p.trajectory.apply_change(MotionUpdate[change]);
 				change_propulsion_emitter(public_id, !up);
 				socket.send(
 					JSON.stringify({
-						"t":"PropelUpdate",
+						"t":"TrajectoryUpdate",
 						"c": {
-							"on": !up,
+							"change": change,
 							"at": chAt,
 							"time": time,
 						}

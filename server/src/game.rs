@@ -116,15 +116,11 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				&clr
 			).await; //broadcast playerjoin
 		},
-		ClientMessage::PropelUpdate { on, at, time } => {
-			//if sender_state.read().await.clone().trajectory.propelling == on { //nothing changed
-			//	eprintln!("modded client detected (redundant propel update)");
-			//	return Ok(());
-			//}
+		ClientMessage::TrajectoryUpdate {change, time, at} => {
 			let successful: bool;
 			let new_trajectory = {
 				let mut writeable = sender_state.write().await;
-				successful = writeable.trajectory.update_propulsion(on, at.clone(), current_time());
+				successful = writeable.trajectory.update(change.clone(), at.clone(), current_time());
 				writeable.trajectory.clone()
 			};
 			println!("hash: {}", new_trajectory.hash_str());
@@ -132,37 +128,13 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				eprintln!("COULD NOT FIND HASH: {:?}", new_trajectory);
 			}
 			broadcast(
-				&ServerMessage::PropelUpdate{
-					propel: on,
-					at: at,
+				&ServerMessage::TrajectoryUpdate{
+					change: change,
 					time: time,
+					at: at,
 					from: format!("{:x}", xxh3_64(private_id.as_bytes())),
 				},
 				&clr,
-			).await;
-		},
-		ClientMessage::Rotation { dir, at, time } => {
-			//if sender_state.read().await.clone().trajectory.spin_direction == dir {
-			//	return Ok(());
-			//}
-			let successful: bool;
-			let new_trajectory = {
-				let mut writeable = sender_state.write().await;
-				successful = writeable.trajectory.update_rotation(dir, at.clone(), current_time());
-				&writeable.trajectory.clone()
-			};
-			println!("hash: {}", new_trajectory.hash_str());
-			if !successful {
-				eprintln!("COULD NOT FIND HASH: {:?}", new_trajectory);
-			}
-			broadcast(
-				&ServerMessage::RotationUpdate {
-					direction: dir,
-					at: at,
-					time: time,
-					from: format!("{:x}", xxh3_64(private_id.as_bytes())),
-				},
-				&clr
 			).await;
 		},
 		ClientMessage::StateQuery => { //TODO rate limit this
