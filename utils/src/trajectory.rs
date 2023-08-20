@@ -20,6 +20,7 @@ use rand_distr::{Normal, Distribution};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[wasm_bindgen]
+#[cfg(target_arch = "wasm32")]
 extern "C" {
     // Use `js_namespace` here to bind `console.log(..)` instead of just
     // `log(..)`
@@ -37,6 +38,7 @@ extern "C" {
     fn log_many(a: &str, b: &str);
 }
 
+#[cfg(target_arch = "wasm32")]
 macro_rules! console_log {
     // Note that this is using the `log` function imported above during
     // `bare_bones`
