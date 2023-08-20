@@ -282,7 +282,7 @@ async function runAll(){
 			.then(result => {
 				public_id = result['public'];
 				//socket = new WebSocket(`wss://${window.location.hostname}/ws/`+result['private']);
-				socket = new WebSocket(`ws://${window.location.hostname}/ws/`+result['private']);
+				socket = new WebSocket(`ws://${window.location.host}/ws/`+result['private']);
 				socket.onmessage = recvFn;
 				socket.onopen = () => {
 					opened=true;
