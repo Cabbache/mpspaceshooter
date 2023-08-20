@@ -99,7 +99,8 @@ async function runAll(){
 
 		var pingInterval = null;
 		var lastPing = 0;
-		var current_rtt = 0;
+		var current_rtt = null;
+		var clocks_delta = 0; //estimated difference between client/server clocks
 
 		const app = new PIXI.Application({
 				width: window.innerWidth,
@@ -287,11 +288,10 @@ async function runAll(){
 					opened=true;
 					const pingFn = () => { //TODO: instead of using ping, use other things to measure latency
 						socket.send(JSON.stringify({"t": "Ping"}));
-						lastPing = current_time();
+						lastPing = local_time();
 						setTimeout(pingFn, 5000+(Math.random()*5000));
 					}
-					setTimeout(pingFn, 200);
-					socket.send(JSON.stringify({"t":"StateQuery"}));
+					pingFn();
 				};
 				socket.onclose = (event)=>{
 					opened=false;
@@ -646,8 +646,13 @@ async function runAll(){
 		}
 
 		const handle_pong = function(content){
-			current_rtt = (current_time() - lastPing);
+			const original_rtt = current_rtt;
+			const now = local_time();
+			current_rtt = now - lastPing;
+			clocks_delta = now - content - Math.round(current_rtt/2);
 			latency_text.text = `latency: ${current_rtt}ms`;
+			if (original_rtt == null)
+				socket.send(JSON.stringify({"t":"StateQuery"}));
 		}
 
 		const handle_lootcollection = function(content){
@@ -788,16 +793,19 @@ async function runAll(){
 		const GraphicsTicker = PIXI.Ticker.shared.add(delta => {
 			fps_text.text = `fps: ${Math.round(PIXI.Ticker.shared.FPS)}`;
 
+			if (current_rtt == null)
+				return;
+
 			const deltaTime = delta / (1000*PIXI.settings.TARGET_FPMS);
 
 			Object.entries(gameState).forEach(([pid, player]) => {
 				if (player.p.trajectory.collision)
 					return;
 				if (pid == public_id){
-					player.p.trajectory.advance(BigInt(current_time()), false);
+					player.p.trajectory.advance(BigInt(server_time()), false);
 					return;
 				}
-				const ptime = BigInt(current_time() - (200 + current_rtt*3));
+				const ptime = BigInt(server_time() - (50 + current_rtt));
 				if (!player.p.trajectory.advance(ptime, false))
 					return;
 				change_propulsion_emitter(pid, player.p.trajectory.propelling);
@@ -811,9 +819,9 @@ async function runAll(){
 				//lerp the positions
 				let now;
 				if (player.p.public_id == public_id){
-					now = current_time();
+					now = server_time();
 				} else {
-					now = current_time() - (200 + current_rtt*3);
+					now = server_time() - (50 + current_rtt);
 				}
 				const tdiff = Number(BigInt(now) - player.p.trajectory.time)/1000;
 
@@ -860,7 +868,6 @@ async function runAll(){
 		GraphicsTicker.speed = 1;
 		GraphicsTicker.minFPS = 30;
 		GraphicsTicker.maxFPS = 60;
-		GraphicsTicker.start();
 
 		window.addEventListener("resize", function(){
 			app.renderer.resize(window.innerWidth, window.innerHeight);
@@ -868,10 +875,14 @@ async function runAll(){
 
 		window.addEventListener('keydown', (event) => keyAction(event.repeat, event.key, false));
 		window.addEventListener('keyup', (event) => keyAction(event.repeat, event.key, true));
+
+		function server_time() {
+			return local_time() - clocks_delta;
+		}
+
+		function local_time(){
+			return Date.now();
+		}
 	}
 }
 runAll();
-
-function current_time(){
-	return Date.now() + 50;
-}

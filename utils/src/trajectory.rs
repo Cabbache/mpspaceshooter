@@ -307,6 +307,10 @@ impl Trajectory {
 
 	#[cfg(target_arch = "wasm32")]
 	pub fn insert_update(&mut self, change: MotionUpdate, hash: String, time: u64) {
+		if self.time > time {
+			console_log!("Update is in the past!");
+			self.collision = true;
+		}
 		self.updates.push_back(
 			TrajectoryUpdate {
 				time: time,

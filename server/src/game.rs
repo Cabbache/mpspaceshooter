@@ -99,7 +99,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 			if let Some(client) = clr.get(private_id) {
 				let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
 				client.transmit(
-					&ServerMessage::Pong,
+					&ServerMessage::Pong(current_time()),
 					Some(public_id)
 				).await?;
 			} else {

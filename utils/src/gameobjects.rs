@@ -124,7 +124,7 @@ pub enum ClientMessage{
 #[derive(Serialize, Debug)]
 #[serde(tag = "t", content = "c")]
 pub enum ServerMessage{
-	Pong,
+	Pong(u64),
 	PlayerJoin(PlayerState),
 	PlayerLeave(String),
 	HealthUpdate(f32),
