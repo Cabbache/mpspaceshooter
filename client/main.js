@@ -645,6 +645,10 @@ async function runAll(){
 			delete worldLoot[content].claimed;
 		}
 
+		const handle_correction = function(content){
+			gameState[content['id']].p.trajectory = new Trajectory(content['tr']);
+		}
+
 		const handle_pong = function(content){
 			const original_rtt = current_rtt;
 			const now = local_time();
@@ -699,6 +703,7 @@ async function runAll(){
 				"PlayerDeath": handle_playerdeath,
 				"LootCollected": handle_lootcollection,
 				"TrigUpdate": handle_trigUpdate,
+				"Correct": handle_correction,
 				"LootReject": handle_rejection
 			};
 			if (!(datatype in fmap)){

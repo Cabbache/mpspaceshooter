@@ -137,5 +137,6 @@ pub enum ServerMessage{
 	TrigUpdate {by: String, weptype: WeaponType, pressed: bool },
 	PlayerDeath {loot: Option<LootDrop>, from: String },
 	LootCollected {loot_id: String, collector: String },
+	Correct {id: String, tr: String},
 	LootReject(String),
 }

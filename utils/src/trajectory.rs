@@ -45,18 +45,19 @@ macro_rules! console_log {
     ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
 }
 
+const TWOPI: f32 = 2f32*PI;
+const HALFPI: f32 = PI/2f32;
+
 pub const PLAYER_RADIUS: f32 = 25.0;
 const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 const DOME_RADIUS: f32 = 6000.0;
 const ACCELERATION: f32 = 200.0; //player acceleration
-const TWOPI: f32 = 2f32*PI;
-const HALFPI: f32 = PI/2f32;
 const PROPEL_DIRECTION: f32 = -HALFPI;
 const RADIANS_PER_SECOND: f32 = PI; //player rotation speed
 const G: f32 = 2000.0; //Gravitational constant
 
-//const TIMESTEP_FPS: u32 = 10; //around 20 is good
-const TIMESTEP_FPS: u32 = 30; //around 20 is good
+const TIMESTEP_FPS: u32 = 5;
+//const TIMESTEP_FPS: u32 = 30; //around 20 is good
 
 //Calculated
 const TIMESTEP_MILLIS: u32 = 1000 / TIMESTEP_FPS;
@@ -64,6 +65,8 @@ const TIMESTEP_SECS: f32 = 1f32 / TIMESTEP_FPS as f32;
 
 #[cfg(not(target_arch = "wasm32"))]
 const SPAWN_PULL_MAX: f32 = 2.0; //Maximum gravity pull at spawn point
+#[cfg(not(target_arch = "wasm32"))]
+const MAX_TIME_AHEAD: u64 = 0;
 
 pub const BODIES: [Body; 3] = [
   Body {
@@ -184,27 +187,27 @@ impl Trajectory {
 	
 	//returns true if hash found
 	#[cfg(not(target_arch = "wasm32"))]
-	pub fn advance_to(&mut self, hash: String, time: u64) -> bool {
+	pub fn advance_to_time(&mut self, time: u64, expected_hash: String) -> bool {
 		let elapsed = (time - self.time) as u32;
 		let steps = elapsed / TIMESTEP_MILLIS;
 		for _ in 1..=steps {
-			let current_hash = self.hash_str();
-//			println!("{}: {} == {} ?", self.time, current_hash, hash);
-//			println!("{}", self.dump());
-			if current_hash == hash {
-				return true;
-			}
 			self.step();
 		}
-//		let current_hash = self.hash_str();
-//		println!("{}: {} == {} ?", self.time, current_hash, hash);
-//		println!("{}", self.dump());
-		self.hash_str() == hash
+		self.hash_str() == expected_hash
 	}
 
 	#[cfg(not(target_arch = "wasm32"))]
-	pub fn update(&mut self, change: MotionUpdate, hash: String, time: u64) -> bool {
-		if !self.advance_to(hash, time) {
+	pub fn update(&mut self, change: MotionUpdate, hash: String, update_time: u64, time: u64) -> bool {
+		if update_time < self.time {
+			eprintln!("Update is in the past!");
+			return false;
+		}
+		if update_time > time && (update_time - time) > MAX_TIME_AHEAD {
+			eprintln!("Update is too far ahead!");
+			return false;
+		}
+		if !self.advance_to_time(update_time, hash) {
+			eprintln!("Hash mismatch!");
 			return false;
 		}
 		self.apply_change(change);

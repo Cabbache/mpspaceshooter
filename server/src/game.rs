@@ -118,24 +118,32 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 		},
 		ClientMessage::TrajectoryUpdate {change, time, at} => {
 			let successful: bool;
-			let new_trajectory = {
+			let updated_trajectory = {
 				let mut writeable = sender_state.write().await;
-				successful = writeable.trajectory.update(change.clone(), at.clone(), current_time());
+				successful = writeable.trajectory.update(change.clone(), at.clone(), time, current_time());
 				writeable.trajectory.clone()
 			};
-			println!("hash: {}", new_trajectory.hash_str());
-			if !successful{
-				eprintln!("COULD NOT FIND HASH: {:?}", new_trajectory);
+			if successful { //if accepted by the server, broadcast change
+				broadcast(
+					&ServerMessage::TrajectoryUpdate{
+						change: change,
+						time: time,
+						at: at,
+						from: format!("{:x}", xxh3_64(private_id.as_bytes())),
+					},
+					&clr,
+				).await;
+			} else { //if rejected, correct the client
+				if let Some(client) = clr.get(private_id) {
+					let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
+					client.transmit(
+						&ServerMessage::Correct{id: public_id.clone(), tr: updated_trajectory.to_b64()},
+						Some(public_id)
+					).await?;
+				} else {
+					eprintln!("Can't find client");
+				}
 			}
-			broadcast(
-				&ServerMessage::TrajectoryUpdate{
-					change: change,
-					time: time,
-					at: at,
-					from: format!("{:x}", xxh3_64(private_id.as_bytes())),
-				},
-				&clr,
-			).await;
 		},
 		ClientMessage::StateQuery => { //TODO rate limit this
 			eprintln!("Got statequery");
