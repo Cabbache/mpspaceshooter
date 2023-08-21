@@ -4,7 +4,6 @@ use std::error::Error;
 use futures::future::join_all;
 use serde_json::{from_str, json, to_string, Value};
 use warp::ws::Message;
-use xxhash_rust::xxh3::xxh3_64;
 use uuid::Uuid;
 use rand::Rng;
 use rand::rngs::StdRng;
@@ -25,7 +24,7 @@ impl Client {
 		if let Some(ch) = self.sender.as_ref() {
 			let public_id = match public_id {
 				Some(id) => id, 
-				None => self.state.read().await.public_id.clone(),
+				None => self.state.read().await.id.clone(),
 			};
 			let serialized_msg = match msg {
 				ServerMessage::PlayerJoin(_) |
@@ -34,7 +33,7 @@ impl Client {
 					match msg {
 						ServerMessage::GameState{ pstates, worldloot } => {
 							let encoded_states: Vec<Value> = pstates.iter().map(|state| {
-								state.encode(public_id == state.public_id)
+								state.encode(public_id == state.id)
 							}).collect();
 							to_string(&json!({
 								"t": "GameState",
@@ -47,7 +46,7 @@ impl Client {
 						ServerMessage::PlayerJoin(pstate) => {
 							to_string(&json!({
 								"t": "PlayerJoin",
-								"c": pstate.encode(pstate.public_id == public_id),
+								"c": pstate.encode(pstate.id == public_id),
 							}))?
 						},
 						_ => String::new()
@@ -61,7 +60,7 @@ impl Client {
 	}
 }
 
-pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clients, world_loot: &WorldLoot) -> Result<(), Box<dyn Error>>{
+pub async fn handle_game_message(public_id: String, message: &str, clients: &Clients, world_loot: &WorldLoot) -> Result<(), Box<dyn Error>>{
 	let message: ClientMessage = match from_str(message) {
 		Ok(v) => v,
 		Err(m) => {
@@ -74,10 +73,10 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 	println!("{}", time_now);
 
 	let clr = clients.read().await;
-	let sender_state = match clr.get(private_id) {
+	let sender_state = match clr.get(&public_id) {
 		Some(v) => &v.state,
 		None => {
-			eprintln!("Can't find sender in clients: {}", private_id);
+			eprintln!("Can't find sender in clients: {}", public_id);
 			return Ok(());
 		}
 	};
@@ -96,11 +95,10 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 
 	match message {
 		ClientMessage::Ping => {
-			if let Some(client) = clr.get(private_id) {
-				let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
+			if let Some(client) = clr.get(&public_id) {
 				client.transmit(
 					&ServerMessage::Pong(current_time()),
-					Some(public_id)
+					Some(public_id.to_string())
 				).await?;
 			} else {
 					eprintln!("Can't find client");
@@ -129,16 +127,15 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 						change: change,
 						time: time,
 						at: at,
-						from: format!("{:x}", xxh3_64(private_id.as_bytes())),
+						from: public_id.clone(),
 					},
 					&clr,
 				).await;
 			} else { //if rejected, correct the client
-				if let Some(client) = clr.get(private_id) {
-					let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
+				if let Some(client) = clr.get(&public_id) {
 					client.transmit(
 						&ServerMessage::Correct{id: public_id.clone(), tr: updated_trajectory.to_b64()},
-						Some(public_id)
+						Some(public_id.clone())
 					).await?;
 				} else {
 					eprintln!("Can't find client");
@@ -167,8 +164,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				.collect();
 
 			//Send the response to the client.
-			if let Some(client) = clr.get(private_id) {
-				let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
+			if let Some(client) = clr.get(&public_id) {
 				client.transmit(
 					&ServerMessage::GameState{
 						pstates: players,
@@ -193,7 +189,6 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				return Ok(());
 			}
 
-			let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
 			sender_state.write().await.trigger_pressed = pressed;
 			let weapon_selected = cl.inventory.weapons.get(
 				&cl.inventory.selection
@@ -222,7 +217,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 				_ => {
 					broadcast(
 						&ServerMessage::TrigUpdate {
-							by: public_id,
+							by: public_id.clone(),
 							weptype: weapon_selected.weptype.clone(),
 							pressed: pressed,
 						},
@@ -247,7 +242,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 
 					//boring linear search
 					for (key, value) in clr.iter() { //TODO try using for_each
-						if key == private_id{ //Can't shoot yourself
+						if *key == public_id{ //Can't shoot yourself
 							continue;
 						}
 
@@ -276,7 +271,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 						if new_health > 0f32 {
 							value.transmit(
 								&ServerMessage::HealthUpdate(new_health),
-								Some(playerstate.public_id)
+								Some(playerstate.id)
 							).await?; //tell the player that lost the health their new health
 						} else {
 							let mut rng = StdRng::from_entropy();
@@ -300,7 +295,7 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 										object: dropped_loot,
 										uuid: dropped_loot_uuid,
 									}),
-									from: playerstate.public_id,
+									from: playerstate.id,
 								},
 								&clr
 							).await;
@@ -328,10 +323,10 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 						writable.trajectory.pos.clone()
 					};
 					if (pp.y - loot_obj.y).powi(2) + (pp.x - loot_obj.x).powi(2) > LOOT_RADIUS.powi(2){
-						if let Some(client) = clr.get(private_id){
-							client.transmit(&ServerMessage::LootReject(loot_id), Some(format!("{:x}", xxh3_64(private_id.as_bytes())))).await?;
+						if let Some(client) = clr.get(&public_id){
+							client.transmit(&ServerMessage::LootReject(loot_id), Some(public_id)).await?;
 						} else {
-							eprintln!("Weird, did not find client {} in clr", private_id);
+							eprintln!("Weird, did not find client {} in clr", public_id);
 						}
 						return Err("Too far for loot claim".into());
 					}
@@ -356,7 +351,6 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 					}//locks are released
 					println!("locks released");
 
-					let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
 					broadcast(
 						&ServerMessage::LootCollected { loot_id: loot_id, collector: public_id },
 						&clr
@@ -366,17 +360,28 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 					return Err(format!("Can't find requested lootobject: {}", loot_id).into());
 				}
 			};
+		},
+		ClientMessage::Correct(id) => {
+//			if let Some(other) = clr.get(id){
+//				let correction = other.state.read().await.trajectory.to_b64();
+//				client.transmit(
+//					&ServerMessage::Correct{id: id, tr: correction},
+//					Some(public_id)
+//				).await?;
+//			} else {
+//				eprintln!("Client requested correction for non existing player");
+//			}
+		}
+		ClientMessage::Buy => {
+
 		}
 	}
 	Ok(())
 }
 
-
-
 pub async fn broadcast(msg: &ServerMessage, clients_readlock: &tokio::sync::RwLockReadGuard<'_, HashMap<std::string::String, Client>>){
-	for (private_id, client) in clients_readlock.iter(){
-		let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
-		if let Err(e) = client.transmit(msg, Some(public_id)).await {
+	for (public_id, client) in clients_readlock.iter(){
+		if let Err(e) = client.transmit(msg, Some(public_id.to_string())).await {
 			eprintln!("Error transmitting message: {}", e);
 		}
 	}

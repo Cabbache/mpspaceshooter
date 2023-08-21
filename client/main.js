@@ -382,7 +382,7 @@ async function runAll(){
 			state.players.forEach((p) => {
 				p.trajectory = new Trajectory(p.trajectory);
 				const square = getPlayerSprite(p);
-				if (p.public_id == public_id) {
+				if (p.id == public_id) {
 					square.container.x = app.screen.width/2;
 					square.container.y = app.screen.height/2;
 					world.pivot.x = p.trajectory.pos.x;
@@ -394,7 +394,7 @@ async function runAll(){
 					players_container.addChild(square.container);
 				}
 
-				gameState[p.public_id] = {
+				gameState[p.id] = {
 					graphics: square.container,
 					child: square.sprite,
 					p: p
@@ -562,7 +562,7 @@ async function runAll(){
 
 		const handle_playerjoin = function(content){
 			content.trajectory = new Trajectory(content.trajectory);
-			if (content.public_id == public_id){ //this happens when spawning
+			if (content.id == public_id){ //this happens when spawning
 				world.pivot.x = content.trajectory.pos.x;
 				world.pivot.y = content.trajectory.pos.y;
 				gameState[public_id].p = content;
@@ -584,7 +584,7 @@ async function runAll(){
 			} else {
 				const square = getPlayerSprite(content);
 				players_container.addChild(square.container);
-				gameState[content.public_id] = {
+				gameState[content.id] = {
 					graphics: square.container,
 					child: square.sprite,
 					p: content
@@ -818,11 +818,11 @@ async function runAll(){
 			Object.values(gameState).forEach(player => {
 				if (player.p.trajectory.collision)
 					return;
-				const shallow_copy = player.p.public_id == public_id ? world.pivot:player.graphics
+				const shallow_copy = player.p.id == public_id ? world.pivot:player.graphics
 
 				//lerp the positions
 				let now;
-				if (player.p.public_id == public_id){
+				if (player.p.id == public_id){
 					now = server_time();
 				} else {
 					now = server_time() - (200 + 3*current_rtt);

@@ -276,7 +276,7 @@ impl Trajectory {
 	}
 
 	#[cfg(target_arch = "wasm32")]
-	pub fn advance(&mut self, time: u64) -> bool {
+	pub fn advance(&mut self, time: u64) -> bool { //true if successful
 		if time <= self.time {
 			return true;
 		}
@@ -319,10 +319,9 @@ impl Trajectory {
 	}
 
 	#[cfg(target_arch = "wasm32")]
-	pub fn insert_update(&mut self, change: MotionUpdate, hash: String, time: u64) {
+	pub fn insert_update(&mut self, change: MotionUpdate, hash: String, time: u64) -> bool { //true if not in the past
 		if self.time > time {
-			console_log!("Update is in the past!");
-			self.collision = true;
+			return false;
 		}
 		self.updates.push_back(
 			TrajectoryUpdate {
@@ -331,6 +330,7 @@ impl Trajectory {
 				change: change,
 			}
 		);
+		true
 	}
 
 	//TODO consider when velocity exceeds radius, use line_intersects_circle?

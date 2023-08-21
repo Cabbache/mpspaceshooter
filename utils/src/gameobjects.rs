@@ -63,7 +63,7 @@ pub struct LootDrop{
 #[derive(Debug, Clone, Serialize)]
 pub struct PlayerState {
 	pub name: String,
-	pub public_id: String,
+	pub id: String,
 	pub health: f32,
 	pub cash: u32,
 	pub fuel: u32,
@@ -79,7 +79,7 @@ impl PlayerState {
 		//TODO consider implementing live() in Trajectory - an immutable version of reset() and use that instead
 		return json!({
 			"name": &self.name,
-			"public_id": &self.public_id,
+			"id": &self.id,
 			"color": &self.color,
 			"trajectory": &self.trajectory.to_b64(),
 		});
@@ -117,6 +117,8 @@ pub enum ClientMessage{
 	ChangeSlot {slot: u8},
 	TrigUpdate {pressed: bool},
 	ClaimLoot {loot_id: String},
+	Correct(String),
+	Buy,
 	StateQuery,
 	Spawn,
 }

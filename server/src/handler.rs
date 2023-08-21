@@ -39,8 +39,7 @@ pub async fn register_handler(body: Value, clients: Clients) -> Result<impl Repl
 			let public_id = format!("{:x}", xxh3_64(private_uuid.as_bytes()));
 			println!("Registering client {}", private_uuid);
 			register_client(
-				private_uuid.clone(),
-				&public_id,
+				public_id.clone(),
 				selections,
 				clients,
 			).await;
@@ -61,7 +60,7 @@ pub async fn serve_page() -> Result<impl Reply> {
 fn default_state() -> PlayerState {
 	PlayerState {
 		name: "".to_string(),
-		public_id: "".to_string(),
+		id: "".to_string(),
 		health: 100.0,
 		cash: 20,
 		fuel: 100,
@@ -81,7 +80,7 @@ fn default_state() -> PlayerState {
 pub fn spawn_with_select(selections: &UserSelections, public_id: &String) -> PlayerState {
 	PlayerState{
 		name: selections.nick.clone(),
-		public_id: public_id.clone(),
+		id: public_id.clone(),
 		color: match selections.color.as_str() {
 			"red" => Color{r:255,g:0,b:0},
 			"orange" => Color{r:255,g:165,b:0},
@@ -97,37 +96,36 @@ pub fn spawn_with_select(selections: &UserSelections, public_id: &String) -> Pla
 pub fn spawn_from_prev(prev_state: &mut PlayerState) {
 	*prev_state = PlayerState {
 		name: prev_state.name.clone(),
-		public_id: prev_state.public_id.clone(),
+		id: prev_state.id.clone(),
 		color: prev_state.color.clone(),
 		..default_state()
 	}
 }
 
-async fn register_client(private_id: String, public_id: &String, selections: UserSelections, clients: Clients) {
-	println!("inserting new client");
+async fn register_client(public_id: String, selections: UserSelections, clients: Clients) {
 	clients.write().await.insert(
-		private_id,
+		public_id.clone(),
 		Client {
 			state: Arc::new(RwLock::new(spawn_with_select(&selections, &public_id))),
 			sender: None,
 		},
 	);
-	println!("inserted")
+	println!("inserted {}", public_id);
 }
 
-pub async fn unregister_handler(private_id: String, clients: Clients) -> Result<impl Reply> {
+pub async fn unregister_handler(public_id: String, clients: Clients) -> Result<impl Reply> {
 	println!("removing client");
-	clients.write().await.remove(&private_id);
+	clients.write().await.remove(&public_id);
 	println!("removed");
 	Ok(StatusCode::OK)
 }
 
 pub async fn ws_handler(ws: warp::ws::Ws, private_id: String, clients: Clients, loot: WorldLoot) -> Result<impl Reply> {
-	println!("received websocket, ws_handler (reading all)");
-	let client = clients.read().await.get(&private_id).cloned();
-	println!("(read all ok)");
+	let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
+	println!("Received connection from {}", public_id);
+	let client = clients.read().await.get(&public_id).cloned();
 	match client {
-		Some(c) => Ok(ws.on_upgrade(move |socket| ws::client_connection(socket, private_id, clients, loot, c))),
+		Some(c) => Ok(ws.on_upgrade(move |socket| ws::client_connection(socket, public_id, clients, loot, c))),
 		None => Err(warp::reject::not_found()),
 	}
 }
