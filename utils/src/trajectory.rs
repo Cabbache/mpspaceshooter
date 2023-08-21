@@ -56,8 +56,7 @@ const PROPEL_DIRECTION: f32 = -HALFPI;
 const RADIANS_PER_SECOND: f32 = PI; //player rotation speed
 const G: f32 = 2000.0; //Gravitational constant
 
-const TIMESTEP_FPS: u32 = 5;
-//const TIMESTEP_FPS: u32 = 30; //around 20 is good
+const TIMESTEP_FPS: u32 = 10;
 
 //Calculated
 const TIMESTEP_MILLIS: u32 = 1000 / TIMESTEP_FPS;
@@ -66,7 +65,7 @@ const TIMESTEP_SECS: f32 = 1f32 / TIMESTEP_FPS as f32;
 #[cfg(not(target_arch = "wasm32"))]
 const SPAWN_PULL_MAX: f32 = 2.0; //Maximum gravity pull at spawn point
 #[cfg(not(target_arch = "wasm32"))]
-const MAX_TIME_AHEAD: u64 = 0;
+const MAX_TIME_AHEAD: u64 = 300;
 
 pub const BODIES: [Body; 3] = [
   Body {
@@ -91,7 +90,6 @@ pub const BODIES: [Body; 3] = [
     radius: 100.0,
   },
 ];
-
 
 #[wasm_bindgen]
 #[cfg(target_arch = "wasm32")]
@@ -277,40 +275,31 @@ impl Trajectory {
 	}
 
 	#[cfg(target_arch = "wasm32")]
-	pub fn advance(&mut self, time: u64, doprint: bool) -> bool {
+	pub fn advance(&mut self, time: u64) -> bool {
 		if time <= self.time {
-			return false;
+			return true;
 		}
 		let elapsed = (time - self.time) as u32;
 		let steps = elapsed / TIMESTEP_MILLIS;
-		let mut had_update = false;
 		for _ in 1..=steps {
-			if doprint {
-				console_log!("{} ({})", self.dump(), self.hash_str());
-			}
 			loop {
 				if let Some(next_update) = self.updates.front().cloned() {
-					if doprint {
-						console_log!("{} <-> {}", next_update.time, self.time);
-					}
 					if next_update.time != self.time {
 						break;
 					}
 					if next_update.hash != self.hash_str() {
 						console_log!("Hash mismatch! request was {} but got {}", next_update.hash, self.hash_str());
-						self.collision = true;
-						break;
+						return false;
 					}
 					self.apply_change(next_update.change);
 					self.updates.pop_front();
-					had_update = true;
 				} else {
 					break;
 				}
 			}
 			self.step();
 		}
-		had_update
+		true
 	}
 
 	#[cfg(target_arch = "wasm32")]

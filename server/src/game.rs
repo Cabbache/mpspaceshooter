@@ -71,7 +71,8 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 		}
 	};
 
-	println!("{}", current_time());
+	let time_now = current_time();
+	println!("{}", time_now);
 
 	let clr = clients.read().await;
 	let sender_state = match clr.get(private_id) {
@@ -82,15 +83,15 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 		}
 	};
 
-	let health = sender_state.read().await.clone().health;
+	let state = sender_state.read().await.clone();
 	let is_allowed = match message {
 		ClientMessage::StateQuery => true, //dead or alive, this is allowed
-		ClientMessage::Spawn => health <= 0f32, //You have to be dead to call spawn
-		_ => health > 0f32, //You have to be alive to call the rest
+		ClientMessage::Spawn => state.health <= 0f32, //You have to be dead to call spawn
+		_ => state.health > 0f32, //You have to be alive to call the rest
 	};
 
 	if !is_allowed {
-		eprintln!("modded client detected (action doesn't match vital status)");
+		eprintln!("Rejected message {:?}", message);
 		return Ok(());
 	}
 
