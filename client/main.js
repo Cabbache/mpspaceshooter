@@ -1,4 +1,4 @@
-import init, { Trajectory, MotionUpdate } from './pkg/utils.js';
+import init, { Trajectory, MotionUpdate, getbody, num_bodies } from './pkg/utils.js';
 async function runAll(){
 	await init();
 
@@ -404,10 +404,10 @@ async function runAll(){
 			Object.entries(state.loot).forEach(([loot_uuid, lootObj]) => {
 				summon_loot(loot_uuid, lootObj);
 			});
-			console.log(state.bodies);
-			Object.entries(state.bodies).forEach(([index, body]) => {
-				var body_obj = new PIXI.Container();
 
+			for (let i = 0;i < num_bodies();++i){
+				const body = getbody(i);
+				var body_obj = new PIXI.Container();
 				let circle = new PIXI.Graphics();
 				circle.beginFill(0xffffff);
 				circle.drawCircle(0, 0, body.radius);//body.radius
@@ -420,7 +420,7 @@ async function runAll(){
 				body_obj.addChild(circle);
 				bodies_container.addChild(body_obj);
 				bodies.push(body);
-			});
+			}
 		};
 
 		const summon_loot = function(loot_uuid, lootObj){

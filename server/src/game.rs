@@ -29,10 +29,10 @@ impl Client {
 			};
 			let serialized_msg = match msg {
 				ServerMessage::PlayerJoin(_) |
-				ServerMessage::GameState{pstates: _, worldloot: _, bodies: _} => {
+				ServerMessage::GameState{pstates: _, worldloot: _} => {
 				//ServerMessage::LootCollected{loot_id: _, collector: _} => {
 					match msg {
-						ServerMessage::GameState{ pstates, worldloot, bodies } => {
+						ServerMessage::GameState{ pstates, worldloot } => {
 							let encoded_states: Vec<Value> = pstates.iter().map(|state| {
 								state.encode(public_id == state.public_id)
 							}).collect();
@@ -41,7 +41,6 @@ impl Client {
 								"c": {
 									"players": encoded_states,
 									"loot": worldloot,
-									"bodies": bodies,
 								}
 							}))?
 						},
@@ -174,7 +173,6 @@ pub async fn handle_game_message(private_id: &str, message: &str, clients: &Clie
 					&ServerMessage::GameState{
 						pstates: players,
 						worldloot: world_loot.read().await.clone(),
-						bodies: utils::trajectory::BODIES.to_vec(),
 					},
 					Some(public_id)
 				).await?;

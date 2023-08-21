@@ -131,7 +131,6 @@ pub enum ServerMessage{
 	GameState{
 		pstates: Vec<PlayerState>,
 		worldloot: HashMap<String, LootObject>,
-		bodies: Vec<Body>,
 	},
 	TrajectoryUpdate {change: MotionUpdate, time: u64, at: String, from: String},
 	TrigUpdate {by: String, weptype: WeaponType, pressed: bool },

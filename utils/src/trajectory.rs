@@ -49,7 +49,6 @@ const TWOPI: f32 = 2f32*PI;
 const HALFPI: f32 = PI/2f32;
 
 pub const PLAYER_RADIUS: f32 = 25.0;
-const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 const DOME_RADIUS: f32 = 6000.0;
 const ACCELERATION: f32 = 200.0; //player acceleration
 const PROPEL_DIRECTION: f32 = -HALFPI;
@@ -66,6 +65,8 @@ const TIMESTEP_SECS: f32 = 1f32 / TIMESTEP_FPS as f32;
 const SPAWN_PULL_MAX: f32 = 2.0; //Maximum gravity pull at spawn point
 #[cfg(not(target_arch = "wasm32"))]
 const MAX_TIME_AHEAD: u64 = 300;
+#[cfg(not(target_arch = "wasm32"))]
+const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 
 pub const BODIES: [Body; 3] = [
   Body {
@@ -441,6 +442,7 @@ impl Body {
 	}
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn line_intersects_circle(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> bool {
 	//shift everything to make line start from origin
 	let a = xc - xp;
@@ -475,4 +477,19 @@ pub fn current_time() -> u64 {
 fn normalize_angle(x: f32) -> f32 {
 	let modded = ((x % TWOPI) + TWOPI) % TWOPI;
 	PI - modded
+}
+
+#[wasm_bindgen]
+#[cfg(target_arch = "wasm32")]
+pub fn getbody(index: usize) -> Option<Body> {
+	if index >= BODIES.len() {
+		return None;
+	}
+	Some(BODIES[index].clone())
+}
+
+#[wasm_bindgen]
+#[cfg(target_arch = "wasm32")]
+pub fn num_bodies() -> usize {
+	BODIES.len()
 }
