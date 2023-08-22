@@ -64,9 +64,9 @@ const TIMESTEP_SECS: f32 = 1f32 / TIMESTEP_FPS as f32;
 #[cfg(not(target_arch = "wasm32"))]
 const SPAWN_PULL_MAX: f32 = 2.0; //Maximum gravity pull at spawn point
 #[cfg(not(target_arch = "wasm32"))]
-const MAX_TIME_AHEAD: u64 = 300;
+const MAX_TIME_AHEAD: u64 = 300; //300
 #[cfg(not(target_arch = "wasm32"))]
-const MAX_TIME_BEFORE: u64 = 500;
+const MAX_TIME_BEFORE: u64 = 500; //500
 #[cfg(not(target_arch = "wasm32"))]
 const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 
