@@ -795,8 +795,15 @@ async function runAll(){
 		document.body.appendChild(app.view);
 		openWebSocket();
 
+		var fps_sum = 0;
+		var fps_ctr = 0;
 		const GraphicsTicker = PIXI.Ticker.shared.add(delta => {
-			fps_text.text = `fps: ${Math.round(PIXI.Ticker.shared.FPS)}`;
+			fps_sum += PIXI.Ticker.shared.FPS;
+			fps_ctr++;
+			if (fps_ctr > 100){
+				fps_text.text = `fps: ${Math.round(fps_sum / fps_ctr)}`;
+				fps_ctr = fps_sum = 0;
+			}
 
 			if (current_rtt == null)
 				return;
