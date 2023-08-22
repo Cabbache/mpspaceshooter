@@ -816,6 +816,7 @@ async function runAll(){
 			} else if (name == keyup) {
 				let change = up ? "PropOff":"PropOn";
 				perform_update(change);
+				change_propulsion_emitter(public_id, !up);
 			} else if (name == keyshoot) {
 				return;
 				const inventory = gameState[public_id].p.inventory;
