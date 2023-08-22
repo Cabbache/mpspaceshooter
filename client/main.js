@@ -763,6 +763,7 @@ async function runAll(){
 					})
 				);			
 			} else if (name == keyshoot) {
+				return;
 				const inventory = gameState[public_id].p.inventory;
 				const selectedWeapon = inventory.weapons[inventory.selection];
 				if (selectedWeapon.ammo <= 0)
@@ -809,10 +810,12 @@ async function runAll(){
 					player.p.trajectory.advance(BigInt(server_time()), false);
 					return;
 				}
-				const ptime = BigInt(server_time() - (200 + 3*current_rtt));
-				if (!player.p.trajectory.advance(ptime, false))
-					return;
-				change_propulsion_emitter(pid, player.p.trajectory.propelling);
+				const ptime = BigInt(server_time() - (50 + current_rtt));
+				if (player.p.trajectory.advance(ptime, false)){
+					change_propulsion_emitter(pid, player.p.trajectory.propelling);
+				} else {
+					socket.send(JSON.stringify({"t": "Correct", "c": pid}));
+				}
 			});
 			
 			Object.values(gameState).forEach(player => {
@@ -825,7 +828,7 @@ async function runAll(){
 				if (player.p.id == public_id){
 					now = server_time();
 				} else {
-					now = server_time() - (200 + 3*current_rtt);
+					now = server_time() - (50 + current_rtt);
 				}
 
 				const lerped = player.p.trajectory.lerp(BigInt(now));

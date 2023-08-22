@@ -362,15 +362,17 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 			};
 		},
 		ClientMessage::Correct(id) => {
-//			if let Some(other) = clr.get(id){
-//				let correction = other.state.read().await.trajectory.to_b64();
-//				client.transmit(
-//					&ServerMessage::Correct{id: id, tr: correction},
-//					Some(public_id)
-//				).await?;
-//			} else {
-//				eprintln!("Client requested correction for non existing player");
-//			}
+			if let Some(other) = clr.get(&id){
+				let correction = other.state.read().await.trajectory.to_b64();
+				if let Some(sender) = clr.get(&public_id){
+					sender.transmit(
+						&ServerMessage::Correct{id: id, tr: correction},
+						Some(public_id)
+					).await?;
+				}
+			} else {
+				eprintln!("Client requested correction for non existing player");
+			}
 		}
 		ClientMessage::Buy => {
 
