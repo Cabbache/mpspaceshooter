@@ -116,10 +116,18 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 			).await; //broadcast playerjoin
 		},
 		ClientMessage::TrajectoryUpdate {change, time, at} => {
+			let cost = get_cost(change.clone());
+			if state.cash < cost {
+				eprintln!("{} attempted to buy something without enough cash", public_id);
+				return Ok(());
+			}
 			let successful: bool;
 			let updated_trajectory = {
 				let mut writeable = sender_state.write().await;
 				successful = writeable.trajectory.update(change.clone(), at.clone(), time, current_time());
+				if successful {
+					writeable.cash -= cost;
+				}
 				writeable.trajectory.clone()
 			};
 			if successful { //if accepted by the server, broadcast change
@@ -373,14 +381,6 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 				}
 			} else {
 				eprintln!("Client requested correction for non existing player");
-			}
-		}
-		ClientMessage::Buy(id) => {
-			for item in get_shop_items() {
-				if item.id != id {
-					continue;
-				}
-				println!("shop id = {:?}", id);
 			}
 		}
 	}

@@ -2,15 +2,6 @@ import init, { Trajectory, UpdateType, getbody, num_bodies, get_shop_item, num_s
 async function runAll(){
 	await init();
 
-	const items_div = document.getElementById("shop-items");
-	for (let i = 0;i < num_shop_items(); ++i){
-		let item = get_shop_item(i);
-		console.log(item.cost);
-		console.log(item.display_name());
-		const item_card = createItemCard("path_to_image", item.display_name(), item.display_name(), "description", item.cost);
-		items_div.appendChild(item_card);
-	}
-
 	// Get the modal
 	const joinmodal = document.getElementById("join-modal");
 	const form = joinmodal.querySelector('form');
@@ -63,14 +54,13 @@ async function runAll(){
     const buyButton = document.createElement('button');
     buyButton.className = 'item-btn';
     buyButton.textContent = 'Buy Now';
-		buyButton.addEventListener('click', () => {console.log("hello");});
 
     // Append everything to the main item card div
     itemCard.appendChild(itemImage);
     itemCard.appendChild(itemInfo);
     itemCard.appendChild(buyButton);
 
-    return itemCard;
+    return [itemCard, buyButton];
 	}
 
 	// Function to update the state of the submit button based on the input values
@@ -106,6 +96,25 @@ async function runAll(){
 	})();
 
 	async function runClient(player_nick, player_color){
+		const items_div = document.getElementById("shop-items");
+		for (let i = 0;i < num_shop_items(); ++i){
+			let item = get_shop_item(i);
+			console.log(item.cost);
+			console.log(item.display_name());
+			const [item_card, buy_btn] = createItemCard("path_to_image", item.display_name(), item.display_name(), "description", item.cost);
+			items_div.appendChild(item_card);
+			buy_btn.addEventListener('click', () => {
+				console.log(`buy ${item.display_name()} ${item.id}`);
+				if (gameState[public_id].p.cash < item.cost){
+					alert("Not enough money");
+					return;
+				}
+				gameState[public_id].p.cash -= item.cost;
+				cash_text.text = gameState[public_id].p.cash;
+				perform_update("AddBoost");
+			});
+		}
+
 		emitters = await emitters;
 		if (!emitters){
 			console.error("Halting client - error loading emitters");
@@ -769,6 +778,22 @@ async function runAll(){
 			fmap[datatype](content);
 		};
 
+		function perform_update(utype) {
+			const chAt = gameState[public_id].p.trajectory.hash_str();
+			const time = Number(gameState[public_id].p.trajectory.time);
+			gameState[public_id].p.trajectory.apply_change(UpdateType[utype]);
+			socket.send(
+				JSON.stringify({
+					"t":"TrajectoryUpdate",
+					"c":{
+						"change": utype,
+						"at": chAt,
+						"time": time,
+					 }
+				})
+			);		
+		}
+
 		const keyAction = function (repeated, name, up){
 			if (!opened || repeated) return;
 
@@ -787,37 +812,10 @@ async function runAll(){
 				} else if (keymap[keyright]){
 					response = "RotCw";
 				}
-				const chAt = gameState[public_id].p.trajectory.hash_str();
-				//console.log(`${gameState[public_id].p.trajectory.dump()} (${chAt})`);
-				const time = Number(gameState[public_id].p.trajectory.time);
-				gameState[public_id].p.trajectory.apply_change(UpdateType[response]);
-				socket.send(
-					JSON.stringify({
-						"t":"TrajectoryUpdate",
-						"c":{
-							"change": response,
-							"at": chAt,
-							"time": time,
-						 }
-					})
-				);
+				perform_update(response);
 			} else if (name == keyup) {
-				const chAt = gameState[public_id].p.trajectory.hash_str();
-				//console.log(`${gameState[public_id].p.trajectory.dump()} (${chAt})`);
-				const time = Number(gameState[public_id].p.trajectory.time);
 				let change = up ? "PropOff":"PropOn";
-				gameState[public_id].p.trajectory.apply_change(UpdateType[change]);
-				change_propulsion_emitter(public_id, !up);
-				socket.send(
-					JSON.stringify({
-						"t":"TrajectoryUpdate",
-						"c": {
-							"change": change,
-							"at": chAt,
-							"time": time,
-						}
-					})
-				);			
+				perform_update(change);
 			} else if (name == keyshoot) {
 				return;
 				const inventory = gameState[public_id].p.inventory;

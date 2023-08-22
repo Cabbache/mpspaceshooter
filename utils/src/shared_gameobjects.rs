@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
+use crate::trajectory::UpdateType;
 
 #[wasm_bindgen]
 #[derive(Deserialize, Debug, Clone, Copy, PartialEq)]
@@ -50,4 +51,12 @@ pub fn get_shop_item(index: usize) -> Option<ShopItem> {
 #[wasm_bindgen]
 pub fn num_shop_items() -> usize {
 	get_shop_items().len()
+}
+
+#[wasm_bindgen]
+pub fn get_cost(utype: UpdateType) -> u32 {
+	match utype{
+		UpdateType::AddBoost => 5,
+		_ => 0,
+	}
 }

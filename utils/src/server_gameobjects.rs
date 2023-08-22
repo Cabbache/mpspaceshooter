@@ -119,7 +119,6 @@ pub enum ClientMessage{
 	TrigUpdate {pressed: bool},
 	ClaimLoot {loot_id: String},
 	Correct(String),
-	Buy(ShopItemId),
 	StateQuery,
 	Spawn,
 }
