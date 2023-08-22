@@ -2,6 +2,15 @@ import init, { Trajectory, UpdateType, getbody, num_bodies, get_shop_item, num_s
 async function runAll(){
 	await init();
 
+	const items_div = document.getElementById("shop-items");
+	for (let i = 0;i < num_shop_items(); ++i){
+		let item = get_shop_item(i);
+		console.log(item.cost);
+		console.log(item.display_name());
+		const item_card = createItemCard("path_to_image", item.display_name(), item.display_name(), "description", item.cost);
+		items_div.appendChild(item_card);
+	}
+
 	// Get the modal
 	const joinmodal = document.getElementById("join-modal");
 	const form = joinmodal.querySelector('form');
@@ -16,6 +25,53 @@ async function runAll(){
 	colorRadios.forEach(radio => {
 		radio.addEventListener('change', updateSubmitButtonState);
 	});
+
+	function createItemCard(imageSrc, altText, itemName, itemDescription, itemPrice) {
+    // Create the main item card div
+    const itemCard = document.createElement('div');
+    itemCard.className = 'item-card';
+
+    // Create the item image div and its children
+    const itemImage = document.createElement('div');
+    itemImage.className = 'item-image';
+
+    const img = document.createElement('img');
+    img.src = imageSrc;
+    img.alt = altText;
+
+    itemImage.appendChild(img);
+
+    // Create the item info div and its children
+    const itemInfo = document.createElement('div');
+    itemInfo.className = 'item-info';
+
+    const h3 = document.createElement('h3');
+    h3.textContent = itemName;
+
+    const p = document.createElement('p');
+    p.textContent = itemDescription;
+
+    const itemPriceSpan = document.createElement('span');
+    itemPriceSpan.className = 'item-price';
+    itemPriceSpan.textContent = itemPrice;
+
+    itemInfo.appendChild(h3);
+    itemInfo.appendChild(p);
+    itemInfo.appendChild(itemPriceSpan);
+
+    // Create the Buy Now button
+    const buyButton = document.createElement('button');
+    buyButton.className = 'item-btn';
+    buyButton.textContent = 'Buy Now';
+		buyButton.addEventListener('click', () => {console.log("hello");});
+
+    // Append everything to the main item card div
+    itemCard.appendChild(itemImage);
+    itemCard.appendChild(itemInfo);
+    itemCard.appendChild(buyButton);
+
+    return itemCard;
+	}
 
 	// Function to update the state of the submit button based on the input values
 	function updateSubmitButtonState() {

@@ -18,6 +18,14 @@ pub struct ShopItem {
 	display_name: String,
 }
 
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen]
+impl ShopItem{
+	pub fn display_name(&self) -> String {
+		self.display_name.clone()
+	}
+}
+
 pub fn get_shop_items() -> [ShopItem; 1] {
 	[
 		ShopItem {

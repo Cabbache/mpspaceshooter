@@ -4,13 +4,6 @@ use std::collections::HashMap;
 use crate::trajectory::*;
 use crate::shared_gameobjects::ShopItemId;
 
-#[cfg(target_arch = "wasm32")]
-impl ShopItem{
-	pub fn display_name(&self) -> String {
-		self.display_name
-	}
-}
-
 #[derive(Serialize, Debug, Clone)]
 pub enum LootContent{
 	Cash(u32),
