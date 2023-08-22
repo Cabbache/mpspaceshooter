@@ -122,11 +122,14 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 				return Ok(());
 			}
 			let successful: bool;
+			let time_now = current_time();
 			let updated_trajectory = {
 				let mut writeable = sender_state.write().await;
-				successful = writeable.trajectory.update(change.clone(), at.clone(), time, current_time());
+				successful = writeable.trajectory.update(change.clone(), at.clone(), time, time_now);
 				if successful {
 					writeable.cash -= cost;
+				} else {
+					writeable.trajectory.advance(time_now);
 				}
 				writeable.trajectory.clone()
 			};

@@ -66,6 +66,8 @@ const SPAWN_PULL_MAX: f32 = 2.0; //Maximum gravity pull at spawn point
 #[cfg(not(target_arch = "wasm32"))]
 const MAX_TIME_AHEAD: u64 = 300;
 #[cfg(not(target_arch = "wasm32"))]
+const MAX_TIME_BEFORE: u64 = 500;
+#[cfg(not(target_arch = "wasm32"))]
 const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 
 pub const BODIES: [Body; 3] = [
@@ -206,6 +208,10 @@ impl Trajectory {
 		}
 		if update_time > time && (update_time - time) > MAX_TIME_AHEAD {
 			eprintln!("Update is too far ahead!");
+			return false;
+		}
+		if update_time < time && (time - update_time) > MAX_TIME_BEFORE {
+			eprintln!("Update is too long ago!");
 			return false;
 		}
 		if !self.advance_to_time(update_time, hash) {
