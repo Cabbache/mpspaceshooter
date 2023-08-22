@@ -95,3 +95,49 @@ body {
 .modal-body input[type="submit"]:disabled {
 	background-color: rgb(130,130,130);
 }
+
+.item-card {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	border: 1px solid #ddd;
+	border-radius: 8px;
+	margin-bottom: 10px;
+	padding: 10px;
+}
+
+.item-image {
+	width: 80px;
+	height: 80px;
+	background-color: #eee;
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.item-image img {
+	max-width: 100%;
+	height: auto;
+}
+
+.item-info {
+	flex-grow: 1;
+	margin-left: 10px;
+}
+
+.item-price {
+	font-size: 18px;
+	color: green;
+}
+
+.item-btn {
+	padding: 6px 12px;
+	border-radius: 4px;
+	background-color: #333;
+	color: #fff;
+	border: none;
+	cursor: pointer;
+}
+
+.item-btn:hover {
+	background-color: #555;
+}

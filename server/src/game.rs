@@ -14,7 +14,8 @@ use crate::Client;
 use crate::WorldLoot;
 use crate::handler::spawn_from_prev;
 
-use utils::gameobjects::*;
+use utils::server_gameobjects::*;
+use utils::shared_gameobjects::*;
 use utils::trajectory::*;
 
 const LOOT_RADIUS: f32 = 60.0; //players must be within this distance to claim
@@ -374,8 +375,13 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 				eprintln!("Client requested correction for non existing player");
 			}
 		}
-		ClientMessage::Buy => {
-
+		ClientMessage::Buy(id) => {
+			for item in get_shop_items() {
+				if item.id != id {
+					continue;
+				}
+				println!("shop id = {:?}", id);
+			}
 		}
 	}
 	Ok(())

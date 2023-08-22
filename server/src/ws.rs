@@ -5,9 +5,8 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::ws::{Message, WebSocket};
 
 use crate::game::handle_game_message;
-use utils::gameobjects::ServerMessage;
+use utils::server_gameobjects::ServerMessage;
 use crate::WorldLoot;
-//use crate::game::broadcast;
 use crate::game::broadcast;
 
 pub async fn client_connection(ws: WebSocket, public_id: String, clients: Clients, loot: WorldLoot, client: Client) {

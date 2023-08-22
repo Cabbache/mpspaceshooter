@@ -2,6 +2,14 @@ use serde::{Deserialize, Serialize, Serializer};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use crate::trajectory::*;
+use crate::shared_gameobjects::ShopItemId;
+
+#[cfg(target_arch = "wasm32")]
+impl ShopItem{
+	pub fn display_name(&self) -> String {
+		self.display_name
+	}
+}
 
 #[derive(Serialize, Debug, Clone)]
 pub enum LootContent{
@@ -108,17 +116,17 @@ impl PlayerState {
 	}
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Debug)]
 #[serde(tag = "t", content = "c")]
 pub enum ClientMessage{
 	Ping,
 	AckPong,
-	TrajectoryUpdate {change: MotionUpdate, at: String, time: u64},
+	TrajectoryUpdate {change: UpdateType, at: String, time: u64},
 	ChangeSlot {slot: u8},
 	TrigUpdate {pressed: bool},
 	ClaimLoot {loot_id: String},
 	Correct(String),
-	Buy,
+	Buy(ShopItemId),
 	StateQuery,
 	Spawn,
 }
@@ -134,7 +142,7 @@ pub enum ServerMessage{
 		pstates: Vec<PlayerState>,
 		worldloot: HashMap<String, LootObject>,
 	},
-	TrajectoryUpdate {change: MotionUpdate, time: u64, at: String, from: String},
+	TrajectoryUpdate {change: UpdateType, time: u64, at: String, from: String},
 	TrigUpdate {by: String, weptype: WeaponType, pressed: bool },
 	PlayerDeath {loot: Option<LootDrop>, from: String },
 	LootCollected {loot_id: String, collector: String },

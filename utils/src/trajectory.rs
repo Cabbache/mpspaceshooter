@@ -111,6 +111,7 @@ pub struct Trajectory{
 	pub spin_direction: i8, //-1,0,1
 	pub time: u64,
 	pub collision: bool,
+	pub boosters: u8,
 
 	#[cfg(target_arch = "wasm32")]
 	#[serde(skip)]
@@ -119,12 +120,13 @@ pub struct Trajectory{
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[wasm_bindgen]
-pub enum MotionUpdate {
+pub enum UpdateType {
 	RotStop,
 	RotCw,
 	RotCcw,
 	PropOn,
 	PropOff,
+	AddBoost,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -132,7 +134,7 @@ pub enum MotionUpdate {
 struct TrajectoryUpdate {
 	time: u64,
 	hash: String,
-	change: MotionUpdate,
+	change: UpdateType,
 }
 
 impl Trajectory {
@@ -175,9 +177,10 @@ impl Trajectory {
 		self.vel.x += pull.x;
 		self.vel.y += pull.y;
 		self.spin += (self.spin_direction as f32) * RADIANS_PER_SECOND * TIMESTEP_SECS;
+		let magnitude = ACCELERATION * TIMESTEP_SECS * (self.boosters as f32);
 		if self.propelling {
-			self.vel.x += -fastapprox::faster::cos(normalize_angle(self.spin + PROPEL_DIRECTION))*ACCELERATION * TIMESTEP_SECS;
-			self.vel.y += fastapprox::faster::sin(normalize_angle(self.spin + PROPEL_DIRECTION))*ACCELERATION * TIMESTEP_SECS;
+			self.vel.x += -fastapprox::faster::cos(normalize_angle(self.spin + PROPEL_DIRECTION)) * magnitude;
+			self.vel.y += fastapprox::faster::sin(normalize_angle(self.spin + PROPEL_DIRECTION)) * magnitude;
 		}
 		self.time += TIMESTEP_MILLIS as u64;
 		self.collision = self.collides();
@@ -196,7 +199,7 @@ impl Trajectory {
 	}
 
 	#[cfg(not(target_arch = "wasm32"))]
-	pub fn update(&mut self, change: MotionUpdate, hash: String, update_time: u64, time: u64) -> bool {
+	pub fn update(&mut self, change: UpdateType, hash: String, update_time: u64, time: u64) -> bool {
 		if update_time < self.time {
 			eprintln!("Update is in the past!");
 			return false;
@@ -240,6 +243,7 @@ impl Default for Trajectory {
 			vel: Vector{x: 0.0, y: 0.0},
 			spin_direction: 0,
 			spin: 0.0,
+			boosters: 1,
 			time: current_time(),
 			collision: false,
 		}
@@ -319,7 +323,7 @@ impl Trajectory {
 	}
 
 	#[cfg(target_arch = "wasm32")]
-	pub fn insert_update(&mut self, change: MotionUpdate, hash: String, time: u64) -> bool { //true if not in the past
+	pub fn insert_update(&mut self, change: UpdateType, hash: String, time: u64) -> bool { //true if not in the past
 		if self.time > time {
 			return false;
 		}
@@ -349,13 +353,14 @@ impl Trajectory {
 		format!("{:x}", hasher.finish())
 	}
 
-	pub fn apply_change(&mut self, change: MotionUpdate){
+	pub fn apply_change(&mut self, change: UpdateType){
 		match change {
-			MotionUpdate::RotStop => {self.spin_direction = 0;},
-			MotionUpdate::RotCw => {self.spin_direction = 1;},
-			MotionUpdate::RotCcw => {self.spin_direction = -1;},
-			MotionUpdate::PropOn => {self.propelling = true;},
-			MotionUpdate::PropOff => {self.propelling = false;},
+			UpdateType::RotStop => {self.spin_direction = 0;},
+			UpdateType::RotCw => {self.spin_direction = 1;},
+			UpdateType::RotCcw => {self.spin_direction = -1;},
+			UpdateType::PropOn => {self.propelling = true;},
+			UpdateType::PropOff => {self.propelling = false;},
+			UpdateType::AddBoost => {self.boosters += 1;},
 		}
 	}
 }

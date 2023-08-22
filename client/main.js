@@ -1,4 +1,4 @@
-import init, { Trajectory, MotionUpdate, getbody, num_bodies } from './pkg/utils.js';
+import init, { Trajectory, UpdateType, getbody, num_bodies, get_shop_item, num_shop_items } from './pkg/utils.js';
 async function runAll(){
 	await init();
 
@@ -440,7 +440,7 @@ async function runAll(){
 			if (content["time"] < Number(gameState[broadcaster].p.trajectory.time)) {
 				console.error(`update is in the past`);
 			}
-			gameState[broadcaster].p.trajectory.insert_update(MotionUpdate[content.change], content["at"], BigInt(content["time"]));
+			gameState[broadcaster].p.trajectory.insert_update(UpdateType[content.change], content["at"], BigInt(content["time"]));
 		}
 
 		const change_propulsion_emitter = (pid, is_emitting) => {
@@ -734,7 +734,7 @@ async function runAll(){
 				const chAt = gameState[public_id].p.trajectory.hash_str();
 				//console.log(`${gameState[public_id].p.trajectory.dump()} (${chAt})`);
 				const time = Number(gameState[public_id].p.trajectory.time);
-				gameState[public_id].p.trajectory.apply_change(MotionUpdate[response]);
+				gameState[public_id].p.trajectory.apply_change(UpdateType[response]);
 				socket.send(
 					JSON.stringify({
 						"t":"TrajectoryUpdate",
@@ -750,7 +750,7 @@ async function runAll(){
 				//console.log(`${gameState[public_id].p.trajectory.dump()} (${chAt})`);
 				const time = Number(gameState[public_id].p.trajectory.time);
 				let change = up ? "PropOff":"PropOn";
-				gameState[public_id].p.trajectory.apply_change(MotionUpdate[change]);
+				gameState[public_id].p.trajectory.apply_change(UpdateType[change]);
 				change_propulsion_emitter(public_id, !up);
 				socket.send(
 					JSON.stringify({

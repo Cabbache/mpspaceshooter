@@ -11,7 +11,7 @@ use std::fs;
 
 use crate::PlayerState;
 use crate::WorldLoot;
-use utils::gameobjects::*;
+use utils::server_gameobjects::*;
 use utils::trajectory::*;
 
 #[derive(Serialize, Debug)]

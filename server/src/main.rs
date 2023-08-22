@@ -9,7 +9,7 @@ mod handler;
 mod game;
 mod ws;
 
-use utils::gameobjects::{PlayerState, LootObject};
+use utils::server_gameobjects::{PlayerState, LootObject};
 
 type Result<T> = std::result::Result<T, Rejection>;
 type Clients = Arc<RwLock<HashMap<String, Client>>>;
