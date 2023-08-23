@@ -71,7 +71,6 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 	};
 
 	let time_now = current_time();
-	println!("{}", time_now);
 
 	let clr = clients.read().await;
 	let sender_state = match clr.get(&public_id) {
@@ -82,9 +81,15 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 		}
 	};
 
-	let state = sender_state.read().await.clone();
+	let mut state = sender_state.read().await.clone();
+	if state.trajectory.time < time_now - MAX_TIME_BEFORE {
+		let mut writer = sender_state.write().await;
+		writer.trajectory.advance_to_min_time(time_now);
+		state = writer.clone();
+	}
 	let is_allowed = match message {
-		ClientMessage::StateQuery => true, //dead or alive, this is allowed
+		ClientMessage::StateQuery => true,
+		ClientMessage::Ping => true,
 		ClientMessage::Spawn => state.health <= 0f32, //You have to be dead to call spawn
 		_ => state.health > 0f32, //You have to be alive to call the rest
 	};
@@ -98,7 +103,7 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 		ClientMessage::Ping => {
 			if let Some(client) = clr.get(&public_id) {
 				client.transmit(
-					&ServerMessage::Pong(current_time()),
+					&ServerMessage::Pong(time_now),
 					Some(public_id.to_string())
 				).await?;
 			} else {
@@ -122,7 +127,6 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 				return Ok(());
 			}
 			let successful: bool;
-			let time_now = current_time();
 			let updated_trajectory = {
 				let mut writeable = sender_state.write().await;
 				successful = writeable.trajectory.update(change.clone(), at.clone(), time, time_now);
@@ -166,7 +170,8 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 			let players: Vec<_> = join_all(players_futures).await
 				.into_iter()
 				.filter_map(|mut lock| {
-					lock.trajectory.advance(current_time());
+					lock.trajectory.advance_to_min_time(time_now);
+					//lock.trajectory.advance_to_time(time_now);
 					let clone = lock.clone();
 					match clone.health > 0.0 { //to only send the living ones
 						true => Some(clone),
@@ -248,7 +253,7 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 
 					let (ss, rr) = {
 						let mut writeable = sender_state.write().await;
-						writeable.trajectory.advance(current_time());
+						writeable.trajectory.advance(time_now);
 						(writeable.trajectory.pos.clone(), writeable.trajectory.spin)
 					};
 
@@ -260,7 +265,7 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 
 						let playerstate = {
 							let mut writable = value.state.write().await;
-							writable.trajectory.advance(current_time());
+							writable.trajectory.advance(time_now);
 							writable.clone()
 						};
 
@@ -331,7 +336,7 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 				Some(loot_obj) => {
 					let pp = {
 						let mut writable = sender_state.write().await;
-						writable.trajectory.advance(current_time());
+						writable.trajectory.advance(time_now);
 						writable.trajectory.pos.clone()
 					};
 					if (pp.y - loot_obj.y).powi(2) + (pp.x - loot_obj.x).powi(2) > LOOT_RADIUS.powi(2){

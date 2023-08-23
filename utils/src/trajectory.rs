@@ -62,11 +62,12 @@ const TIMESTEP_MILLIS: u32 = 1000 / TIMESTEP_FPS;
 const TIMESTEP_SECS: f32 = 1f32 / TIMESTEP_FPS as f32;
 
 #[cfg(not(target_arch = "wasm32"))]
+pub const MAX_TIME_BEFORE: u64 = 500; //500
+
+#[cfg(not(target_arch = "wasm32"))]
 const SPAWN_PULL_MAX: f32 = 2.0; //Maximum gravity pull at spawn point
 #[cfg(not(target_arch = "wasm32"))]
 const MAX_TIME_AHEAD: u64 = 300; //300
-#[cfg(not(target_arch = "wasm32"))]
-const MAX_TIME_BEFORE: u64 = 500; //500
 #[cfg(not(target_arch = "wasm32"))]
 const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 
@@ -188,16 +189,28 @@ impl Trajectory {
 		self.collision = self.collides();
 		true
 	}
-	
-	//returns true if hash found
+
 	#[cfg(not(target_arch = "wasm32"))]
-	pub fn advance_to_time(&mut self, time: u64, expected_hash: String) -> bool {
+	pub fn advance_to_time(&mut self, time: u64) {
+		if time < self.time {
+			return;
+		}
 		let elapsed = (time - self.time) as u32;
 		let steps = elapsed / TIMESTEP_MILLIS;
 		for _ in 1..=steps {
 			self.step();
 		}
+	}
+
+	#[cfg(not(target_arch = "wasm32"))]
+	pub fn advance_to_time_check(&mut self, time: u64, expected_hash: String) -> bool {
+		self.advance_to_time(time);
 		self.hash_str() == expected_hash
+	}
+
+	#[cfg(not(target_arch = "wasm32"))]
+	pub fn advance_to_min_time(&mut self, time: u64) {
+		self.advance_to_time(time - MAX_TIME_BEFORE);
 	}
 
 	#[cfg(not(target_arch = "wasm32"))]
@@ -214,7 +227,7 @@ impl Trajectory {
 			eprintln!("Update is too long ago!");
 			return false;
 		}
-		if !self.advance_to_time(update_time, hash) {
+		if !self.advance_to_time_check(update_time, hash) {
 			eprintln!("Hash mismatch!");
 			return false;
 		}
