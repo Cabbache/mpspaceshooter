@@ -90,8 +90,8 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 	let is_allowed = match message {
 		ClientMessage::StateQuery => true,
 		ClientMessage::Ping => true,
-		ClientMessage::Spawn => state.health <= 0f32, //You have to be dead to call spawn
-		_ => state.health > 0f32, //You have to be alive to call the rest
+		ClientMessage::Spawn => state.trajectory.health == 0u8, //You have to be dead to call spawn
+		_ => state.trajectory.health > 0u8, //You have to be alive to call the rest
 	};
 
 	if !is_allowed {
@@ -173,7 +173,7 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 					lock.trajectory.advance_to_min_time(time_now);
 					//lock.trajectory.advance_to_time(time_now);
 					let clone = lock.clone();
-					match clone.health > 0.0 { //to only send the living ones
+					match clone.trajectory.health > 0u8 { //to only send the living ones
 						true => Some(clone),
 						false => None
 					}
@@ -270,7 +270,7 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 						};
 
 						//ignore dead players
-						if playerstate.health <= 0f32 {
+						if playerstate.trajectory.health == 0u8 {
 							continue;
 						}
 						let pp = playerstate.trajectory.pos;
@@ -281,11 +281,11 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 
 						let new_health = {
 							let mut writeable = value.state.write().await;
-							writeable.health -= 10f32; //hard coded pistol damage to 10
-							writeable.health
+							writeable.trajectory.health = writeable.trajectory.health.saturating_sub(10); //hard coded pistol damage to 10
+							writeable.trajectory.health
 						};
 
-						if new_health > 0f32 {
+						if new_health > 0u8 {
 							value.transmit(
 								&ServerMessage::HealthUpdate(new_health),
 								Some(playerstate.id)

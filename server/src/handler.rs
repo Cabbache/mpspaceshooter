@@ -61,7 +61,6 @@ fn default_state() -> PlayerState {
 	PlayerState {
 		name: "".to_string(),
 		id: "".to_string(),
-		health: 100.0,
 		cash: 20,
 		fuel: 100,
 		color: Color{r:255,g:255,b:255},

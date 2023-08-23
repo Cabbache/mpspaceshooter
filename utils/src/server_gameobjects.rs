@@ -65,7 +65,6 @@ pub struct LootDrop{
 pub struct PlayerState {
 	pub name: String,
 	pub id: String,
-	pub health: f32,
 	pub cash: u32,
 	pub fuel: u32,
 	pub color: Color,
@@ -93,7 +92,6 @@ impl PlayerState {
 		let mut result = self.encode_other();
 		let additional = json!({
 			"inventory": &self.inventory,
-			"health": &self.health,
 			"cash": &self.cash,
 		});
 		result
@@ -129,7 +127,7 @@ pub enum ServerMessage{
 	Pong(u64),
 	PlayerJoin(PlayerState),
 	PlayerLeave(String),
-	HealthUpdate(f32),
+	HealthUpdate(u8),
 	GameState{
 		pstates: Vec<PlayerState>,
 		worldloot: HashMap<String, LootObject>,

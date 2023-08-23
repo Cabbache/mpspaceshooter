@@ -113,7 +113,7 @@ pub struct Trajectory{
 	pub spin: f32,
 	pub spin_direction: i8, //-1,0,1
 	pub time: u64,
-	pub collision: bool,
+	pub health: u8,
 	pub boosters: u8,
 
 	#[cfg(target_arch = "wasm32")]
@@ -162,7 +162,7 @@ impl Trajectory {
 	}
 
 	pub fn step(&mut self) -> bool{
-		if self.collision {
+		if self.health == 0 {
 			return false;
 		}
 		let next_pos = Vector{
@@ -186,7 +186,9 @@ impl Trajectory {
 			self.vel.y += fastapprox::faster::sin(normalize_angle(self.spin + PROPEL_DIRECTION)) * magnitude;
 		}
 		self.time += TIMESTEP_MILLIS as u64;
-		self.collision = self.collides();
+		if self.collides() {
+			self.health = 0;
+		}
 		true
 	}
 
@@ -264,7 +266,7 @@ impl Default for Trajectory {
 			spin: 0.0,
 			boosters: 1,
 			time: current_time(),
-			collision: false,
+			health: 0xff,
 		}
 	}
 }
@@ -338,7 +340,7 @@ impl Trajectory {
 	}
 
 	pub fn dump(&self) -> String {
-		format!("{},{:x},{:x},{:x},{:x},{:x},{},{},{}", self.propelling, self.pos.x.to_bits(), self.pos.y.to_bits(), self.vel.x.to_bits(), self.vel.y.to_bits(), self.spin.to_bits(), self.spin_direction, self.time, self.collision)
+		format!("{},{:x},{:x},{:x},{:x},{:x},{},{},{}", self.propelling, self.pos.x.to_bits(), self.pos.y.to_bits(), self.vel.x.to_bits(), self.vel.y.to_bits(), self.spin.to_bits(), self.spin_direction, self.time, self.health)
 	}
 
 	#[cfg(target_arch = "wasm32")]
@@ -392,7 +394,7 @@ impl Hash for Trajectory {
 		self.spin.to_bits().hash(state); // Manually hash f32 field
 		self.spin_direction.hash(state);
 		self.time.hash(state);
-		self.collision.hash(state);
+		self.health.hash(state);
 	}
 }
 
