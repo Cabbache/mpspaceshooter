@@ -429,7 +429,7 @@ async function runAll(){
 		}
 
 		const update_healthbar = function(healthvalue){
-			const prcnt = healthvalue / 100;
+			const prcnt = healthvalue / 0xff;
 			healthbar.width = Math.max(0, app.screen.width * healthbar_maxwidth * prcnt);
 			healthbar.tint = Math.round(0xff * prcnt) << 8 | Math.round((1-prcnt) * 0xff) << 16;
 		}
@@ -628,6 +628,7 @@ async function runAll(){
 		const handle_playerjoin = function(content){
 			content.trajectory = new Trajectory(content.trajectory);
 			if (content.id == public_id){ //this happens when spawning
+				change_propulsion_emitter(public_id, content.trajectory.propelling);
 				world.pivot.x = content.trajectory.pos.x;
 				world.pivot.y = content.trajectory.pos.y;
 				gameState[public_id].p = content;
