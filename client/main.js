@@ -167,10 +167,11 @@ async function runAll(){
 		var current_rtt = null;
 		var clocks_delta = 0; //estimated difference between client/server clocks
 
+		PIXI.settings.SPRITE_MAX_TEXTURES = 1; //supposidely improves performance
 		const app = new PIXI.Application({
 				width: window.innerWidth,
 				height: window.innerHeight,
-				backgroundColor: 0x101510
+				backgroundColor: 0x101510,
 		});
 		const TIMESTEP = 1 / TIMESTEP_FPS;
 
