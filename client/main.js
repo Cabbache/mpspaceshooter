@@ -637,7 +637,7 @@ async function runAll(){
 				coords_text.text = `x: ${Math.round(world.pivot.x)}, y: ${-Math.round(world.pivot.y)}`;
 
 				//update health bar
-				update_healthbar(content.health);
+				update_healthbar(content.trajectory.health);
 
 				//update ammo bar
 				const inventory = content.inventory;
@@ -655,11 +655,6 @@ async function runAll(){
 					p: content
 				};
 			}
-		}
-
-		const handle_healthUpdate = function(newHealth){
-			gameState[public_id].p.health = newHealth;
-			update_healthbar(newHealth);
 		}
 
 		const handle_playerleave = function(public_id){
@@ -762,7 +757,6 @@ async function runAll(){
 				"Pong": handle_pong,
 				"PlayerJoin": handle_playerjoin,
 				"PlayerLeave": handle_playerleave,
-				"HealthUpdate": handle_healthUpdate,
 				"GameState": handle_gamestate,
 				"TrajectoryUpdate": handle_update,
 				"PlayerDeath": handle_playerdeath,
