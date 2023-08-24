@@ -860,8 +860,10 @@ async function runAll(){
 			const deltaTime = delta / (1000*PIXI.settings.TARGET_FPMS);
 
 			Object.entries(gameState).forEach(([pid, player]) => {
-				if (player.p.trajectory.collision)
+				if (player.p.trajectory.health == 0) {
+					handle_playerdeath({"from": pid});
 					return;
+				}
 				if (pid == public_id){
 					player.p.trajectory.advance(BigInt(server_time()), false);
 					return;
@@ -875,7 +877,7 @@ async function runAll(){
 			});
 			
 			Object.values(gameState).forEach(player => {
-				if (player.p.trajectory.collision)
+				if (player.p.trajectory.health == 0)
 					return;
 				const shallow_copy = player.p.id == public_id ? world.pivot:player.graphics
 
