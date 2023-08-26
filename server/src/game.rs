@@ -4,10 +4,10 @@ use std::error::Error;
 use futures::future::join_all;
 use serde_json::{from_str, json, to_string, Value};
 use warp::ws::Message;
-use uuid::Uuid;
 use rand::Rng;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
+use uuid::Uuid;
 
 use crate::Clients;
 use crate::Client;
@@ -197,18 +197,10 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 			if sender_state.read().await.clone().inventory.selection != slot
 				{ sender_state.write().await.inventory.selection = slot; }
 		},
-		ClientMessage::TrigUpdate { pressed } => {
-			let cl = sender_state.read().await.clone();
-
-			//This would require a modded client
-			if cl.trigger_pressed == pressed {
-				eprintln!("trigger press identical");
-				return Ok(());
-			}
-
-			sender_state.write().await.trigger_pressed = pressed;
-			let weapon_selected = cl.inventory.weapons.get(
-				&cl.inventory.selection
+		ClientMessage::Shoot(mut shootInfo) => {
+			println!("{:?}", shootInfo);
+			let weapon_selected = state.inventory.weapons.get(
+				&state.inventory.selection
 			).unwrap().clone();
 
 			//check if there is even ammo
@@ -216,116 +208,63 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 				return Ok(());
 			}
 
-			//check if ammo needs to be decremented
-			match (weapon_selected.weptype.clone(), pressed) {
-				(WeaponType::Pistol, false) => {},
-				(WeaponType::Grenade {press_time: _}, true) => {},
-				_ => {
-					let mut writeable = sender_state.write().await;
-					writeable.inventory.weapons.get_mut(
-							&cl.inventory.selection
-					).unwrap().ammo -= 1;
-				}
-			};
+			{
+				let mut writeable = sender_state.write().await;
+				writeable.inventory.weapons.get_mut(
+						&state.inventory.selection
+				).unwrap().ammo -= 1;
+				state = writeable.clone();
+			}
 
-			//check if client needs to know
-			match (weapon_selected.weptype.clone(), pressed) {
-				(WeaponType::Pistol, false) => {},
-				_ => {
-					broadcast(
-						&ServerMessage::TrigUpdate {
-							by: public_id.clone(),
-							weptype: weapon_selected.weptype.clone(),
-							pressed: pressed,
-						},
-						&clr
-					).await;				
-				}
-			};
+			shootInfo.shooter = Some(public_id);
 
-			//Update healths
-			match weapon_selected.weptype {
-				//TODO since we don't care if pistol released, we should make the client not even send it
-				WeaponType::Pistol => {
-					if !pressed {
-						return Ok(());
-					}
-
-					let (ss, rr) = {
-						let mut writeable = sender_state.write().await;
-						writeable.trajectory.advance(time_now);
-						(writeable.trajectory.pos.clone(), writeable.trajectory.spin)
-					};
-
-					//boring linear search
-					for (key, value) in clr.iter() { //TODO try using for_each
-						if *key == public_id{ //Can't shoot yourself
-							continue;
-						}
-
-						let playerstate = {
-							let mut writable = value.state.write().await;
-							writable.trajectory.advance(time_now);
-							writable.clone()
-						};
-
-						//ignore dead players
-						if playerstate.trajectory.health == 0u8 {
-							continue;
-						}
-						let pp = playerstate.trajectory.pos;
-						let hit = utils::trajectory::line_intersects_circle(ss.x, ss.y, pp.x, pp.y, rr);
-						if !hit {
-							continue;
-						}
-
-						let new_health = {
-							let mut writeable = value.state.write().await;
-							writeable.trajectory.health = writeable.trajectory.health.saturating_sub(10); //hard coded pistol damage to 10
-							writeable.trajectory.health
-						};
-
-						if new_health > 0u8 {
-							value.transmit(
-								&ServerMessage::HealthUpdate(new_health),
-								Some(playerstate.id)
-							).await?; //tell the player that lost the health their new health
+			shootInfo.victim = match shootInfo.victim.clone() {
+				None => None,
+				Some(mut victim) => match clr.get(&victim.id) {
+					None => None, //Malicious behavior
+					Some(player) => {
+						if player.state.read().await.trajectory.health == 0 {
+							None
 						} else {
-							let mut rng = StdRng::from_entropy();
-							let dropped_loot = LootObject{
-								x: pp.x,
-								y: pp.y,
-								loot: match rng.gen_range(0..101){
-									0..=33 => LootContent::Cash(playerstate.cash / 2),
-									34..=67 => LootContent::PistolAmmo(15),
-									_ => LootContent::SpeedBoost,
+							let victim_state = {
+								let mut victim_writer = player.state.write().await;
+								victim_writer.trajectory.apply_change(UpdateType::Bullet);
+								if victim_writer.trajectory.health == 0 {
+									victim_writer.trajectory.advance(time_now); //so that loot is dropped there
 								}
+								victim_writer.clone()
 							};
-							let dropped_loot_uuid = Uuid::new_v4().as_simple().to_string();
-							world_loot.write().await.insert(
-								dropped_loot_uuid.clone(),
-								dropped_loot.clone(),
-							);
-							broadcast( //tell everyone that the player died and what loot they dropped
-								&ServerMessage::PlayerDeath{
-									loot: Some(LootDrop{
+
+							if victim_state.trajectory.health == 0 {
+								let mut rng = StdRng::from_entropy();
+								let dropped_loot = LootObject{
+									x: victim_state.trajectory.pos.x,
+									y: victim_state.trajectory.pos.y,
+									loot: match rng.gen_range(0..101){
+										0..=33 => LootContent::Cash(victim_state.cash / 2),
+										34..=67 => LootContent::PistolAmmo(15),
+										_ => LootContent::SpeedBoost,
+									}
+								};
+								let dropped_loot_uuid = Uuid::new_v4().as_simple().to_string();
+								world_loot.write().await.insert(
+									dropped_loot_uuid.clone(),
+									dropped_loot.clone(),
+								);
+								victim.loot = Some(
+									LootDrop{
 										object: dropped_loot,
 										uuid: dropped_loot_uuid,
-									}),
-									from: playerstate.id,
-								},
-								&clr
-							).await;
+									}
+								);
+							}
+							Some(victim)
 						}
-						break; //important! you can only hit one player at one time
-					};
-				},
-				WeaponType::Grenade { press_time: _ } => {
-					if pressed {
-						
 					}
 				}
-			}
+			};
+
+			broadcast(&ServerMessage::Shoot(shootInfo), &clr).await;
 		},
 		ClientMessage::ClaimLoot { loot_id } => {
 			let loot_thing = {

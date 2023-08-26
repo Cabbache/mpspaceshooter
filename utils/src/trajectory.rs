@@ -54,6 +54,7 @@ const ACCELERATION: f32 = 200.0; //player acceleration
 const PROPEL_DIRECTION: f32 = -HALFPI;
 const RADIANS_PER_SECOND: f32 = PI; //player rotation speed
 const G: f32 = 2000.0; //Gravitational constant
+const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 
 const TIMESTEP_FPS: u32 = 10;
 
@@ -68,8 +69,6 @@ pub const MAX_TIME_BEFORE: u64 = 500; //500
 const SPAWN_PULL_MAX: f32 = 2.0; //Maximum gravity pull at spawn point
 #[cfg(not(target_arch = "wasm32"))]
 const MAX_TIME_AHEAD: u64 = 300; //300
-#[cfg(not(target_arch = "wasm32"))]
-const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 
 pub const BODIES: [Body; 3] = [
   Body {
@@ -130,6 +129,7 @@ pub enum UpdateType {
 	PropOn,
 	PropOff,
 	AddBoost,
+	Bullet,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -368,6 +368,40 @@ impl Trajectory {
 		return false;
 	}
 
+	pub fn hits(&self, other: &Trajectory) -> f32 {
+		//shift everything to make line start from origin
+		let a = other.pos.x - self.pos.x;
+		let b = other.pos.y - self.pos.y;
+		let rot_90 = self.spin - HALFPI;
+
+		//compute the quadratic's 'b' coefficient (for variable r in polar form)
+		let qb = -(2f32*a*rot_90.cos() + 2f32*b*rot_90.sin());
+		let discriminant: f32 = qb.powi(2) - 4f32*(a.powi(2) + b.powi(2) - PLAYER_RADIUS.powi(2));
+		if discriminant < 0f32 { //no real roots (no line-circle intersection)
+			return -1f32;
+		}
+
+		let root = discriminant.sqrt();
+
+		let r1 = (root - qb)/2f32;
+		let r2 = (-root - qb)/2f32;
+
+		let r1_good = PISTOL_REACH > r1 && r1 > 0f32;
+		let r2_good = PISTOL_REACH > r2 && r2 > 0f32;
+
+		if !r1_good && !r2_good {
+			-1f32
+		} else if r1_good != r2_good {
+			if r1_good {
+				r1
+			} else {
+				r2
+			}
+		} else {
+			f32::min(r1, r2)
+		}
+	}
+
 	pub fn hash_str(&self) -> String {
 		let mut hasher = DefaultHasher::new();
 		self.hash(&mut hasher);
@@ -382,6 +416,7 @@ impl Trajectory {
 			UpdateType::PropOn => {self.propelling = true;},
 			UpdateType::PropOff => {self.propelling = false;},
 			UpdateType::AddBoost => {self.boosters += 1;},
+			UpdateType::Bullet => {self.health = self.health.saturating_sub(30);},
 		}
 	}
 }
@@ -466,31 +501,6 @@ impl Body {
 	fn mass(&self) -> f32 {
 		self.radius*self.radius*PI
 	}
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-pub fn line_intersects_circle(xp: f32, yp: f32, xc:  f32, yc: f32, rot: f32) -> bool {
-	//shift everything to make line start from origin
-	let a = xc - xp;
-	let b = yc - yp;
-	let rot_90 = rot - HALFPI;
-
-	//compute the quadratic's 'b' coefficient (for variable r in polar form)
-	let qb = -(2f32*a*rot_90.cos() + 2f32*b*rot_90.sin());
-	let discriminant: f32 = qb.powi(2) - 4f32*(a.powi(2) + b.powi(2) - PLAYER_RADIUS.powi(2));
-	if discriminant < 0f32{ //no real roots (no line-circle intersection)
-		return false;
-	}
-
-	let root = discriminant.sqrt();
-
-	let r1 = (root - qb)/2f32;
-	let r2 = (-root - qb)/2f32;
-
-	let r1_good = PISTOL_REACH > r1 && r1 > 0f32;
-	let r2_good = PISTOL_REACH > r2 && r2 > 0f32;
-
-	r1_good || r2_good
 }
 
 #[cfg(not(target_arch = "wasm32"))]

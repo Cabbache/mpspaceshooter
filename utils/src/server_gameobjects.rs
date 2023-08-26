@@ -107,6 +107,31 @@ impl PlayerState {
 	}
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Victim {
+	pub id: String,
+	pub hash: String,
+	pub time: u64,
+
+	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(skip_deserializing)]
+	pub loot: Option<LootDrop>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ShootInfo {
+
+	//details about when the shooter shot
+	pub at: String,
+	pub stime: u64,
+
+	//These are for when the message comes from the server
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub shooter: Option<String>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub victim: Option<Victim>,
+}
+
 #[derive(Deserialize, Debug)]
 #[serde(tag = "t", content = "c")]
 pub enum ClientMessage{
@@ -114,9 +139,9 @@ pub enum ClientMessage{
 	AckPong,
 	TrajectoryUpdate {change: UpdateType, at: String, time: u64},
 	ChangeSlot {slot: u8},
-	TrigUpdate {pressed: bool},
 	ClaimLoot {loot_id: String},
 	Correct(String),
+	Shoot(ShootInfo),
 	StateQuery,
 	Spawn,
 }
@@ -133,7 +158,7 @@ pub enum ServerMessage{
 		worldloot: HashMap<String, LootObject>,
 	},
 	TrajectoryUpdate {change: UpdateType, time: u64, at: String, from: String},
-	TrigUpdate {by: String, weptype: WeaponType, pressed: bool },
+	Shoot(ShootInfo),
 	PlayerDeath {loot: Option<LootDrop>, from: String },
 	LootCollected {loot_id: String, collector: String },
 	Correct {id: String, tr: String},

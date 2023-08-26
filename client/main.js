@@ -157,7 +157,7 @@ async function runAll(){
 		const player_speed = 200;
 		const player_radius = 25;
 		const dome_radius = 6000;
-		const fadeRate = 8;
+		const fadeRate = 2;
 		const rotation_speed = PI;
 
 		const healthbar_maxwidth = 0.15; //This gets multiplied by the  screen width
@@ -294,42 +294,6 @@ async function runAll(){
 			app.screen.height*0.98 - 35
 		);
 		app.stage.addChild(pistol_ammo_sprite);
-
-		//false if not hit, distance to hit point otherwise
-		//TODO wasm
-		function line_circle_intersect(xp, yp, xc, yc, rot){
-			//shift everything to make line start from origin
-			let a = xc - xp;
-			let b = yc - yp;
-			let rot_90 = rot - PI/2;
-
-			//compute the quadratic's 'b' coefficient (for variable r in polar form)
-			let qb = -(2*a*Math.cos(rot_90) + 2*b*Math.sin(rot_90));
-			let discriminant = qb*qb - 4*(a*a + b*b - player_radius*player_radius);
-			if (discriminant < 0){ //no real roots (no line-circle intersection)
-				return false;
-			}
-
-			let root = Math.sqrt(discriminant);
-
-			//the actual solutions
-			const r1 = (root - qb)/2;
-			const r2 = (-root - qb)/2;
-
-			const r1Good = bullet_distance > r1 && r1 > 0;
-			const r2Good = bullet_distance > r2 && r2 > 0;
-
-			if (!r1Good && !r2Good)
-				return false;
-			else if (r1Good != r2Good){
-				if (r1Good)
-					return r1;
-				else
-					return r2;
-			} else if (r1Good && r2Good){
-				return Math.min(r1, r2);
-			}
-		}
 
 		const openWebSocket = function(){
 			fetch(`${window.location.origin}/register`, {
@@ -539,90 +503,74 @@ async function runAll(){
 			}		
 		}
 
-		const handle_trigUpdate = function(content){
-			const weapon = content.weptype;
-			const updater = content.by;
-			const isTriggered = content.pressed;
-			if (!isTriggered) //temporary
-				return;
-			if (weapon == "Pistol"){
-				const line_start_x = public_id == updater ? world.pivot.x:gameState[updater].graphics.x;
-				const line_start_y = public_id == updater ? world.pivot.y:gameState[updater].graphics.y;
+		const spawn_gunshot = function(pid){
+			const shallow_copy = pid == public_id ? world.pivot:gameState[pid].graphics
+			const gunshot_sprite = new PIXI.Sprite(gunshot_texture);
+			gunshot_sprite.position.set(shallow_copy.x, shallow_copy.y);
+			gunshot_sprite.rotation = gameState[pid].child.rotation;
+			gunshot_sprite.anchor.set(0.5, 1.2); //this affects the gunshot position relative to the shooter
+			gunshot_sprite.scale.set(0.25, 0.25); //This depends on the png size
+			bullets_container.addChild(gunshot_sprite);
+		}
 
-				const line_rotation = gameState[updater].child.rotation;
-				let hitInfo = {
-					hit: false,
-					shortest_line: bullet_distance,
-					x: 0,
-					y: 0
-				};
-				Object.entries(gameState).forEach(([pubid, item]) => {
-					if (pubid == updater) //don't check if the shooter is shooting themselves
-						return;
-
-					const check_x = pubid == public_id ? world.pivot.x:item.graphics.x;
-					const check_y = pubid == public_id ? world.pivot.y:item.graphics.y;
-
-					const hit = line_circle_intersect(line_start_x, line_start_y, check_x, check_y, line_rotation);
-					if (hit === false)
-						return;
-
-					hitInfo.hit = true;
-					if (hit >= hitInfo.shortest_line)
-						return;
-
-					hitInfo.shortest_line = hit;
-					hitInfo.x = check_x;
-					hitInfo.y = check_y;
-				});
-
-				//draws a line instead of gunshot
-				//const bullet_line = new PIXI.Graphics();
-				//bullet_line.lineStyle(4, 0xffff00, 1);
-				//bullet_line.position.set(line_start_x, line_start_y);
-				//bullet_line.lineTo(0, -hitInfo.shortest_line);
-				//bullet_line.rotation = line_rotation;
-				//bullets_container.addChild(bullet_line);
-
-				//TODO offset this a bit so that it appears at tip of gun
-				const gunshot_sprite = new PIXI.Sprite(gunshot_texture);
-				gunshot_sprite.position.set(line_start_x, line_start_y);
-				gunshot_sprite.rotation = line_rotation;
-				gunshot_sprite.anchor.set(0.5, 1.2); //this affects the gunshot position relative to the shooter
-				gunshot_sprite.scale.set(0.25, 0.25); //This depends on the png size
-				bullets_container.addChild(gunshot_sprite);
-
-				if (hitInfo.hit){
-					let emitJSON = JSON.parse(JSON.stringify(emitters["bulletHit"])); //careful here
-					emitJSON.pos = {
-						x: hitInfo.x,
-						y: hitInfo.y
-					};
-					emitJSON.behaviors.push(
-						{
-								type: 'rotationStatic',
-								config: {
-										min: (180/PI)*line_rotation+90 - 30,
-										max: (180/PI)*line_rotation+90 + 30
-								}
+		const spawn_hit_emitter = function(posx, posy, rotation){
+			let emitJSON = JSON.parse(JSON.stringify(emitters["bulletHit"]));
+			emitJSON.pos = {
+				x: posx,
+				y: posy,
+			};
+			emitJSON.behaviors.push(
+				{
+						type: 'rotationStatic',
+						config: {
+								min: (180/PI)*rotation+90 - 30,
+								max: (180/PI)*rotation+90 + 30
 						}
-					);
-					emitJSON.behaviors.push(
-						{
-							type: 'textureSingle',
-							config: {
-									texture: PIXI.Texture.WHITE
-								}
-						}
-					);
-
-					let emitter = new PIXI.particles.Emitter(
-						world,
-						emitJSON
-					);
-					emitter.emit = true;
-					emissions.push(emitter);
 				}
+			);
+			emitJSON.behaviors.push(
+				{
+					type: 'textureSingle',
+					config: {
+							texture: PIXI.Texture.WHITE
+						}
+				}
+			);
+
+			let emitter = new PIXI.particles.Emitter(
+				world,
+				emitJSON
+			);
+			emitter.emit = true;
+			emissions.push(emitter);
+		}
+
+		const handle_shoot = function(content){
+			if (content.victim?.loot) {
+				handle_playerdeath({
+					from: content.victim.id,
+					loot: content.victim.loot,
+				});
+				if (content.victim.id == public_id)
+					return;
+			}
+
+			if (content.shooter == public_id)
+				return;
+
+			spawn_gunshot(content.shooter);
+
+			if (!content.victim)
+				return;
+
+			const shallow_copy = content.victim.id == public_id ? world.pivot:gameState[content.victim.id].graphics;
+			const line_rotation = gameState[content.shooter].child.rotation;
+
+			spawn_hit_emitter(shallow_copy.x, shallow_copy.y, line_rotation);
+
+			gameState[content.victim.id].p.trajectory.apply_change(UpdateType["Bullet"]);
+			if (content.victim.id == public_id) { //if you got hit
+				update_healthbar(gameState[content.victim.id].p.trajectory.health);
 			}
 		}
 
@@ -763,7 +711,7 @@ async function runAll(){
 				"TrajectoryUpdate": handle_update,
 				"PlayerDeath": handle_playerdeath,
 				"LootCollected": handle_lootcollection,
-				"TrigUpdate": handle_trigUpdate,
+				"Shoot": handle_shoot,
 				"Correct": handle_correction,
 				"LootReject": handle_rejection
 			};
@@ -814,19 +762,55 @@ async function runAll(){
 				perform_update(change);
 				change_propulsion_emitter(public_id, !up);
 			} else if (name == keyshoot) {
-				return;
+				if (up) return;
+
 				const inventory = gameState[public_id].p.inventory;
 				const selectedWeapon = inventory.weapons[inventory.selection];
 				if (selectedWeapon.ammo <= 0)
 					return;
-				if (keymap[name])
-					ammo_text.text = --selectedWeapon.ammo;
+
+				ammo_text.text = --selectedWeapon.ammo;
+
+				let closestHit = {
+					distance: 999999999,
+					hit: false,
+					victim: null,
+				};
+
+				Object.entries(gameState).forEach(([pubid, item]) => {
+					if (pubid == public_id)
+						return;
+					const hit = gameState[public_id].p.trajectory.hits(item.p.trajectory);
+					if (hit > 0 && closestHit.distance > hit) {
+						closestHit.distance = hit;
+						closestHit.hit = true;
+						closestHit.victim = pubid;
+					}
+				});
+
+				let shootMsg = {
+					"at": gameState[public_id].p.trajectory.hash_str(),
+					"stime": Number(gameState[public_id].p.trajectory.time),
+				};
+
+				spawn_gunshot(public_id);
+				if (closestHit.hit) {
+					shootMsg.victim = {
+						id: closestHit.victim,
+						hash: gameState[closestHit.victim].p.trajectory.hash_str(),
+						time: Number(gameState[closestHit.victim].p.trajectory.time),
+					}
+
+					const shallow_copy = gameState[closestHit.victim].graphics;
+					const line_rotation = gameState[closestHit.victim].child.rotation;
+
+					spawn_hit_emitter(shallow_copy.x, shallow_copy.y, line_rotation);
+				}
+
 				socket.send(
 					JSON.stringify({
-						"t":"TrigUpdate",
-						"c":{
-							"pressed": keymap[name],
-						 }
+						"t":"Shoot",
+						"c": shootMsg,
 					})
 				);
 			} else if (name == keyshop) {
@@ -923,7 +907,7 @@ async function runAll(){
 			Object.entries(worldLoot).forEach(([loot_id, lootObj]) => {
 				if (lootObj.claimed)
 					return;
-				const trig = Math.pow(lootObj.l.x - world.pivot.x, 2) + Math.pow(lootObj.l.y - world.pivot.y, 2) < 10*10;
+				const trig = Math.pow(lootObj.l.x - world.pivot.x, 2) + Math.pow(lootObj.l.y - world.pivot.y, 2) < 40*40;
 				if (!trig)
 					return;
 				lootObj.claimed = true;
