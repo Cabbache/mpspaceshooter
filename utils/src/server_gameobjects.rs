@@ -8,6 +8,7 @@ use crate::shared_gameobjects::ShopItemId;
 pub enum LootContent{
 	Cash(u32),
 	PistolAmmo(u32),
+	Health(u32),
 	SpeedBoost,
 }
 

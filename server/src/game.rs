@@ -241,8 +241,9 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 									x: victim_state.trajectory.pos.x,
 									y: victim_state.trajectory.pos.y,
 									loot: match rng.gen_range(0..101){
-										0..=33 => LootContent::Cash(victim_state.cash / 2),
-										34..=67 => LootContent::PistolAmmo(15),
+										0..=25 => LootContent::Cash(victim_state.cash / 2),
+										25..=50 => LootContent::PistolAmmo(15),
+										50..=75 => LootContent::Health(30),
 										_ => LootContent::SpeedBoost,
 									}
 								};

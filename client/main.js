@@ -401,7 +401,8 @@ async function runAll(){
 			var loot_texture = new PIXI.Sprite({
 				"Cash": coins_texture,
 				"PistolAmmo": pistol_ammo_texture,
-				"SpeedBoost": speed_boost_texture
+				"SpeedBoost": speed_boost_texture,
+				"Health": heart_texture,
 			}[typeof lootObj.loot === "string" ? lootObj.loot:Object.keys(lootObj.loot)[0]]);
 			loot_texture.anchor.set(0.5);
 			loot_obj.addChild(loot_texture);
@@ -709,6 +710,9 @@ async function runAll(){
 				},
 				"SpeedBoost": () => {
 					gameState[content.collector].p.speed += 1.0;
+				},
+				"Health": () => {
+					//gameState[content.collector].p.health += 1.0;
 				}
 			}[loot_type])();
 		}
