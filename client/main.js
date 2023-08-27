@@ -160,6 +160,10 @@ async function runAll(){
 		const fadeRate = 2;
 		const rotation_speed = PI;
 
+		const background_scale = 4;
+		const bg_w = 200;
+		const bg_h = 150;
+
 		const healthbar_maxwidth = 0.15; //This gets multiplied by the  screen width
 
 		var pingInterval = null;
@@ -188,12 +192,18 @@ async function runAll(){
 			PIXI.Assets.load("static/textures/speed_boost.png").then(texture => speed_boost_texture = texture)
 		]);
 		
-		const bg_w = 600;
-		const bg_h = 500;
+		const bg_cache = {};
 		const gen_background = function(tilex, tiley) {
+			if (tilex in bg_cache && tiley in bg_cache[tilex]){
+				console.log("cache hit!");
+				return bg_cache[tilex][tiley];
+			}
 			let b64data = bb.gen_slice(tilex*bg_w,tiley*bg_h,(tilex+1)*bg_w,(tiley+1)*bg_h);
 			tmp_img.src = 'data:image/jpeg;base64,' + b64data;
-			return new PIXI.Texture(new PIXI.BaseTexture(tmp_img));
+			const texture = new PIXI.Texture(new PIXI.BaseTexture(tmp_img));
+			if (!(tilex in bg_cache))
+				bg_cache[tilex] = {}
+			bg_cache[tilex][tiley] = texture;
 		}
 		var background = new PIXI.Sprite();
 
@@ -886,11 +896,13 @@ async function runAll(){
 				player.child.rotation = lerped.r;
 			});
 
-			const tile_x = Math.floor(world.pivot.x / bg_w);
-			const tile_y = Math.floor(world.pivot.y / bg_h);
+			const tile_x = Math.floor(world.pivot.x / (bg_w*background_scale));
+			const tile_y = Math.floor(world.pivot.y / (bg_h*background_scale));
 			background.texture = gen_background(tile_x, tile_y);
-			background.x = tile_x*bg_w - background.width/2;
-			background.y = tile_y*bg_h - background.height/2;
+			background.x = tile_x*bg_w*background_scale;
+			background.y = tile_y*bg_h*background_scale;
+			background.scale.x = background_scale;
+			background.scale.y = background_scale;
 			coords_text.text = `x: ${Math.round(world.pivot.x)}, y: ${-Math.round(world.pivot.y)}`;
 
 			for (let i = 0; i < bullets_container.children.length; ++i){
