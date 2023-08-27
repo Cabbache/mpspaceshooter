@@ -176,28 +176,26 @@ async function runAll(){
 		const TIMESTEP = 1 / TIMESTEP_FPS;
 
 		let bb = new World();
-		let b64data = bb.gen_slice(0,0,500,500);
 		const tmp_img = document.createElement('img');
-		tmp_img.src = 'data:image/jpeg;base64,' + b64data;
 
-		let gunshot_texture, pistol_ammo_texture, coins_texture, coins_label_texture, heart_texture, seamless_texture, speed_boost_texture;
-		seamless_texture = new PIXI.Texture(new PIXI.BaseTexture(tmp_img));
+		let gunshot_texture, pistol_ammo_texture, coins_texture, coins_label_texture, heart_texture, speed_boost_texture;
 		await Promise.all([
 			PIXI.Assets.load("static/textures/gunshot.png").then(texture => gunshot_texture = texture),
 			PIXI.Assets.load("static/textures/pistol_ammo.png").then(texture => pistol_ammo_texture = texture),
 			PIXI.Assets.load("static/textures/coins.png").then(texture => coins_texture = texture),
 			PIXI.Assets.load("static/textures/coins_label.png").then(texture => coins_label_texture = texture),
 			PIXI.Assets.load("static/textures/heart.png").then(texture => heart_texture = texture),
-			//PIXI.Assets.load("static/textures/seamless.jpg").then(texture => seamless_texture = texture),
-			//PIXI.Assets.load({src: bburl, loadParser: 'loadTextures'}).then(texture => seamless_texture = texture),
 			PIXI.Assets.load("static/textures/speed_boost.png").then(texture => speed_boost_texture = texture)
 		]);
-
-		var background = new PIXI.TilingSprite(
-			seamless_texture,
-			(3+Math.ceil(app.screen.width / seamless_texture.width))*seamless_texture.width,
-			(3+Math.ceil(app.screen.height / seamless_texture.height))*seamless_texture.height
-		);
+		
+		const bg_w = 600;
+		const bg_h = 500;
+		const gen_background = function(tilex, tiley) {
+			let b64data = bb.gen_slice(tilex*bg_w,tiley*bg_h,(tilex+1)*bg_w,(tiley+1)*bg_h);
+			tmp_img.src = 'data:image/jpeg;base64,' + b64data;
+			return new PIXI.Texture(new PIXI.BaseTexture(tmp_img));
+		}
+		var background = new PIXI.Sprite();
 
 		const world = new PIXI.Container();
 		world.position.set(app.screen.width/2, app.screen.height/2);
@@ -888,10 +886,11 @@ async function runAll(){
 				player.child.rotation = lerped.r;
 			});
 
-			const tile_x = Math.floor(world.pivot.x / seamless_texture.width);
-			const tile_y = Math.floor(world.pivot.y / seamless_texture.height);
-			background.x = tile_x*seamless_texture.width - background.width/2;
-			background.y = tile_y*seamless_texture.height - background.height/2;
+			const tile_x = Math.floor(world.pivot.x / bg_w);
+			const tile_y = Math.floor(world.pivot.y / bg_h);
+			background.texture = gen_background(tile_x, tile_y);
+			background.x = tile_x*bg_w - background.width/2;
+			background.y = tile_y*bg_h - background.height/2;
 			coords_text.text = `x: ${Math.round(world.pivot.x)}, y: ${-Math.round(world.pivot.y)}`;
 
 			for (let i = 0; i < bullets_container.children.length; ++i){

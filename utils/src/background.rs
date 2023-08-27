@@ -2,6 +2,8 @@ use image::{ImageBuffer, Rgb};
 use image::codecs::png::PngEncoder;
 use wasm_bindgen::prelude::*;
 use base64::{engine::general_purpose, Engine as _};
+use rand_distr::Normal;
+use rand_distr::Distribution;
 
 use rand::Rng;
 use rand::rngs::SmallRng;
@@ -43,9 +45,9 @@ pub struct World {
 impl World {
 	#[wasm_bindgen(constructor)]
 	pub fn new() -> Self {
+		let normal = Normal::new(500f64, 500f64).unwrap();
 		let mut rng = SmallRng::seed_from_u64(122);
-		//let points: Vec<(f64, f64)> = (1..200).map(|_| (rng.gen::<f64>() % 10000f64, rng.gen::<f64>() % 10000f64)).collect();
-		let points: Vec<(f64, f64)> = (1..200).map(|_| (rng.gen::<i32>() as f64 % 1000f64, rng.gen::<i32>() as f64 % 1000f64)).collect();
+		let points: Vec<(f64, f64)> = (1..200).map(|_| (normal.sample(&mut rng) % 1000f64, normal.sample(&mut rng) % 1000f64)).collect();
 		let gg = KDBush::create(points.clone(), kdbush::DEFAULT_NODE_SIZE);
 		Self {
 			index: gg,
@@ -64,14 +66,16 @@ impl World {
 		for id in result {
 			let (ptx, pty) = self.points[id];
 			let (ptx, pty) = ((ptx as i32) - x1, (pty as i32) - y1);
-			for a in -10..10 {
-				if ptx + a < 0 || (ptx + a) as usize > w {
+			console_log!("xy: {} {}", ptx, pty);
+			for a in 1..10 {
+				if (ptx + a) > w as i32 {
 					continue
 				}
-				for b in -10..10 {
-					if (pty + b) as usize > h || pty - b < 0  {
+				for b in 1..10 {
+					if (pty + b) > h as i32 {
 						continue
 					}
+					console_log!("xy in: {} {}", ptx, pty);
 					let base = (ptx+a) as usize + w*(pty+b) as usize;
 					raw_rgb_data[3*base + 0] = 0xff;
 					raw_rgb_data[3*base + 1] = 0xff;
