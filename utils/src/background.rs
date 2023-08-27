@@ -45,9 +45,9 @@ pub struct World {
 impl World {
 	#[wasm_bindgen(constructor)]
 	pub fn new() -> Self {
-		let normal = Normal::new(0f64, 10000f64).unwrap();
+		let normal = Normal::new(0f64, 500f64).unwrap();
 		let mut rng = SmallRng::seed_from_u64(122);
-		let points: Vec<(f64, f64)> = (1..100000).map(|_| (normal.sample(&mut rng), normal.sample(&mut rng))).collect();
+		let points: Vec<(f64, f64)> = (1..10000).map(|_| (normal.sample(&mut rng), normal.sample(&mut rng))).collect();
 		let gg = KDBush::create(points.clone(), kdbush::DEFAULT_NODE_SIZE);
 		Self {
 			index: gg,
@@ -64,9 +64,14 @@ impl World {
 
 		let mut raw_rgb_data: Vec<u8> = vec![0; w*h*3];
 		for id in result {
-			let (ptx, pty) = self.points[id];
-			let radius: u8 = (((pty as u8) & 0x01) << 2) | ((ptx as u8) & 0x02) | (((pty as u8) & 0x02) >> 1);
-			let (ptx, pty) = ((ptx as i32) - x1, (pty as i32) - y1);
+			let (fptx, fpty) = self.points[id];
+			let (ptx, pty) = (fptx as i32, fpty as i32);
+			let rr = (ptx as u8) ^ ((pty >> 8) as u8);
+			let gg = (pty as u8) ^ ((ptx >> 8) as u8);
+			let bb = rr^gg;
+			let radius: u8 = ((pty as u8 & 0x01 & ptx as u8 & (ptx as u8 >> 3)) << 2) |
+			(ptx as u8 & 0x02) | ((pty as u8 & 0x02) >> 1);
+			let (ptx, pty) = (ptx - x1, pty - y1);
 			console_log!("xyr: {} {} {}", ptx, pty, radius);
 			for a in 0..(radius as i32) {
 				if (ptx+a) >= w as i32 || (ptx+a) < 0 {
@@ -78,9 +83,9 @@ impl World {
 					}
 					console_log!("xy in: {} {}", ptx+a, pty+b);
 					let base = (ptx+a) as usize + w*(pty+b) as usize;
-					raw_rgb_data[3*base + 0] = 0xff;
-					raw_rgb_data[3*base + 1] = 0xff;
-					raw_rgb_data[3*base + 2] = 0xff;
+					raw_rgb_data[3*base + 0] = rr;
+					raw_rgb_data[3*base + 1] = gg;
+					raw_rgb_data[3*base + 2] = bb;
 				}
 			}
 		}

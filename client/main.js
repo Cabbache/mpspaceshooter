@@ -161,8 +161,8 @@ async function runAll(){
 		const rotation_speed = PI;
 
 		const background_scale = 4;
-		const bg_w = 200;
-		const bg_h = 150;
+		const bg_w = 600;
+		const bg_h = 450;
 
 		const healthbar_maxwidth = 0.15; //This gets multiplied by the  screen width
 
