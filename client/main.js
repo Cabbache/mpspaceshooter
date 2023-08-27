@@ -1,4 +1,4 @@
-import init, { Trajectory, UpdateType, getbody, num_bodies, get_shop_item, num_shop_items } from './pkg/utils.js';
+import init, { Trajectory, UpdateType, getbody, num_bodies, get_shop_item, num_shop_items, World } from './pkg/utils.js';
 async function runAll(){
 	await init();
 
@@ -175,14 +175,21 @@ async function runAll(){
 		});
 		const TIMESTEP = 1 / TIMESTEP_FPS;
 
+		let bb = new World();
+		let b64data = bb.gen_slice(0,0,500,500);
+		const tmp_img = document.createElement('img');
+		tmp_img.src = 'data:image/jpeg;base64,' + b64data;
+
 		let gunshot_texture, pistol_ammo_texture, coins_texture, coins_label_texture, heart_texture, seamless_texture, speed_boost_texture;
+		seamless_texture = new PIXI.Texture(new PIXI.BaseTexture(tmp_img));
 		await Promise.all([
 			PIXI.Assets.load("static/textures/gunshot.png").then(texture => gunshot_texture = texture),
 			PIXI.Assets.load("static/textures/pistol_ammo.png").then(texture => pistol_ammo_texture = texture),
 			PIXI.Assets.load("static/textures/coins.png").then(texture => coins_texture = texture),
 			PIXI.Assets.load("static/textures/coins_label.png").then(texture => coins_label_texture = texture),
 			PIXI.Assets.load("static/textures/heart.png").then(texture => heart_texture = texture),
-			PIXI.Assets.load("static/textures/seamless.jpg").then(texture => seamless_texture = texture),
+			//PIXI.Assets.load("static/textures/seamless.jpg").then(texture => seamless_texture = texture),
+			//PIXI.Assets.load({src: bburl, loadParser: 'loadTextures'}).then(texture => seamless_texture = texture),
 			PIXI.Assets.load("static/textures/speed_boost.png").then(texture => speed_boost_texture = texture)
 		]);
 

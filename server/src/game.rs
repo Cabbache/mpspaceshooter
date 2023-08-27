@@ -230,7 +230,7 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 								let mut victim_writer = player.state.write().await;
 								victim_writer.trajectory.apply_change(UpdateType::Bullet);
 								if victim_writer.trajectory.health == 0 {
-									victim_writer.trajectory.advance(time_now); //so that loot is dropped there
+									victim_writer.trajectory.advance(time_now + 5000); //so that loot is dropped there
 								}
 								victim_writer.clone()
 							};
