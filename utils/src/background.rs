@@ -1,4 +1,4 @@
-use image::{ImageBuffer, Rgb};
+//use image::{ImageBuffer, Rgb};
 use image::codecs::png::PngEncoder;
 use wasm_bindgen::prelude::*;
 use base64::{engine::general_purpose, Engine as _};
@@ -10,6 +10,8 @@ use rand::rngs::SmallRng;
 use rand::SeedableRng;
 
 use kdbush::KDBush;
+
+use crate::trajectory::DOME_RADIUS;
 
 #[wasm_bindgen]
 extern "C" {
@@ -45,9 +47,9 @@ pub struct World {
 impl World {
 	#[wasm_bindgen(constructor)]
 	pub fn new() -> Self {
-		let normal = Normal::new(0f64, 500f64).unwrap();
+		let normal = Normal::new(0f64, (DOME_RADIUS / 12f32) as f64).unwrap();
 		let mut rng = SmallRng::seed_from_u64(122);
-		let points: Vec<(f64, f64)> = (1..10000).map(|_| (normal.sample(&mut rng), normal.sample(&mut rng))).collect();
+		let points: Vec<(f64, f64)> = (1..((DOME_RADIUS as u64).pow(2)/3600)).map(|_| (normal.sample(&mut rng), normal.sample(&mut rng))).collect();
 		let gg = KDBush::create(points.clone(), kdbush::DEFAULT_NODE_SIZE);
 		Self {
 			index: gg,
@@ -56,9 +58,9 @@ impl World {
 	}
 
 	pub fn gen_slice(&self, x1: i32, y1: i32, x2: i32, y2: i32) -> String {
-		const max_radius: i32 = 8;
+		const MAX_RADIUS: i32 = 8;
 		let mut result = Vec::new();
-		self.index.range((x1-max_radius) as f64,(y1-max_radius) as f64, (x2+max_radius) as f64, (y2+max_radius) as f64, |id| result.push(id));
+		self.index.range((x1-MAX_RADIUS) as f64,(y1-MAX_RADIUS) as f64, (x2+MAX_RADIUS) as f64, (y2+MAX_RADIUS) as f64, |id| result.push(id));
 		let w: usize = (x2 - x1).try_into().unwrap();
 		let h: usize = (y2 - y1).try_into().unwrap();
 

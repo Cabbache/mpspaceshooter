@@ -1,4 +1,4 @@
-import init, { Trajectory, UpdateType, getbody, num_bodies, get_shop_item, num_shop_items, World } from './pkg/utils.js';
+import init, { Trajectory, UpdateType, UpdateTypeWrapper, getbody, num_bodies, get_shop_item, num_shop_items, World } from './pkg/utils.js';
 async function runAll(){
 	await init();
 
@@ -486,7 +486,11 @@ async function runAll(){
 			if (content["time"] < Number(gameState[broadcaster].p.trajectory.time)) {
 				console.error(`update is in the past`);
 			}
-			gameState[broadcaster].p.trajectory.insert_update(UpdateType[content.change], content["at"], BigInt(content["time"]));
+			gameState[broadcaster].p.trajectory.insert_update(
+				new UpdateTypeWrapper(UpdateType[content.change], null),
+				content["at"],
+				BigInt(content["time"])
+			);
 		}
 
 		const change_propulsion_emitter = (pid, is_emitting) => {
@@ -584,7 +588,7 @@ async function runAll(){
 
 			spawn_hit_emitter(shallow_copy.x, shallow_copy.y, line_rotation);
 
-			gameState[content.victim.id].p.trajectory.apply_change(UpdateType["Bullet"]);
+			gameState[content.victim.id].p.trajectory.apply_change(new UpdateTypeWrapper(UpdateType["Bullet"], 10));
 			if (content.victim.id == public_id) { //if you got hit
 				update_healthbar(gameState[content.victim.id].p.trajectory.health);
 			}
@@ -744,12 +748,13 @@ async function runAll(){
 		function perform_update(utype) {
 			const chAt = gameState[public_id].p.trajectory.hash_str();
 			const time = Number(gameState[public_id].p.trajectory.time);
-			gameState[public_id].p.trajectory.apply_change(UpdateType[utype]);
+			const wrapper_obj = new UpdateTypeWrapper(UpdateType[utype]);
+			gameState[public_id].p.trajectory.apply_change(wrapper_obj);
 			socket.send(
 				JSON.stringify({
 					"t":"TrajectoryUpdate",
 					"c":{
-						"change": utype,
+						"change": {"utype": utype},
 						"at": chAt,
 						"time": time,
 					 }

@@ -121,7 +121,7 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 			).await; //broadcast playerjoin
 		},
 		ClientMessage::TrajectoryUpdate {change, time, at} => {
-			let cost = get_cost(change.clone());
+			let cost = get_cost(change.clone().utype);
 			if state.cash < cost {
 				eprintln!("{} attempted to buy something without enough cash", public_id);
 				return Ok(());
@@ -228,7 +228,12 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 						} else {
 							let victim_state = {
 								let mut victim_writer = player.state.write().await;
-								victim_writer.trajectory.apply_change(UpdateType::Bullet);
+								victim_writer.trajectory.apply_change(
+									UpdateTypeWrapper {
+										utype: UpdateType::Bullet,
+										value: Some(25u8),
+									}
+								);
 								if victim_writer.trajectory.health == 0 {
 									victim_writer.trajectory.advance(time_now + 5000); //so that loot is dropped there
 								}
@@ -242,8 +247,8 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 									y: victim_state.trajectory.pos.y,
 									loot: match rng.gen_range(0..101){
 										0..=25 => LootContent::Cash(victim_state.cash / 2),
-										25..=50 => LootContent::PistolAmmo(15),
-										50..=75 => LootContent::Health(30),
+										26..=50 => LootContent::PistolAmmo(15),
+										51..=75 => LootContent::Health(30),
 										_ => LootContent::SpeedBoost,
 									}
 								};
@@ -276,7 +281,7 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 				Some(loot_obj) => {
 					let pp = {
 						let mut writable = sender_state.write().await;
-						writable.trajectory.advance(time_now);
+						writable.trajectory.advance(time_now); //this may be problematic
 						writable.trajectory.pos.clone()
 					};
 					if (pp.y - loot_obj.y).powi(2) + (pp.x - loot_obj.x).powi(2) > LOOT_RADIUS.powi(2){
@@ -302,6 +307,12 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 									weapon.ammo += amount;
 								}
 							},
+							LootContent::Health(health) => {
+								pstate_writer.trajectory.apply_change(UpdateTypeWrapper {
+									utype: UpdateType::Health,
+									value: Some(health),
+								});
+							}
 							LootContent::SpeedBoost => {
 							}
 						}

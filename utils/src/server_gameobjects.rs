@@ -8,7 +8,7 @@ use crate::shared_gameobjects::ShopItemId;
 pub enum LootContent{
 	Cash(u32),
 	PistolAmmo(u32),
-	Health(u32),
+	Health(u8),
 	SpeedBoost,
 }
 
@@ -138,7 +138,7 @@ pub struct ShootInfo {
 pub enum ClientMessage{
 	Ping,
 	AckPong,
-	TrajectoryUpdate {change: UpdateType, at: String, time: u64},
+	TrajectoryUpdate {change: UpdateTypeWrapper, at: String, time: u64},
 	ChangeSlot {slot: u8},
 	ClaimLoot {loot_id: String},
 	Correct(String),
@@ -158,7 +158,7 @@ pub enum ServerMessage{
 		pstates: Vec<PlayerState>,
 		worldloot: HashMap<String, LootObject>,
 	},
-	TrajectoryUpdate {change: UpdateType, time: u64, at: String, from: String},
+	TrajectoryUpdate {change: UpdateTypeWrapper, time: u64, at: String, from: String},
 	Shoot(ShootInfo),
 	PlayerDeath {loot: Option<LootDrop>, from: String },
 	LootCollected {loot_id: String, collector: String },

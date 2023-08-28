@@ -49,7 +49,7 @@ const TWOPI: f32 = 2f32*PI;
 const HALFPI: f32 = PI/2f32;
 
 pub const PLAYER_RADIUS: f32 = 25.0;
-const DOME_RADIUS: f32 = 6000.0;
+pub const DOME_RADIUS: f32 = 6000.0;
 const ACCELERATION: f32 = 200.0; //player acceleration
 const PROPEL_DIRECTION: f32 = -HALFPI;
 const RADIANS_PER_SECOND: f32 = PI; //player rotation speed
@@ -120,7 +120,7 @@ pub struct Trajectory{
 	updates: VecDeque<TrajectoryUpdate>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 #[wasm_bindgen]
 pub enum UpdateType {
 	RotStop,
@@ -130,6 +130,22 @@ pub enum UpdateType {
 	PropOff,
 	AddBoost,
 	Bullet,
+	Health,
+}
+
+#[wasm_bindgen]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct UpdateTypeWrapper { //because wasm-bindgen doesn't support enums with values
+	pub utype: UpdateType,
+	pub value: Option<u8>
+}
+
+#[wasm_bindgen]
+impl UpdateTypeWrapper {
+	#[wasm_bindgen(constructor)]
+	pub fn new(utype: UpdateType, value: Option<u8>) -> Self {
+		Self {utype,value}
+	}
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -137,7 +153,7 @@ pub enum UpdateType {
 struct TrajectoryUpdate {
 	time: u64,
 	hash: String,
-	change: UpdateType,
+	change: UpdateTypeWrapper,
 }
 
 impl Trajectory {
@@ -216,7 +232,7 @@ impl Trajectory {
 	}
 
 	#[cfg(not(target_arch = "wasm32"))]
-	pub fn update(&mut self, change: UpdateType, hash: String, update_time: u64, time: u64) -> bool {
+	pub fn update(&mut self, change: UpdateTypeWrapper, hash: String, update_time: u64, time: u64) -> bool {
 		if update_time < self.time {
 			eprintln!("Update is in the past!");
 			return false;
@@ -344,7 +360,7 @@ impl Trajectory {
 	}
 
 	#[cfg(target_arch = "wasm32")]
-	pub fn insert_update(&mut self, change: UpdateType, hash: String, time: u64) -> bool { //true if not in the past
+	pub fn insert_update(&mut self, change: UpdateTypeWrapper, hash: String, time: u64) -> bool { //true if not in the past
 		if self.time > time {
 			return false;
 		}
@@ -408,15 +424,16 @@ impl Trajectory {
 		format!("{:x}", hasher.finish())
 	}
 
-	pub fn apply_change(&mut self, change: UpdateType){
-		match change {
+	pub fn apply_change(&mut self, change: UpdateTypeWrapper){
+		match change.utype {
 			UpdateType::RotStop => {self.spin_direction = 0;},
 			UpdateType::RotCw => {self.spin_direction = 1;},
 			UpdateType::RotCcw => {self.spin_direction = -1;},
 			UpdateType::PropOn => {self.propelling = true;},
 			UpdateType::PropOff => {self.propelling = false;},
 			UpdateType::AddBoost => {self.boosters += 1;},
-			UpdateType::Bullet => {self.health = self.health.saturating_sub(30);},
+			UpdateType::Bullet => {self.health = self.health.saturating_sub(change.value.unwrap_or(0));},
+			UpdateType::Health => {self.health = self.health.saturating_add(change.value.unwrap_or(0));},
 		}
 	}
 }
