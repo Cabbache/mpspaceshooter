@@ -148,6 +148,7 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 					&clr,
 				).await;
 			} else { //if rejected, correct the client
+				println!("Correcting");
 				if let Some(client) = clr.get(&public_id) {
 					client.transmit(
 						&ServerMessage::Correct{id: public_id.clone(), tr: updated_trajectory.to_b64()},

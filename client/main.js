@@ -1,4 +1,4 @@
-import init, { Trajectory, UpdateType, UpdateTypeWrapper, getbody, num_bodies, get_shop_item, num_shop_items, World } from './pkg/utils.js';
+import init, { Trajectory, UpdateType, UpdateTypeWrapper, getbody, num_bodies, get_shop_item, num_shop_items, dome_radius, World } from './pkg/utils.js';
 async function runAll(){
 	await init();
 
@@ -156,7 +156,6 @@ async function runAll(){
 		const bullet_distance = 500;
 		const player_speed = 200;
 		const player_radius = 25;
-		const dome_radius = 6000;
 		const fadeRate = 2;
 		const rotation_speed = PI;
 
@@ -203,9 +202,7 @@ async function runAll(){
 			if (cache_key in bg_cache){
 				return bg_cache[cache_key];
 			}
-			console.log(`${tilex*bg_w},${tiley*bg_h},${(tilex+1)*bg_w},${(tiley+1)*bg_h}`);
 			let b64data = bb.gen_slice(tilex*bg_w,tiley*bg_h,(tilex+1)*bg_w,(tiley+1)*bg_h);
-			console.log(`b64len: ${b64data.length}`);
 			const tmp_img = document.createElement('img');
 			tmp_img.src = 'data:image/png;base64,' + b64data;
 			const texture = new PIXI.Texture(new PIXI.BaseTexture(tmp_img));
@@ -245,7 +242,7 @@ async function runAll(){
 
 		const worldMask = new PIXI.Graphics();
 		worldMask.beginFill(0xffffff);
-		worldMask.drawCircle(0,0,dome_radius);
+		worldMask.drawCircle(0,0,dome_radius());
 		worldMask.endFill();
 
 		world.addChild(players_container);
@@ -508,6 +505,7 @@ async function runAll(){
 		}
 
 		const handle_update = function(content){
+			console.log(content);
 			let broadcaster = content["from"];
 			if (broadcaster == public_id)
 				return;
@@ -515,11 +513,13 @@ async function runAll(){
 			if (content["time"] < Number(gameState[broadcaster].p.trajectory.time)) {
 				console.error(`update is in the past`);
 			}
-			gameState[broadcaster].p.trajectory.insert_update(
+			if (!gameState[broadcaster].p.trajectory.insert_update(
 				new UpdateTypeWrapper(UpdateType[content.change], null),
 				content["at"],
 				BigInt(content["time"])
-			);
+			)) {
+				console.error("Update insertion failed");
+			}
 		}
 
 		const change_propulsion_emitter = (pid, is_emitting) => {
@@ -617,7 +617,7 @@ async function runAll(){
 
 			spawn_hit_emitter(shallow_copy.x, shallow_copy.y, line_rotation);
 
-			gameState[content.victim.id].p.trajectory.apply_change(new UpdateTypeWrapper(UpdateType["Bullet"], 10));
+			gameState[content.victim.id].p.trajectory.apply_change(new UpdateTypeWrapper(UpdateType["Bullet"], 25));
 			if (content.victim.id == public_id) { //if you got hit
 				update_healthbar(gameState[content.victim.id].p.trajectory.health);
 			}

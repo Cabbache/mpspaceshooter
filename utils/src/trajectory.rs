@@ -49,13 +49,15 @@ const TWOPI: f32 = 2f32*PI;
 const HALFPI: f32 = PI/2f32;
 
 pub const PLAYER_RADIUS: f32 = 25.0;
-pub const DOME_RADIUS: f32 = 6000.0;
+pub const DOME_RADIUS: f32 = 12000.0;
+
 const ACCELERATION: f32 = 200.0; //player acceleration
 const PROPEL_DIRECTION: f32 = -HALFPI;
 const RADIANS_PER_SECOND: f32 = PI; //player rotation speed
 const G: f32 = 2000.0; //Gravitational constant
 const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 
+//const REGEN: 
 const TIMESTEP_FPS: u32 = 10;
 
 //Calculated
@@ -545,4 +547,10 @@ pub fn getbody(index: usize) -> Option<Body> {
 #[cfg(target_arch = "wasm32")]
 pub fn num_bodies() -> usize {
 	BODIES.len()
+}
+
+#[wasm_bindgen]
+#[cfg(target_arch = "wasm32")]
+pub fn dome_radius() -> f32 {
+	DOME_RADIUS
 }
