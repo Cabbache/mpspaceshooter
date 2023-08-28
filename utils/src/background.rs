@@ -74,7 +74,6 @@ impl World {
 			let radius: u8 = ((pty as u8 & 0x01 & ptx as u8 & (ptx as u8 >> 3)) << 2) |
 			(ptx as u8 & 0x02) | ((pty as u8 & 0x02) >> 1);
 			let (ptx, pty) = (ptx - x1, pty - y1);
-			console_log!("xyr: {} {} {}", ptx, pty, radius);
 			for a in 0..(radius as i32) {
 				if (ptx+a) >= w as i32 || (ptx+a) < 0 {
 					continue
@@ -83,7 +82,6 @@ impl World {
 					if (pty+b) >= h as i32 || (pty+b) < 0{
 						continue
 					}
-					console_log!("xy in: {} {}", ptx+a, pty+b);
 					let base = (ptx+a) as usize + w*(pty+b) as usize;
 					raw_rgb_data[3*base + 0] = rr;
 					raw_rgb_data[3*base + 1] = gg;
@@ -95,6 +93,7 @@ impl World {
 
 		PngEncoder::new(&mut output)
 		.encode(&raw_rgb_data, w.try_into().unwrap(), h.try_into().unwrap(), image::ColorType::Rgb8)
+		//.encode(&raw_rgb_data, w, h, image::ColorType::Rgb8)
 		.expect("Failed to encode to JPEG");
 
 		general_purpose::STANDARD.encode(output)

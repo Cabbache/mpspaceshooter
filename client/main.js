@@ -161,8 +161,12 @@ async function runAll(){
 		const rotation_speed = PI;
 
 		const background_scale = 4;
-		const bg_w = 600;
-		const bg_h = 450;
+		//const bg_w = 600;
+		//const bg_h = 450;
+		const bg_w = 200;
+		const bg_h = 150;
+		const bg_ht = 4;
+		const bg_vt = 4;
 
 		const healthbar_maxwidth = 0.15; //This gets multiplied by the  screen width
 
@@ -173,14 +177,13 @@ async function runAll(){
 
 		PIXI.settings.SPRITE_MAX_TEXTURES = 1; //supposidely improves performance
 		const app = new PIXI.Application({
-				width: window.innerWidth,
-				height: window.innerHeight,
-				backgroundColor: 0x101510,
+			width: window.innerWidth,
+			height: window.innerHeight,
+			backgroundColor: 0x101510,
 		});
 		const TIMESTEP = 1 / TIMESTEP_FPS;
 
 		let bb = new World();
-		const tmp_img = document.createElement('img');
 
 		let gunshot_texture, pistol_ammo_texture, coins_texture, coins_label_texture, heart_texture, speed_boost_texture;
 		await Promise.all([
@@ -193,19 +196,35 @@ async function runAll(){
 		]);
 		
 		const bg_cache = {};
-		const gen_background = function(tilex, tiley) {
-			if (tilex in bg_cache && tiley in bg_cache[tilex]){
-				console.log("cache hit!");
-				return bg_cache[tilex][tiley];
+		var bg_current_tiles = "";
+		//returns texture at absolute chunk coordinates
+		const get_background_texture = function(tilex, tiley) {
+			const cache_key = tilex + "_" + tiley;
+			if (cache_key in bg_cache){
+				return bg_cache[cache_key];
 			}
+			console.log(`${tilex*bg_w},${tiley*bg_h},${(tilex+1)*bg_w},${(tiley+1)*bg_h}`);
 			let b64data = bb.gen_slice(tilex*bg_w,tiley*bg_h,(tilex+1)*bg_w,(tiley+1)*bg_h);
-			tmp_img.src = 'data:image/jpeg;base64,' + b64data;
+			console.log(`b64len: ${b64data.length}`);
+			const tmp_img = document.createElement('img');
+			tmp_img.src = 'data:image/png;base64,' + b64data;
 			const texture = new PIXI.Texture(new PIXI.BaseTexture(tmp_img));
-			if (!(tilex in bg_cache))
-				bg_cache[tilex] = {}
-			bg_cache[tilex][tiley] = texture;
+			if (!(cache_key in bg_cache))
+				bg_cache[cache_key] = texture;
 		}
-		var background = new PIXI.Sprite();
+
+		//takes absolute center tile and relative tile
+		const update_background_sprite = function(tilex, tiley, rtilex, rtiley) {
+			const key = rtilex + "_" + rtiley;
+			const absolute_x = (tilex + rtilex);
+			const absolute_y = (tiley + rtiley);
+			const bg_t = get_background_texture(absolute_x, absolute_y);
+			//console.log(`${absolute_x}, ${absolute_y}`);
+			//console.log(bg_t?.baseTexture?.resource);
+			backgrounds[key].texture = bg_t;
+			backgrounds[key].x = absolute_x*bg_w*background_scale;
+			backgrounds[key].y = absolute_y*bg_h*background_scale;
+		}
 
 		const world = new PIXI.Container();
 		world.position.set(app.screen.width/2, app.screen.height/2);
@@ -233,9 +252,19 @@ async function runAll(){
 		world.addChild(loot_container);
 		world.addChild(bullets_container);
 		world.addChild(bodies_container);
-		world.addChild(background);
 		world.addChild(worldMask);
 		world.mask = worldMask;
+
+		var backgrounds = {};
+		for (let i = -bg_ht;i < bg_ht;++i){
+			for (let j = -bg_vt;j < bg_vt;++j){
+				const background = new PIXI.Sprite();
+				background.scale.x = background_scale;
+				background.scale.y = background_scale;
+				backgrounds[i+"_"+j] = background; 
+				world.addChild(background);
+			}
+		}
 
 		app.stage.addChild(world);
 
@@ -716,7 +745,8 @@ async function runAll(){
 					gameState[content.collector].p.speed += 1.0;
 				},
 				"Health": () => {
-					//gameState[content.collector].p.health += 1.0;
+					gameState[content.collector].p.trajectory.apply_change(new UpdateTypeWrapper(UpdateType["Health"], loot_value));
+					update_healthbar(gameState[content.collector].p.trajectory.health);
 				}
 			}[loot_type])();
 		}
@@ -905,14 +935,18 @@ async function runAll(){
 				player.child.rotation = lerped.r;
 			});
 
+			coords_text.text = `x: ${Math.round(world.pivot.x)}, y: ${-Math.round(world.pivot.y)}`;
+
 			const tile_x = Math.floor(world.pivot.x / (bg_w*background_scale));
 			const tile_y = Math.floor(world.pivot.y / (bg_h*background_scale));
-			background.texture = gen_background(tile_x, tile_y);
-			background.x = tile_x*bg_w*background_scale;
-			background.y = tile_y*bg_h*background_scale;
-			background.scale.x = background_scale;
-			background.scale.y = background_scale;
-			coords_text.text = `x: ${Math.round(world.pivot.x)}, y: ${-Math.round(world.pivot.y)}`;
+			const tiles_key = tile_x + "_" + tile_y;
+
+			if (tiles_key != bg_current_tiles) {
+				for (let i = -bg_ht;i < bg_ht;++i)
+				for (let j = -bg_vt;j < bg_vt;++j)
+					update_background_sprite(tile_x, tile_y, i, j);
+				bg_current_tiles = tiles_key;
+			}
 
 			for (let i = 0; i < bullets_container.children.length; ++i){
 				bullets_container.children[i].scale.x = Math.max(
