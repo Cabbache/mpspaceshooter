@@ -247,10 +247,9 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 									x: victim_state.trajectory.pos.x,
 									y: victim_state.trajectory.pos.y,
 									loot: match rng.gen_range(0..101){
-										0..=25 => LootContent::Cash(victim_state.cash / 2),
-										26..=50 => LootContent::PistolAmmo(15),
-										51..=75 => LootContent::Health(30),
-										_ => LootContent::SpeedBoost,
+										0..=33 => LootContent::Cash(victim_state.cash / 2),
+										34..=66 => LootContent::PistolAmmo(15),
+										_ => LootContent::Health(30),
 									}
 								};
 								let dropped_loot_uuid = Uuid::new_v4().as_simple().to_string();

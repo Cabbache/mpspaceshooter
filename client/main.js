@@ -669,7 +669,6 @@ async function runAll(){
 				if (content.loot){
 					summon_loot(content.loot.uuid, content.loot.object);
 				}
-				alert("You died!");
 				socket.send(
 					JSON.stringify({
 						"t":"Spawn"
