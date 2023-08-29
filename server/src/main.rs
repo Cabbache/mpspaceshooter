@@ -5,6 +5,9 @@ use std::env;
 use tokio::sync::{mpsc, RwLock};
 use warp::{ws::Message, Filter, Rejection};
 
+//use utils::server_gameobjects::LootContent;
+//use uuid::Uuid;
+
 mod handler;
 mod game;
 mod ws;
@@ -25,6 +28,19 @@ pub struct Client {
 async fn main() {
 	let clients: Clients = Arc::new(RwLock::new(HashMap::new()));
 	let world_loot: WorldLoot = Arc::new(RwLock::new(HashMap::new()));
+//	{
+//		let mut loot_writer = world_loot.write().await;
+//		for x in -150..150 {
+//			loot_writer.insert(
+//				Uuid::new_v4().as_simple().to_string(),
+//				LootObject {
+//					x: (x as f32)*100f32,
+//					y: (x as f32)*100f32,
+//					loot: LootContent::Cash(1),
+//				}
+//			);
+//		}
+//	}
 
 	let health_route = warp::path!("health").and_then(handler::health_handler);
 

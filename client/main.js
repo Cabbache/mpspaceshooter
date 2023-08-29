@@ -164,8 +164,8 @@ async function runAll(){
 		//const bg_h = 450;
 		const bg_w = 200;
 		const bg_h = 150;
-		const bg_ht = 4;
-		const bg_vt = 4;
+		const bg_ht = 8;
+		const bg_vt = 8;
 
 		const healthbar_maxwidth = 0.15; //This gets multiplied by the  screen width
 
@@ -372,15 +372,21 @@ async function runAll(){
 			});
 		};
 
-		const getPlayerSprite = function(player){
+		const getPlayerContainer = function(player){
 			var player_container = new PIXI.Container();
 			player_container.position.set(player.trajectory.pos.x, player.trajectory.pos.y);
 
-			let actualBody = new PIXI.Container();
-			actualBody.rotation = player.trajectory.spin;
 			var text = new PIXI.Text(player.name, { fontFamily: "Arial", fontSize: 16, fill: 0xffffff });
 			text.anchor.set(0.5);
 			text.position.set(0, -60);
+
+			player_container.addChild(text);
+			return player_container;
+		}
+
+		const getPlayerSprite = function(player){
+			let body = new PIXI.Container();
+			body.rotation = player.trajectory.spin;
 
 			let circle = new PIXI.Graphics();
 			circle.beginFill(player.color.r << 16 | player.color.g << 8 | player.color.b);
@@ -411,15 +417,10 @@ async function runAll(){
 			weapon.tint = 0x000000;
 			weapon.position.set(0, -35);
 
-			actualBody.addChild(weapon);
-			actualBody.addChild(thruster);
-			actualBody.addChild(circle);
-			player_container.addChild(actualBody);
-			player_container.addChild(text);
-			return {
-				container: player_container,
-				sprite: actualBody,
-			};
+			body.addChild(weapon);
+			body.addChild(thruster);
+			body.addChild(circle);
+			return body;
 		}
 
 		const getLootSprite = function(lootObj){
@@ -454,22 +455,24 @@ async function runAll(){
 			bodies = [];
 			state.players.forEach((p) => {
 				p.trajectory = new Trajectory(p.trajectory);
-				const square = getPlayerSprite(p);
+				const square = getPlayerContainer(p);
+				const schild = getPlayerSprite(p);
+				square.addChild(schild);
 				if (p.id == public_id) {
-					square.container.x = app.screen.width/2;
-					square.container.y = app.screen.height/2;
+					square.x = app.screen.width/2;
+					square.y = app.screen.height/2;
 					world.pivot.x = p.trajectory.pos.x;
 					world.pivot.y = p.trajectory.pos.y;
-					app.stage.addChild(square.container);
+					app.stage.addChild(square);
 					ammo_text.text = p.inventory.weapons[0].ammo;
 					cash_text.text = p.cash;
 				} else {
-					players_container.addChild(square.container);
+					players_container.addChild(square);
 				}
 
 				gameState[p.id] = {
-					graphics: square.container,
-					child: square.sprite,
+					graphics: square,
+					child: schild,
 					p: p
 				};
 			});	
@@ -647,11 +650,13 @@ async function runAll(){
 				//update cash bar
 				cash_text.text = content.cash;
 			} else {
-				const square = getPlayerSprite(content);
-				players_container.addChild(square.container);
+				const square = getPlayerContainer(content);
+				const schild = getPlayerSprite(content);
+				square.addChild(schild);
+				players_container.addChild(square);
 				gameState[content.id] = {
-					graphics: square.container,
-					child: square.sprite,
+					graphics: square,
+					child: schild,
 					p: content
 				};
 			}
