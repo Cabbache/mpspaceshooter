@@ -506,7 +506,6 @@ async function runAll(){
 		}
 
 		const handle_update = function(content){
-			console.log(content);
 			let broadcaster = content["from"];
 			if (broadcaster == public_id)
 				return;
@@ -781,8 +780,6 @@ async function runAll(){
 			const chAt = gameState[public_id].p.trajectory.hash_str();
 			const time = Number(gameState[public_id].p.trajectory.time);
 			const wrapper_obj = new UpdateTypeWrapper(UpdateType[utype]);
-			console.log(wrapper_obj);
-			console.log("^^");
 			gameState[public_id].p.trajectory.apply_change(wrapper_obj);
 			socket.send(
 				JSON.stringify({
