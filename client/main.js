@@ -208,6 +208,7 @@ async function runAll(){
 			const texture = new PIXI.Texture(new PIXI.BaseTexture(tmp_img));
 			if (!(cache_key in bg_cache))
 				bg_cache[cache_key] = texture;
+			return texture;
 		}
 
 		//takes absolute center tile and relative tile
