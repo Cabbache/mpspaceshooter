@@ -146,7 +146,10 @@ pub struct UpdateTypeWrapper { //because wasm-bindgen doesn't support enums with
 impl UpdateTypeWrapper {
 	#[wasm_bindgen(constructor)]
 	pub fn new(utype: UpdateType, value: Option<u8>) -> Self {
-		Self {utype,value}
+		Self {
+			utype: utype,
+			value: value,
+		}
 	}
 }
 
@@ -348,6 +351,13 @@ impl Trajectory {
 
 	#[cfg(target_arch = "wasm32")]
 	pub fn lerp(&self, time: u64) -> State {
+		if time < self.time {
+			return State {
+				x: self.pos.x,
+				y: self.pos.y,
+				r: self.spin,
+			};
+		}
 		let delta_millis = time - self.time;
 		let delta_secs = delta_millis as f32 / 1000f32;
 		State {
@@ -366,6 +376,7 @@ impl Trajectory {
 		if self.time > time {
 			return false;
 		}
+		console_log!("{:?}", change);
 		self.updates.push_back(
 			TrajectoryUpdate {
 				time: time,

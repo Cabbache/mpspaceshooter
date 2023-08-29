@@ -514,8 +514,9 @@ async function runAll(){
 			if (content["time"] < Number(gameState[broadcaster].p.trajectory.time)) {
 				console.error(`update is in the past`);
 			}
+			const wrapper = new UpdateTypeWrapper(UpdateType[content.change.utype], content.change.value);
 			if (!gameState[broadcaster].p.trajectory.insert_update(
-				new UpdateTypeWrapper(UpdateType[content.change], null),
+				wrapper,
 				content["at"],
 				BigInt(content["time"])
 			)) {
@@ -780,6 +781,8 @@ async function runAll(){
 			const chAt = gameState[public_id].p.trajectory.hash_str();
 			const time = Number(gameState[public_id].p.trajectory.time);
 			const wrapper_obj = new UpdateTypeWrapper(UpdateType[utype]);
+			console.log(wrapper_obj);
+			console.log("^^");
 			gameState[public_id].p.trajectory.apply_change(wrapper_obj);
 			socket.send(
 				JSON.stringify({
@@ -931,6 +934,13 @@ async function runAll(){
 				}
 
 				const lerped = player.p.trajectory.lerp(BigInt(now));
+				
+				if (lerped.x > 20000 || lerped.x < -20000) {
+					console.log("<large numbers>");
+					console.log(lerped);
+					console.log(player.p.trajectory);
+				}
+
 				shallow_copy.x = lerped.x;
 				shallow_copy.y = lerped.y;
 				player.child.rotation = lerped.r;

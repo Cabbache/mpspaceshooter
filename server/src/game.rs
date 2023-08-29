@@ -198,8 +198,8 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 			if sender_state.read().await.clone().inventory.selection != slot
 				{ sender_state.write().await.inventory.selection = slot; }
 		},
-		ClientMessage::Shoot(mut shootInfo) => {
-			println!("{:?}", shootInfo);
+		ClientMessage::Shoot(mut shoot_info) => {
+			println!("{:?}", shoot_info);
 			let weapon_selected = state.inventory.weapons.get(
 				&state.inventory.selection
 			).unwrap().clone();
@@ -217,9 +217,9 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 				state = writeable.clone();
 			}
 
-			shootInfo.shooter = Some(public_id);
+			shoot_info.shooter = Some(public_id);
 
-			shootInfo.victim = match shootInfo.victim.clone() {
+			shoot_info.victim = match shoot_info.victim.clone() {
 				None => None,
 				Some(mut victim) => match clr.get(&victim.id) {
 					None => None, //Malicious behavior
@@ -271,7 +271,7 @@ pub async fn handle_game_message(public_id: String, message: &str, clients: &Cli
 				}
 			};
 
-			broadcast(&ServerMessage::Shoot(shootInfo), &clr).await;
+			broadcast(&ServerMessage::Shoot(shoot_info), &clr).await;
 		},
 		ClientMessage::ClaimLoot { loot_id } => {
 			let loot_thing = {
