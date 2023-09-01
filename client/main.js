@@ -96,6 +96,14 @@ async function runAll(){
 	})();
 
 	async function runClient(player_nick, player_color){
+		const update_player_sprite = function(pid) {
+			gameState[pid].graphics.removeChild(gameState[pid].child);
+			delete gameState[pid].child;
+			let new_sprite = getPlayerSprite(gameState[pid].p);
+			gameState[pid].graphics.addChild(new_sprite);
+			gameState[pid].child = new_sprite;
+		}
+
 		const items_div = document.getElementById("shop-items");
 		for (let i = 0;i < num_shop_items(); ++i){
 			let item = get_shop_item(i);
@@ -106,12 +114,12 @@ async function runAll(){
 			buy_btn.addEventListener('click', () => {
 				console.log(`buy ${item.display_name()} ${item.id}`);
 				if (gameState[public_id].p.cash < item.cost){
-					alert("Not enough money");
 					return;
 				}
 				gameState[public_id].p.cash -= item.cost;
 				cash_text.text = gameState[public_id].p.cash;
 				perform_update("AddBoost");
+				update_player_sprite(public_id);
 			});
 		}
 
@@ -388,27 +396,6 @@ async function runAll(){
 			let body = new PIXI.Container();
 			body.rotation = player.trajectory.spin;
 
-			let circle = new PIXI.Graphics();
-			circle.beginFill(player.color.r << 16 | player.color.g << 8 | player.color.b);
-			circle.drawCircle(0, 0, 25);
-			circle.endFill();
-			let circleTexture = app.renderer.generateTexture(circle);
-			circle = new PIXI.Sprite(circleTexture);
-			circle.anchor.set(0.5);
-
-			let thruster = new PIXI.Graphics();
-			thruster.beginFill(0x808080);
-			thruster.drawPolygon([
-				-20,0,
-				20,0,
-				0,-30,
-			]);
-			thruster.endFill();
-			let thrusterTexture = app.renderer.generateTexture(thruster)
-			thruster = new PIXI.Sprite(thrusterTexture);
-			thruster.anchor.set(0.5);
-			thruster.position.set(0, 20);
-
 			let weapon = new PIXI.Sprite(PIXI.Texture.WHITE);
 			weapon.anchor.set(0.5);
 			weapon.width = 5;
@@ -416,9 +403,42 @@ async function runAll(){
 			weapon.anchor.set(0.5);
 			weapon.tint = 0x000000;
 			weapon.position.set(0, -35);
-
 			body.addChild(weapon);
-			body.addChild(thruster);
+
+			function gen_thruster(){
+				let thruster = new PIXI.Graphics();
+				thruster.beginFill(0x808080);
+				thruster.drawPolygon([
+					-15,0,
+					15,0,
+					0,-22,
+				]);
+				thruster.endFill();
+				let thrusterTexture = app.renderer.generateTexture(thruster)
+				thruster = new PIXI.Sprite(thrusterTexture);
+				thruster.anchor.set(0.5);
+				return thruster;
+			}
+			if (player.trajectory.boosters == 1) {
+				let thruster = gen_thruster();
+				thruster.position.set(0, 20);
+				body.addChild(thruster);
+			} else if (player.trajectory.boosters == 2) {
+				let thruster1 = gen_thruster();
+				let thruster2 = gen_thruster();
+				thruster1.position.set(-15, 20);
+				thruster2.position.set(15, 20);
+				body.addChild(thruster1);
+				body.addChild(thruster2);
+			}
+
+			let circle = new PIXI.Graphics();
+			circle.beginFill(player.color.r << 16 | player.color.g << 8 | player.color.b);
+			circle.drawCircle(0, 0, 25);
+			circle.endFill();
+			let circleTexture = app.renderer.generateTexture(circle);
+			circle = new PIXI.Sprite(circleTexture);
+			circle.anchor.set(0.5);
 			body.addChild(circle);
 			return body;
 		}
@@ -634,6 +654,7 @@ async function runAll(){
 				world.pivot.x = content.trajectory.pos.x;
 				world.pivot.y = content.trajectory.pos.y;
 				gameState[public_id].p = content;
+				update_player_sprite(public_id);
 				gameState[public_id].child.rotation = content.trajectory.spin;
 				
 				//update coords text
@@ -668,7 +689,6 @@ async function runAll(){
 		}
 
 		const handle_playerdeath = function(content){
-			console.log(content);
 			const is_self = content.from == public_id;
 			if (is_self){
 				if (content.loot){
@@ -913,12 +933,22 @@ async function runAll(){
 					player.p.trajectory.advance(BigInt(server_time()), false);
 					return;
 				}
+
 				const ptime = BigInt(server_time() - (50 + current_rtt));
-				if (player.p.trajectory.advance(ptime, false)){
-					change_propulsion_emitter(pid, player.p.trajectory.propelling);
-				} else {
+
+				let result = player.p.trajectory.advance(ptime, false);
+				if (!result) {
 					socket.send(JSON.stringify({"t": "Correct", "c": pid}));
+					return;
 				}
+
+				result = JSON.parse(result);
+				if (result.indexOf("PropOn") !== -1)
+					change_propulsion_emitter(pid, true);
+				else if (result.indexOf("PropOff") !== -1)
+					change_propulsion_emitter(pid, false);
+				else if (result.indexOf("AddBoost") !== -1)
+					update_player_sprite(pid);
 			});
 			
 			Object.values(gameState).forEach(player => {
@@ -936,12 +966,6 @@ async function runAll(){
 
 				const lerped = player.p.trajectory.lerp(BigInt(now));
 				
-				if (lerped.x > 20000 || lerped.x < -20000) {
-					console.log("<large numbers>");
-					console.log(lerped);
-					console.log(player.p.trajectory);
-				}
-
 				shallow_copy.x = lerped.x;
 				shallow_copy.y = lerped.y;
 				player.child.rotation = lerped.r;

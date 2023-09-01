@@ -3,6 +3,7 @@ use std::hash::{Hash, Hasher};
 use wasm_bindgen::prelude::*;
 use std::f32::consts::{PI};
 use serde::{Deserialize,Serialize};
+use serde_json::{to_string, json};
 use base64::{engine::general_purpose, Engine as _};
 
 #[cfg(target_arch = "wasm32")]
@@ -1001,9 +1002,10 @@ impl Trajectory {
 	}
 
 	#[cfg(target_arch = "wasm32")]
-	pub fn advance(&mut self, time: u64) -> bool { //true if successful
+	pub fn advance(&mut self, time: u64) -> Option<String> {
+		let mut changes: Vec<UpdateType> = Vec::new();
 		if time <= self.time {
-			return true;
+			return Some(serde_json::to_string(&changes).expect("Failed to serialize to JSON"));
 		}
 		let elapsed = (time - self.time) as u32;
 		let steps = elapsed / TIMESTEP_MILLIS;
@@ -1015,8 +1017,9 @@ impl Trajectory {
 					}
 					if next_update.hash != self.hash_str() {
 						console_log!("Hash mismatch! request was {} but got {}", next_update.hash, self.hash_str());
-						return false;
+						return None;
 					}
+					changes.push(next_update.change.utype);
 					self.apply_change(next_update.change);
 					self.updates.pop_front();
 				} else {
@@ -1025,7 +1028,7 @@ impl Trajectory {
 			}
 			self.step();
 		}
-		true
+		Some(serde_json::to_string(&changes).expect("Failed to serialize to JSON"))
 	}
 
 	#[cfg(target_arch = "wasm32")]
@@ -1055,7 +1058,6 @@ impl Trajectory {
 		if self.time > time {
 			return false;
 		}
-		console_log!("{:?}", change);
 		self.updates.push_back(
 			TrajectoryUpdate {
 				time: time,
