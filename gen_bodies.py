@@ -1,13 +1,13 @@
 from random import randint
 
-min_x = -10000
-max_x = 10000
-min_y = -10000
-max_y = 10000
+min_x = -5000
+max_x = 5000
+min_y = -5000
+max_y = 5000
 min_r = 50
-max_r = 250
+max_r = 150
 
-for x in range(100):
+for x in range(25):
 	print("	Body {")
 	print("		pos: Vector{")
 	print(f"			x: {randint(min_x, max_x)}.0,")

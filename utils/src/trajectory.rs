@@ -50,7 +50,7 @@ const TWOPI: f32 = 2f32*PI;
 const HALFPI: f32 = PI/2f32;
 
 pub const PLAYER_RADIUS: f32 = 25.0;
-pub const DOME_RADIUS: f32 = 12000.0;
+pub const DOME_RADIUS: f32 = 6000.0;
 
 const ACCELERATION: f32 = 200.0; //player acceleration
 const PROPEL_DIRECTION: f32 = -HALFPI;
@@ -73,706 +73,181 @@ const SPAWN_PULL_MAX: f32 = 2.0; //Maximum gravity pull at spawn point
 #[cfg(not(target_arch = "wasm32"))]
 const MAX_TIME_AHEAD: u64 = 300; //300
 
-pub const BODIES: [Body; 100] = [
+pub const BODIES: [Body; 25] = [
 	Body {
 		pos: Vector{
-			x: -3136.0,
-			y: 4769.0,
-		},
-		radius: 180.0
-	},
-	Body {
-		pos: Vector{
-			x: -6405.0,
-			y: -3068.0,
-		},
-		radius: 220.0
-	},
-	Body {
-		pos: Vector{
-			x: 2529.0,
-			y: 2281.0,
-		},
-		radius: 126.0
-	},
-	Body {
-		pos: Vector{
-			x: 959.0,
-			y: -8591.0,
-		},
-		radius: 50.0
-	},
-	Body {
-		pos: Vector{
-			x: -8826.0,
-			y: -1129.0,
-		},
-		radius: 70.0
-	},
-	Body {
-		pos: Vector{
-			x: 8301.0,
-			y: -6644.0,
-		},
-		radius: 189.0
-	},
-	Body {
-		pos: Vector{
-			x: -6314.0,
-			y: 574.0,
-		},
-		radius: 226.0
-	},
-	Body {
-		pos: Vector{
-			x: -9668.0,
-			y: 3578.0,
-		},
-		radius: 199.0
-	},
-	Body {
-		pos: Vector{
-			x: -3909.0,
-			y: -2846.0,
-		},
-		radius: 167.0
-	},
-	Body {
-		pos: Vector{
-			x: 5546.0,
-			y: 5313.0,
-		},
-		radius: 203.0
-	},
-	Body {
-		pos: Vector{
-			x: -7781.0,
-			y: 9272.0,
-		},
-		radius: 191.0
-	},
-	Body {
-		pos: Vector{
-			x: 7198.0,
-			y: 1724.0,
-		},
-		radius: 154.0
-	},
-	Body {
-		pos: Vector{
-			x: 3090.0,
-			y: -6938.0,
-		},
-		radius: 191.0
-	},
-	Body {
-		pos: Vector{
-			x: 3469.0,
-			y: 5252.0,
-		},
-		radius: 130.0
-	},
-	Body {
-		pos: Vector{
-			x: -3765.0,
-			y: -1602.0,
-		},
-		radius: 126.0
-	},
-	Body {
-		pos: Vector{
-			x: -6671.0,
-			y: 8253.0,
-		},
-		radius: 107.0
-	},
-	Body {
-		pos: Vector{
-			x: -9815.0,
-			y: 4216.0,
-		},
-		radius: 93.0
-	},
-	Body {
-		pos: Vector{
-			x: 5313.0,
-			y: -4851.0,
-		},
-		radius: 212.0
-	},
-	Body {
-		pos: Vector{
-			x: -7080.0,
-			y: -8789.0,
-		},
-		radius: 159.0
-	},
-	Body {
-		pos: Vector{
-			x: 9149.0,
-			y: -1318.0,
-		},
-		radius: 108.0
-	},
-	Body {
-		pos: Vector{
-			x: -931.0,
-			y: -3439.0,
-		},
-		radius: 250.0
-	},
-	Body {
-		pos: Vector{
-			x: 319.0,
-			y: -9557.0,
-		},
-		radius: 233.0
-	},
-	Body {
-		pos: Vector{
-			x: -4650.0,
-			y: -6477.0,
-		},
-		radius: 70.0
-	},
-	Body {
-		pos: Vector{
-			x: -8701.0,
-			y: 105.0,
-		},
-		radius: 189.0
-	},
-	Body {
-		pos: Vector{
-			x: 5664.0,
-			y: 1085.0,
-		},
-		radius: 73.0
-	},
-	Body {
-		pos: Vector{
-			x: 645.0,
-			y: -8797.0,
-		},
-		radius: 105.0
-	},
-	Body {
-		pos: Vector{
-			x: -9993.0,
-			y: 3631.0,
+			x: -2142.0,
+			y: 1319.0,
 		},
 		radius: 82.0
 	},
 	Body {
 		pos: Vector{
-			x: 4440.0,
-			y: 4571.0,
+			x: 593.0,
+			y: 1712.0,
 		},
-		radius: 100.0
+		radius: 85.0
 	},
 	Body {
 		pos: Vector{
-			x: 3859.0,
-			y: -5532.0,
-		},
-		radius: 206.0
-	},
-	Body {
-		pos: Vector{
-			x: -102.0,
-			y: 9996.0,
-		},
-		radius: 66.0
-	},
-	Body {
-		pos: Vector{
-			x: -2296.0,
-			y: -7498.0,
-		},
-		radius: 237.0
-	},
-	Body {
-		pos: Vector{
-			x: -9863.0,
-			y: 7508.0,
-		},
-		radius: 234.0
-	},
-	Body {
-		pos: Vector{
-			x: -5888.0,
-			y: 5060.0,
-		},
-		radius: 146.0
-	},
-	Body {
-		pos: Vector{
-			x: 5650.0,
-			y: -7879.0,
-		},
-		radius: 189.0
-	},
-	Body {
-		pos: Vector{
-			x: -1139.0,
-			y: -2794.0,
-		},
-		radius: 92.0
-	},
-	Body {
-		pos: Vector{
-			x: -2200.0,
-			y: 4641.0,
-		},
-		radius: 212.0
-	},
-	Body {
-		pos: Vector{
-			x: -3178.0,
-			y: -9673.0,
-		},
-		radius: 111.0
-	},
-	Body {
-		pos: Vector{
-			x: -5523.0,
-			y: -7506.0,
-		},
-		radius: 211.0
-	},
-	Body {
-		pos: Vector{
-			x: -6394.0,
-			y: 8020.0,
-		},
-		radius: 186.0
-	},
-	Body {
-		pos: Vector{
-			x: 7918.0,
-			y: 4865.0,
-		},
-		radius: 131.0
-	},
-	Body {
-		pos: Vector{
-			x: 5869.0,
-			y: -1728.0,
-		},
-		radius: 216.0
-	},
-	Body {
-		pos: Vector{
-			x: 7231.0,
-			y: -7136.0,
-		},
-		radius: 63.0
-	},
-	Body {
-		pos: Vector{
-			x: 1230.0,
-			y: -9690.0,
+			x: 1630.0,
+			y: 4858.0,
 		},
 		radius: 79.0
 	},
 	Body {
 		pos: Vector{
-			x: -9595.0,
-			y: -9538.0,
-		},
-		radius: 96.0
-	},
-	Body {
-		pos: Vector{
-			x: -1517.0,
-			y: -6934.0,
-		},
-		radius: 95.0
-	},
-	Body {
-		pos: Vector{
-			x: -7996.0,
-			y: 5397.0,
-		},
-		radius: 164.0
-	},
-	Body {
-		pos: Vector{
-			x: -6981.0,
-			y: -4050.0,
-		},
-		radius: 173.0
-	},
-	Body {
-		pos: Vector{
-			x: 3573.0,
-			y: -3394.0,
-		},
-		radius: 240.0
-	},
-	Body {
-		pos: Vector{
-			x: -3741.0,
-			y: 6714.0,
-		},
-		radius: 93.0
-	},
-	Body {
-		pos: Vector{
-			x: -8940.0,
-			y: 8561.0,
-		},
-		radius: 82.0
-	},
-	Body {
-		pos: Vector{
-			x: -6630.0,
-			y: 3195.0,
-		},
-		radius: 111.0
-	},
-	Body {
-		pos: Vector{
-			x: 9441.0,
-			y: -3452.0,
-		},
-		radius: 222.0
-	},
-	Body {
-		pos: Vector{
-			x: -7789.0,
-			y: -8423.0,
-		},
-		radius: 217.0
-	},
-	Body {
-		pos: Vector{
-			x: 77.0,
-			y: -6083.0,
-		},
-		radius: 126.0
-	},
-	Body {
-		pos: Vector{
-			x: -1488.0,
-			y: 9881.0,
-		},
-		radius: 214.0
-	},
-	Body {
-		pos: Vector{
-			x: -906.0,
-			y: 9898.0,
-		},
-		radius: 126.0
-	},
-	Body {
-		pos: Vector{
-			x: 3787.0,
-			y: -2928.0,
-		},
-		radius: 168.0
-	},
-	Body {
-		pos: Vector{
-			x: 9308.0,
-			y: 4630.0,
-		},
-		radius: 77.0
-	},
-	Body {
-		pos: Vector{
-			x: -3066.0,
-			y: -3291.0,
-		},
-		radius: 155.0
-	},
-	Body {
-		pos: Vector{
-			x: 7246.0,
-			y: -8890.0,
-		},
-		radius: 73.0
-	},
-	Body {
-		pos: Vector{
-			x: 8570.0,
-			y: 7114.0,
-		},
-		radius: 149.0
-	},
-	Body {
-		pos: Vector{
-			x: -3925.0,
-			y: -1749.0,
-		},
-		radius: 196.0
-	},
-	Body {
-		pos: Vector{
-			x: 4371.0,
-			y: 6218.0,
-		},
-		radius: 108.0
-	},
-	Body {
-		pos: Vector{
-			x: 4331.0,
-			y: -4754.0,
-		},
-		radius: 244.0
-	},
-	Body {
-		pos: Vector{
-			x: 9945.0,
-			y: -891.0,
-		},
-		radius: 187.0
-	},
-	Body {
-		pos: Vector{
-			x: -2557.0,
-			y: 5473.0,
-		},
-		radius: 102.0
-	},
-	Body {
-		pos: Vector{
-			x: 9606.0,
-			y: -2044.0,
-		},
-		radius: 82.0
-	},
-	Body {
-		pos: Vector{
-			x: -9373.0,
-			y: 9178.0,
-		},
-		radius: 202.0
-	},
-	Body {
-		pos: Vector{
-			x: -2264.0,
-			y: -198.0,
-		},
-		radius: 145.0
-	},
-	Body {
-		pos: Vector{
-			x: -2997.0,
-			y: 6870.0,
-		},
-		radius: 131.0
-	},
-	Body {
-		pos: Vector{
-			x: 2920.0,
-			y: -7550.0,
-		},
-		radius: 167.0
-	},
-	Body {
-		pos: Vector{
-			x: -4559.0,
-			y: -5658.0,
-		},
-		radius: 187.0
-	},
-	Body {
-		pos: Vector{
-			x: 1871.0,
-			y: 9080.0,
-		},
-		radius: 115.0
-	},
-	Body {
-		pos: Vector{
-			x: 276.0,
-			y: 1672.0,
-		},
-		radius: 74.0
-	},
-	Body {
-		pos: Vector{
-			x: 9006.0,
-			y: -6018.0,
-		},
-		radius: 59.0
-	},
-	Body {
-		pos: Vector{
-			x: -6771.0,
-			y: 7687.0,
-		},
-		radius: 179.0
-	},
-	Body {
-		pos: Vector{
-			x: 5224.0,
-			y: 3319.0,
-		},
-		radius: 69.0
-	},
-	Body {
-		pos: Vector{
-			x: -8789.0,
-			y: -4801.0,
-		},
-		radius: 79.0
-	},
-	Body {
-		pos: Vector{
-			x: -4635.0,
-			y: 6366.0,
-		},
-		radius: 186.0
-	},
-	Body {
-		pos: Vector{
-			x: 1087.0,
-			y: 9336.0,
-		},
-		radius: 235.0
-	},
-	Body {
-		pos: Vector{
-			x: 3980.0,
-			y: -3843.0,
-		},
-		radius: 183.0
-	},
-	Body {
-		pos: Vector{
-			x: -9131.0,
-			y: 414.0,
-		},
-		radius: 187.0
-	},
-	Body {
-		pos: Vector{
-			x: 2599.0,
-			y: -9358.0,
-		},
-		radius: 229.0
-	},
-	Body {
-		pos: Vector{
-			x: -5014.0,
-			y: -1624.0,
-		},
-		radius: 219.0
-	},
-	Body {
-		pos: Vector{
-			x: 2518.0,
-			y: 1125.0,
-		},
-		radius: 131.0
-	},
-	Body {
-		pos: Vector{
-			x: -7227.0,
-			y: -6899.0,
-		},
-		radius: 53.0
-	},
-	Body {
-		pos: Vector{
-			x: 166.0,
-			y: 7927.0,
-		},
-		radius: 203.0
-	},
-	Body {
-		pos: Vector{
-			x: -9108.0,
-			y: -4844.0,
-		},
-		radius: 86.0
-	},
-	Body {
-		pos: Vector{
-			x: 2649.0,
-			y: 7360.0,
-		},
-		radius: 196.0
-	},
-	Body {
-		pos: Vector{
-			x: -6710.0,
-			y: -7862.0,
-		},
-		radius: 152.0
-	},
-	Body {
-		pos: Vector{
-			x: -9116.0,
-			y: 6702.0,
-		},
-		radius: 222.0
-	},
-	Body {
-		pos: Vector{
-			x: 5493.0,
-			y: 4757.0,
-		},
-		radius: 193.0
-	},
-	Body {
-		pos: Vector{
-			x: -9999.0,
-			y: -1051.0,
-		},
-		radius: 238.0
-	},
-	Body {
-		pos: Vector{
-			x: -9154.0,
-			y: -5786.0,
-		},
-		radius: 105.0
-	},
-	Body {
-		pos: Vector{
-			x: 1135.0,
-			y: -6791.0,
+			x: 1123.0,
+			y: -4422.0,
 		},
 		radius: 142.0
 	},
 	Body {
 		pos: Vector{
-			x: -3819.0,
-			y: 8999.0,
+			x: -4643.0,
+			y: 2987.0,
 		},
-		radius: 67.0
+		radius: 132.0
 	},
 	Body {
 		pos: Vector{
-			x: 9589.0,
-			y: 8154.0,
+			x: 4568.0,
+			y: 271.0,
 		},
-		radius: 162.0
+		radius: 93.0
 	},
 	Body {
 		pos: Vector{
-			x: -6915.0,
-			y: -6896.0,
-		},
-		radius: 68.0
-	},
-	Body {
-		pos: Vector{
-			x: -9547.0,
-			y: 1793.0,
+			x: 2702.0,
+			y: -553.0,
 		},
 		radius: 116.0
 	},
 	Body {
 		pos: Vector{
-			x: -5797.0,
-			y: 3215.0,
+			x: -479.0,
+			y: 985.0,
 		},
-		radius: 149.0
+		radius: 129.0
+	},
+	Body {
+		pos: Vector{
+			x: -1510.0,
+			y: -2840.0,
+		},
+		radius: 119.0
+	},
+	Body {
+		pos: Vector{
+			x: 3043.0,
+			y: 3680.0,
+		},
+		radius: 109.0
+	},
+	Body {
+		pos: Vector{
+			x: -3052.0,
+			y: 2069.0,
+		},
+		radius: 120.0
+	},
+	Body {
+		pos: Vector{
+			x: 4800.0,
+			y: 4797.0,
+		},
+		radius: 132.0
+	},
+	Body {
+		pos: Vector{
+			x: -2845.0,
+			y: 1859.0,
+		},
+		radius: 118.0
+	},
+	Body {
+		pos: Vector{
+			x: -1327.0,
+			y: 4248.0,
+		},
+		radius: 147.0
+	},
+	Body {
+		pos: Vector{
+			x: 2427.0,
+			y: 4087.0,
+		},
+		radius: 69.0
+	},
+	Body {
+		pos: Vector{
+			x: 4132.0,
+			y: -3446.0,
+		},
+		radius: 103.0
+	},
+	Body {
+		pos: Vector{
+			x: -1985.0,
+			y: -1525.0,
+		},
+		radius: 118.0
+	},
+	Body {
+		pos: Vector{
+			x: 3460.0,
+			y: -1882.0,
+		},
+		radius: 57.0
+	},
+	Body {
+		pos: Vector{
+			x: 1018.0,
+			y: -1342.0,
+		},
+		radius: 134.0
+	},
+	Body {
+		pos: Vector{
+			x: 71.0,
+			y: 2422.0,
+		},
+		radius: 145.0
+	},
+	Body {
+		pos: Vector{
+			x: 2966.0,
+			y: 835.0,
+		},
+		radius: 77.0
+	},
+	Body {
+		pos: Vector{
+			x: 4558.0,
+			y: -2721.0,
+		},
+		radius: 59.0
+	},
+	Body {
+		pos: Vector{
+			x: -3210.0,
+			y: 1010.0,
+		},
+		radius: 93.0
+	},
+	Body {
+		pos: Vector{
+			x: 256.0,
+			y: 3800.0,
+		},
+		radius: 57.0
+	},
+	Body {
+		pos: Vector{
+			x: 1981.0,
+			y: 3697.0,
+		},
+		radius: 108.0
 	},
 ];
 
