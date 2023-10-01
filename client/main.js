@@ -46,6 +46,11 @@ async function runAll(){
     itemPriceSpan.className = 'item-price';
     itemPriceSpan.textContent = itemPrice;
 
+		const itemPriceLabel = document.createElement('img');
+		itemPriceLabel.src = "static/textures/coins_label.png";
+		itemPriceLabel.width = 30;
+		itemPriceSpan.appendChild(itemPriceLabel);
+
     itemInfo.appendChild(h3);
     itemInfo.appendChild(p);
     itemInfo.appendChild(itemPriceSpan);
@@ -225,8 +230,6 @@ async function runAll(){
 			const absolute_x = (tilex + rtilex);
 			const absolute_y = (tiley + rtiley);
 			const bg_t = get_background_texture(absolute_x, absolute_y);
-			//console.log(`${absolute_x}, ${absolute_y}`);
-			//console.log(bg_t?.baseTexture?.resource);
 			backgrounds[key].texture = bg_t;
 			backgrounds[key].x = absolute_x*bg_w*background_scale;
 			backgrounds[key].y = absolute_y*bg_h*background_scale;
@@ -401,7 +404,7 @@ async function runAll(){
 			weapon.width = 5;
 			weapon.height = 20;
 			weapon.anchor.set(0.5);
-			weapon.tint = 0x000000;
+			weapon.tint = 0xa0a0a0;
 			weapon.position.set(0, -35);
 			body.addChild(weapon);
 

@@ -27,14 +27,21 @@ impl ShopItem{
 	}
 }
 
-pub fn get_shop_items() -> [ShopItem; 1] {
+pub fn get_shop_items() -> [ShopItem; 2] {
 	[
 		ShopItem {
 			cost: 5,
 			id: ShopItemId::MoreBoosters,
 
 			#[cfg(target_arch = "wasm32")]
-			display_name: "boosters".to_string(),
+			display_name: "boost".to_string(),
+		},
+		ShopItem {
+			cost: 10,
+			id: ShopItemId::Health,
+
+			#[cfg(target_arch = "wasm32")]
+			display_name: "5 health".to_string(),
 		},
 	]
 }
