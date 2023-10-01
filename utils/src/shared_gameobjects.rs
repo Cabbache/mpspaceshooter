@@ -7,6 +7,7 @@ use crate::trajectory::UpdateType;
 pub enum ShopItemId{
 	MoreBoosters,
 	Health,
+	Ammunition,
 }
 
 #[wasm_bindgen]
@@ -17,6 +18,8 @@ pub struct ShopItem {
 
 	#[cfg(target_arch = "wasm32")]
 	display_name: String,
+	#[cfg(target_arch = "wasm32")]
+	image_src: String,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -25,9 +28,12 @@ impl ShopItem{
 	pub fn display_name(&self) -> String {
 		self.display_name.clone()
 	}
+	pub fn image_src(&self) -> String {
+		self.image_src.clone()
+	}
 }
 
-pub fn get_shop_items() -> [ShopItem; 2] {
+pub fn get_shop_items() -> [ShopItem; 3] {
 	[
 		ShopItem {
 			cost: 5,
@@ -35,6 +41,9 @@ pub fn get_shop_items() -> [ShopItem; 2] {
 
 			#[cfg(target_arch = "wasm32")]
 			display_name: "boost".to_string(),
+
+			#[cfg(target_arch = "wasm32")]
+			image_src: "static/textures/gunshot.png".to_string(),
 		},
 		ShopItem {
 			cost: 10,
@@ -42,6 +51,20 @@ pub fn get_shop_items() -> [ShopItem; 2] {
 
 			#[cfg(target_arch = "wasm32")]
 			display_name: "5 health".to_string(),
+
+			#[cfg(target_arch = "wasm32")]
+			image_src: "static/textures/heart_increase.png".to_string(),
+		},
+		ShopItem {
+			cost: 10,
+			id: ShopItemId::Ammunition,
+
+			#[cfg(target_arch = "wasm32")]
+			display_name: "20 x ammo".to_string(),
+
+
+			#[cfg(target_arch = "wasm32")]
+			image_src: "static/textures/pistol_ammo.png".to_string(),
 		},
 	]
 }

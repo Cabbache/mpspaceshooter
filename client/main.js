@@ -114,7 +114,7 @@ async function runAll(){
 			let item = get_shop_item(i);
 			console.log(item.cost);
 			console.log(item.display_name());
-			const [item_card, buy_btn] = createItemCard("path_to_image", item.display_name(), item.display_name(), "description", item.cost);
+			const [item_card, buy_btn] = createItemCard(item.image_src(), item.display_name(), item.display_name(), "description", item.cost);
 			items_div.appendChild(item_card);
 			buy_btn.addEventListener('click', () => {
 				console.log(`buy ${item.display_name()} ${item.id}`);
@@ -226,6 +226,7 @@ async function runAll(){
 
 		//takes absolute center tile and relative tile
 		const update_background_sprite = function(tilex, tiley, rtilex, rtiley) {
+			return;
 			const key = rtilex + "_" + rtiley;
 			const absolute_x = (tilex + rtilex);
 			const absolute_y = (tiley + rtiley);
@@ -245,12 +246,28 @@ async function runAll(){
 		const loot_container = new PIXI.Container();
 		const bullets_container = new PIXI.Container();
 		const bodies_container = new PIXI.Container();
+		const blobs_container = new PIXI.Container();
 
 		//higher zindex makes it appear on top
 		bullets_container.zIndex = 1;
 		players_container.zIndex = 2;
 		bodies_container.zIndex = 3;
 		loot_container.zIndex = 4;
+		blobs_container.zIndex = 5;
+
+		let beizer = new PIXI.Graphics();
+		app.stage.addChild(beizer);
+		beizer.beginFill(0xff0000, 0.5);
+		beizer.moveTo(50, 50);
+		beizer.zIndex = 5
+		beizer.quadraticCurveTo(100, 100, 150, 50);
+		beizer.quadraticCurveTo(200, 0, 250, 50);
+		beizer.quadraticCurveTo(300, 100, 350, 50);
+		beizer.quadraticCurveTo(400, -200, 450, 100); // Updated this line
+		beizer.quadraticCurveTo(450, 100, 100, 100); // Updated this line
+		beizer.endFill();
+
+		blobs_container.addChild(beizer);
 
 		const worldMask = new PIXI.Graphics();
 		worldMask.beginFill(0xffffff);
@@ -261,6 +278,7 @@ async function runAll(){
 		world.addChild(loot_container);
 		world.addChild(bullets_container);
 		world.addChild(bodies_container);
+		world.addChild(blobs_container);
 		world.addChild(worldMask);
 		world.mask = worldMask;
 
