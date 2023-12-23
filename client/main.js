@@ -696,6 +696,7 @@ async function runAll(){
 				const schild = getPlayerSprite(content);
 				square.addChild(schild);
 				players_container.addChild(square);
+				if (content.id in gameState) handle_playerleave(content.id); //important to clear existing sprites
 				gameState[content.id] = {
 					graphics: square,
 					child: schild,
@@ -752,6 +753,7 @@ async function runAll(){
 
 		const handle_correction = function(content){
 			gameState[content['id']].p.trajectory = new Trajectory(content['tr']);
+			change_propulsion_emitter(content['id'], gameState[content['id']].p.trajectory.propelling);
 		}
 
 		const handle_pong = function(content){
@@ -945,6 +947,7 @@ async function runAll(){
 
 			const deltaTime = delta / (1000*PIXI.settings.TARGET_FPMS);
 
+			//this loop advances the actual trajectories by the hard coded timestep
 			Object.entries(gameState).forEach(([pid, player]) => {
 				if (player.p.trajectory.health == 0) {
 					handle_playerdeath({"from": pid});
@@ -972,6 +975,7 @@ async function runAll(){
 					update_player_sprite(pid);
 			});
 			
+			//this loop only advances the positions displayed on the screen, as they are projected from the trajectory
 			Object.values(gameState).forEach(player => {
 				if (player.p.trajectory.health == 0)
 					return;
@@ -982,7 +986,7 @@ async function runAll(){
 				if (player.p.id == public_id){
 					now = server_time();
 				} else {
-					now = server_time() - (50 + current_rtt);
+					now = server_time() - (50 + current_rtt); //make other players appear in the past
 				}
 
 				const lerped = player.p.trajectory.lerp(BigInt(now));
@@ -1044,6 +1048,7 @@ async function runAll(){
 		window.addEventListener('keydown', (event) => keyAction(event.repeat, event.key, false));
 		window.addEventListener('keyup', (event) => keyAction(event.repeat, event.key, true));
 
+		//guesses time of server based on latency calculations
 		function server_time() {
 			return local_time() - clocks_delta;
 		}

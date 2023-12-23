@@ -66,12 +66,12 @@ const TIMESTEP_MILLIS: u32 = 1000 / TIMESTEP_FPS;
 const TIMESTEP_SECS: f32 = 1f32 / TIMESTEP_FPS as f32;
 
 #[cfg(not(target_arch = "wasm32"))]
-pub const MAX_TIME_BEFORE: u64 = 500; //500
+pub const MAX_TIME_BEFORE: u64 = 2000; //500
+const MAX_TIME_AHEAD: u64 = 400; //300
 
 #[cfg(not(target_arch = "wasm32"))]
 const SPAWN_PULL_MAX: f32 = 2.0; //Maximum gravity pull at spawn point
 #[cfg(not(target_arch = "wasm32"))]
-const MAX_TIME_AHEAD: u64 = 300; //300
 
 pub const BODIES: [Body; 25] = [
 	Body {
@@ -393,16 +393,16 @@ impl Trajectory {
 
 	#[cfg(not(target_arch = "wasm32"))]
 	pub fn update(&mut self, change: UpdateTypeWrapper, hash: String, update_time: u64, time: u64) -> bool {
-		if update_time < self.time {
-			eprintln!("Update is in the past!");
+		if update_time < self.time { //happens when client requests a change in trajectory that happened before the current trajectory state on the server
+			eprintln!("Update is in the past! {} < {}", update_time, self.time);
 			return false;
 		}
-		if update_time > time && (update_time - time) > MAX_TIME_AHEAD {
+		if update_time > time && (update_time - time) > MAX_TIME_AHEAD { //client not allowed to advance server trajectory too much ahead.
 			eprintln!("Update is too far ahead!");
 			return false;
 		}
 		if update_time < time && (time - update_time) > MAX_TIME_BEFORE {
-			eprintln!("Update is too long ago!");
+			eprintln!("Update is too long ago! diff = {}", time - update_time);
 			return false;
 		}
 		if !self.advance_to_time_check(update_time, hash) {
@@ -686,6 +686,47 @@ impl Body {
 
 	fn mass(&self) -> f32 {
 		self.radius*self.radius*PI
+	}
+}
+
+pub struct QuadBeizer {
+	s: Vector, //start
+	c: Vector, //control
+	e: Vector, //end
+}
+
+#[derive(Clone)]
+pub struct LoopPart {
+	s: Vector,
+	c: Vector
+}
+
+pub struct BeizerLoop {
+	parts: Vec<LoopPart>,
+}
+
+impl BeizerLoop {
+	pub fn new(parts: Vec<LoopPart>) -> Result<Self, String> {
+		if parts.len() < 2 {
+			return Err(format!("Beizer loop instantiated without closure"));
+		}
+		Ok(BeizerLoop {
+			parts: parts
+		})
+	}
+
+	pub fn num_beizers(&self) -> u32 {
+		(self.parts.len() as u32) *2 / 3
+	}
+
+	pub fn get_curve(&self, index: i32) -> QuadBeizer {
+		let prev = self.parts[index.rem_euclid(self.parts.len() as i32) as usize].clone();
+		let next = self.parts[(index + 1).rem_euclid(self.parts.len() as i32) as usize].clone();
+		QuadBeizer {
+			s: prev.s,
+			c: prev.c,
+			e: next.s,
+		}
 	}
 }
 
