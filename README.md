@@ -17,8 +17,6 @@
   - [Server Implementation](#server-implementation)
   - [Client Implementation](#client-implementation)
   - [WebAssembly Integration](#webassembly-integration)
-- [Contributing](#contributing)
-- [License](#license)
 
 ## Introduction
 This project is a multiplayer game built using Rust for the server and shared logic, and JavaScript for the client-side application. The game logic is shared between the server and client using WebAssembly (Wasm). This ensures deterministic behavior across both environments.
