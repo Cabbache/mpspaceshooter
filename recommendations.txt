@@ -1,7 +1,0 @@
-Planets of safe harbour.
-scroll to zoom in and out, on mobile use two two touches for this
-increase ammo collection range
-player crash causes explosion (knockbacking others?)
-
-make random coins around the world
-when a player takes a coin, it's location is randomised again
