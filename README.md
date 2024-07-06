@@ -63,7 +63,7 @@ cargo r -r <port number to listen on>
 This command will automatically host the static website on the specified port and listen for WebSocket messages on the same port.
 
 ### Client
-To run the client, simply open localhost on the port specified in the browser
+Make sure to have the correct line enabled [here](https://github.com/Cabbache/mpspaceshooter/blob/7e57177cb05682ae340d74cf511dc3476daf272b/client/main.js#L385), then simply open localhost on the port specified in the browser
 
 ## Technical Details
 
