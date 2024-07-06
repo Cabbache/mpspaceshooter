@@ -1,6 +1,8 @@
 # multiplayer space shooter
 
+## Live demo
 ![Demo](https://cabbache.github.io/mpss.gif)
+[Live demo link](https://play.cabbache.net/)
 
 ## Table of Contents
 - [Introduction](#introduction)
