@@ -1,10 +1,10 @@
+use crate::trajectory::UpdateType;
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
-use crate::trajectory::UpdateType;
 
 #[wasm_bindgen]
 #[derive(Deserialize, Debug, Clone, Copy, PartialEq)]
-pub enum ShopItemId{
+pub enum ShopItemId {
 	MoreBoosters,
 	Health,
 	Ammunition,
@@ -24,7 +24,7 @@ pub struct ShopItem {
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
-impl ShopItem{
+impl ShopItem {
 	pub fn display_name(&self) -> String {
 		self.display_name.clone()
 	}
@@ -62,7 +62,6 @@ pub fn get_shop_items() -> [ShopItem; 3] {
 			#[cfg(target_arch = "wasm32")]
 			display_name: "20 x ammo".to_string(),
 
-
 			#[cfg(target_arch = "wasm32")]
 			image_src: "static/textures/pistol_ammo.png".to_string(),
 		},
@@ -85,7 +84,7 @@ pub fn num_shop_items() -> usize {
 
 #[wasm_bindgen]
 pub fn get_cost(utype: UpdateType) -> u32 {
-	match utype{
+	match utype {
 		UpdateType::AddBoost => 5,
 		_ => 0,
 	}

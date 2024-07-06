@@ -1,1 +1,0 @@
-Instead of lines, make bullets make like a flash around the pistol, don't draw line but do make spark effect in the distance if it hits something

@@ -16,14 +16,20 @@ fn test_some_function() {
 		example.spin_direction = rng.gen_range(-1..2);
 		example.vel.x = rng.gen_range(-20f32..20f32);
 		example.vel.y = rng.gen_range(-20f32..20f32);
-		println!("	let mut testing = Trajectory::from_b64(\"{}\".to_string());", example.to_b64());
+		println!(
+			"	let mut testing = Trajectory::from_b64(\"{}\".to_string());",
+			example.to_b64()
+		);
 		println!("	for _ in 1..{} {{", RUNS);
 		println!("		testing.step();");
 		println!("	}}");
 		for _ in 1..RUNS {
 			example.step();
 		}
-		println!("	assert_eq!(testing.hash_str(), \"{}\");", example.hash_str());
+		println!(
+			"	assert_eq!(testing.hash_str(), \"{}\");",
+			example.hash_str()
+		);
 	}
-	assert_eq!(1+1, 2);
+	assert_eq!(1 + 1, 2);
 }

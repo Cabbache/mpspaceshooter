@@ -1,11 +1,11 @@
+use crate::shared_gameobjects::ShopItemId;
+use crate::trajectory::*;
 use serde::{Deserialize, Serialize, Serializer};
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use crate::trajectory::*;
-use crate::shared_gameobjects::ShopItemId;
 
 #[derive(Serialize, Debug, Clone)]
-pub enum LootContent{
+pub enum LootContent {
 	Cash(u32),
 	PistolAmmo(u32),
 	Health(u8),
@@ -13,29 +13,29 @@ pub enum LootContent{
 }
 
 #[derive(Serialize, Debug, Clone)]
-pub struct LootObject{
+pub struct LootObject {
 	pub x: f32,
 	pub y: f32,
 	pub loot: LootContent,
 }
 
 #[derive(Serialize, Debug, Clone)]
-pub struct Color{
+pub struct Color {
 	pub r: i32,
 	pub g: i32,
 	pub b: i32,
 }
 
 #[derive(Serialize, Debug, Clone)]
-pub struct Weapon{
+pub struct Weapon {
 	pub weptype: WeaponType,
 	pub ammo: u32,
 }
 
 #[derive(Debug, Clone)]
-pub enum WeaponType{
+pub enum WeaponType {
 	Pistol,
-	Grenade {press_time: f32}
+	Grenade { press_time: f32 },
 }
 
 impl Serialize for WeaponType {
@@ -45,19 +45,19 @@ impl Serialize for WeaponType {
 	{
 		match self {
 			WeaponType::Pistol => serializer.serialize_str("Pistol"),
-			WeaponType::Grenade{ press_time: _ } => serializer.serialize_str("Grenade"),
+			WeaponType::Grenade { press_time: _ } => serializer.serialize_str("Grenade"),
 		}
 	}
 }
 
 #[derive(Serialize, Debug, Clone)]
-pub struct Inventory{
+pub struct Inventory {
 	pub selection: u8,
 	pub weapons: HashMap<u8, Weapon>,
 }
 
 #[derive(Serialize, Debug, Clone)]
-pub struct LootDrop{
+pub struct LootDrop {
 	pub uuid: String,
 	pub object: LootObject,
 }
@@ -86,7 +86,7 @@ impl PlayerState {
 		});
 	}
 
-	pub fn encode(&self, as_self: bool) -> Value{
+	pub fn encode(&self, as_self: bool) -> Value {
 		if !as_self {
 			return self.encode_other();
 		}
@@ -96,14 +96,9 @@ impl PlayerState {
 			"cash": &self.cash,
 		});
 		result
-		.as_object_mut()
-		.unwrap()
-		.extend(
-			additional
-			.as_object().
-			unwrap()
-			.clone()
-		);
+			.as_object_mut()
+			.unwrap()
+			.extend(additional.as_object().unwrap().clone());
 		return result;
 	}
 }
@@ -121,7 +116,6 @@ pub struct Victim {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ShootInfo {
-
 	//details about when the shooter shot
 	pub at: String,
 	pub stime: u64,
@@ -135,12 +129,20 @@ pub struct ShootInfo {
 
 #[derive(Deserialize, Debug)]
 #[serde(tag = "t", content = "c")]
-pub enum ClientMessage{
+pub enum ClientMessage {
 	Ping,
 	AckPong,
-	TrajectoryUpdate {change: UpdateTypeWrapper, at: String, time: u64},
-	ChangeSlot {slot: u8},
-	ClaimLoot {loot_id: String},
+	TrajectoryUpdate {
+		change: UpdateTypeWrapper,
+		at: String,
+		time: u64,
+	},
+	ChangeSlot {
+		slot: u8,
+	},
+	ClaimLoot {
+		loot_id: String,
+	},
 	Correct(String),
 	Shoot(ShootInfo),
 	StateQuery,
@@ -149,19 +151,33 @@ pub enum ClientMessage{
 
 #[derive(Serialize, Debug)]
 #[serde(tag = "t", content = "c")]
-pub enum ServerMessage{
+pub enum ServerMessage {
 	Pong(u64),
 	PlayerJoin(PlayerState),
 	PlayerLeave(String),
 	HealthUpdate(u8),
-	GameState{
+	GameState {
 		pstates: Vec<PlayerState>,
 		worldloot: HashMap<String, LootObject>,
 	},
-	TrajectoryUpdate {change: UpdateTypeWrapper, time: u64, at: String, from: String},
+	TrajectoryUpdate {
+		change: UpdateTypeWrapper,
+		time: u64,
+		at: String,
+		from: String,
+	},
 	Shoot(ShootInfo),
-	PlayerDeath {loot: Option<LootDrop>, from: String },
-	LootCollected {loot_id: String, collector: String },
-	Correct {id: String, tr: String},
+	PlayerDeath {
+		loot: Option<LootDrop>,
+		from: String,
+	},
+	LootCollected {
+		loot_id: String,
+		collector: String,
+	},
+	Correct {
+		id: String,
+		tr: String,
+	},
 	LootReject(String),
 }

@@ -1,21 +1,21 @@
+use base64::{engine::general_purpose, Engine as _};
+use serde::{Deserialize, Serialize};
+use serde_json::{json, to_string};
 use std::collections::hash_map::DefaultHasher;
+use std::f32::consts::PI;
 use std::hash::{Hash, Hasher};
 use wasm_bindgen::prelude::*;
-use std::f32::consts::{PI};
-use serde::{Deserialize,Serialize};
-use serde_json::{to_string, json};
-use base64::{engine::general_purpose, Engine as _};
 
 #[cfg(target_arch = "wasm32")]
 use std::collections::VecDeque;
 
-#[cfg(not(target_arch = "wasm32"))]
-use bincode::serialize;
 #[cfg(target_arch = "wasm32")]
 use bincode::deserialize;
+#[cfg(not(target_arch = "wasm32"))]
+use bincode::serialize;
 
 #[cfg(not(target_arch = "wasm32"))]
-use rand_distr::{Normal, Distribution};
+use rand_distr::{Distribution, Normal};
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -23,20 +23,20 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[wasm_bindgen]
 #[cfg(target_arch = "wasm32")]
 extern "C" {
-    // Use `js_namespace` here to bind `console.log(..)` instead of just
-    // `log(..)`
-    #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &str);
+	// Use `js_namespace` here to bind `console.log(..)` instead of just
+	// `log(..)`
+	#[wasm_bindgen(js_namespace = console)]
+	fn log(s: &str);
 
-    // The `console.log` is quite polymorphic, so we can bind it with multiple
-    // signatures. Note that we need to use `js_name` to ensure we always call
-    // `log` in JS.
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn log_u32(a: u32);
+	// The `console.log` is quite polymorphic, so we can bind it with multiple
+	// signatures. Note that we need to use `js_name` to ensure we always call
+	// `log` in JS.
+	#[wasm_bindgen(js_namespace = console, js_name = log)]
+	fn log_u32(a: u32);
 
-    // Multiple arguments too!
-    #[wasm_bindgen(js_namespace = console, js_name = log)]
-    fn log_many(a: &str, b: &str);
+	// Multiple arguments too!
+	#[wasm_bindgen(js_namespace = console, js_name = log)]
+	fn log_many(a: &str, b: &str);
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -46,8 +46,8 @@ macro_rules! console_log {
     ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
 }
 
-const TWOPI: f32 = 2f32*PI;
-const HALFPI: f32 = PI/2f32;
+const TWOPI: f32 = 2f32 * PI;
+const HALFPI: f32 = PI / 2f32;
 
 pub const PLAYER_RADIUS: f32 = 25.0;
 pub const DOME_RADIUS: f32 = 6000.0;
@@ -58,7 +58,7 @@ const RADIANS_PER_SECOND: f32 = PI; //player rotation speed
 const G: f32 = 2000.0; //Gravitational constant
 const PISTOL_REACH: f32 = 500.0; //players have circular hitbox
 
-//const REGEN: 
+//const REGEN:
 const TIMESTEP_FPS: u32 = 10;
 
 //Calculated
@@ -71,183 +71,179 @@ const MAX_TIME_AHEAD: u64 = 400; //300
 
 #[cfg(not(target_arch = "wasm32"))]
 const SPAWN_PULL_MAX: f32 = 2.0; //Maximum gravity pull at spawn point
-#[cfg(not(target_arch = "wasm32"))]
 
 pub const BODIES: [Body; 25] = [
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: -2142.0,
 			y: 1319.0,
 		},
-		radius: 82.0
+		radius: 82.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: 593.0,
 			y: 1712.0,
 		},
-		radius: 85.0
+		radius: 85.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: 1630.0,
 			y: 4858.0,
 		},
-		radius: 79.0
+		radius: 79.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: 1123.0,
 			y: -4422.0,
 		},
-		radius: 142.0
+		radius: 142.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: -4643.0,
 			y: 2987.0,
 		},
-		radius: 132.0
+		radius: 132.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: 4568.0,
 			y: 271.0,
 		},
-		radius: 93.0
+		radius: 93.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: 2702.0,
 			y: -553.0,
 		},
-		radius: 116.0
+		radius: 116.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: -479.0,
 			y: 985.0,
 		},
-		radius: 129.0
+		radius: 129.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: -1510.0,
 			y: -2840.0,
 		},
-		radius: 119.0
+		radius: 119.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: 3043.0,
 			y: 3680.0,
 		},
-		radius: 109.0
+		radius: 109.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: -3052.0,
 			y: 2069.0,
 		},
-		radius: 120.0
+		radius: 120.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: 4800.0,
 			y: 4797.0,
 		},
-		radius: 132.0
+		radius: 132.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: -2845.0,
 			y: 1859.0,
 		},
-		radius: 118.0
+		radius: 118.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: -1327.0,
 			y: 4248.0,
 		},
-		radius: 147.0
+		radius: 147.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: 2427.0,
 			y: 4087.0,
 		},
-		radius: 69.0
+		radius: 69.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: 4132.0,
 			y: -3446.0,
 		},
-		radius: 103.0
+		radius: 103.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: -1985.0,
 			y: -1525.0,
 		},
-		radius: 118.0
+		radius: 118.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: 3460.0,
 			y: -1882.0,
 		},
-		radius: 57.0
+		radius: 57.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: 1018.0,
 			y: -1342.0,
 		},
-		radius: 134.0
+		radius: 134.0,
 	},
 	Body {
-		pos: Vector{
-			x: 71.0,
-			y: 2422.0,
-		},
-		radius: 145.0
+		pos: Vector { x: 71.0, y: 2422.0 },
+		radius: 145.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: 2966.0,
 			y: 835.0,
 		},
-		radius: 77.0
+		radius: 77.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: 4558.0,
 			y: -2721.0,
 		},
-		radius: 59.0
+		radius: 59.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: -3210.0,
 			y: 1010.0,
 		},
-		radius: 93.0
+		radius: 93.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: 256.0,
 			y: 3800.0,
 		},
-		radius: 57.0
+		radius: 57.0,
 	},
 	Body {
-		pos: Vector{
+		pos: Vector {
 			x: 1981.0,
 			y: 3697.0,
 		},
-		radius: 108.0
+		radius: 108.0,
 	},
 ];
 
@@ -262,7 +258,7 @@ pub struct State {
 #[cfg_attr(not(target_arch = "wasm32"), derive(Clone, Debug))]
 #[derive(Deserialize, Serialize)]
 #[wasm_bindgen]
-pub struct Trajectory{
+pub struct Trajectory {
 	pub propelling: bool,
 	pub pos: Vector,
 	pub vel: Vector,
@@ -292,9 +288,10 @@ pub enum UpdateType {
 
 #[wasm_bindgen]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct UpdateTypeWrapper { //because wasm-bindgen doesn't support enums with values
+pub struct UpdateTypeWrapper {
+	//because wasm-bindgen doesn't support enums with values
 	pub utype: UpdateType,
-	pub value: Option<u8>
+	pub value: Option<u8>,
 }
 
 #[wasm_bindgen]
@@ -323,10 +320,7 @@ impl Trajectory {
 	}
 
 	pub fn pull_sum(pos: &Vector) -> Vector {
-		let mut pull = Vector{
-			x: 0.0,
-			y: 0.0,
-		};
+		let mut pull = Vector { x: 0.0, y: 0.0 };
 		for body in BODIES {
 			let bod_pull = body.pull(&pos);
 			pull.x += bod_pull.x;
@@ -337,13 +331,13 @@ impl Trajectory {
 		pull
 	}
 
-	pub fn step(&mut self) -> bool{
+	pub fn step(&mut self) -> bool {
 		if self.health == 0 {
 			return false;
 		}
-		let next_pos = Vector{
-			x: self.pos.x + self.vel.x*TIMESTEP_SECS,
-			y: self.pos.y + self.vel.y*TIMESTEP_SECS,
+		let next_pos = Vector {
+			x: self.pos.x + self.vel.x * TIMESTEP_SECS,
+			y: self.pos.y + self.vel.y * TIMESTEP_SECS,
 		};
 		if next_pos.x.powi(2) + next_pos.y.powi(2) > DOME_RADIUS.powi(2) {
 			self.vel.reflect(&self.pos);
@@ -358,8 +352,10 @@ impl Trajectory {
 		self.spin += (self.spin_direction as f32) * RADIANS_PER_SECOND * TIMESTEP_SECS;
 		let magnitude = ACCELERATION * TIMESTEP_SECS * (self.boosters as f32);
 		if self.propelling {
-			self.vel.x += -fastapprox::faster::cos(normalize_angle(self.spin + PROPEL_DIRECTION)) * magnitude;
-			self.vel.y += fastapprox::faster::sin(normalize_angle(self.spin + PROPEL_DIRECTION)) * magnitude;
+			self.vel.x +=
+				-fastapprox::faster::cos(normalize_angle(self.spin + PROPEL_DIRECTION)) * magnitude;
+			self.vel.y +=
+				fastapprox::faster::sin(normalize_angle(self.spin + PROPEL_DIRECTION)) * magnitude;
 		}
 		self.time += TIMESTEP_MILLIS as u64;
 		if self.collides() {
@@ -392,12 +388,20 @@ impl Trajectory {
 	}
 
 	#[cfg(not(target_arch = "wasm32"))]
-	pub fn update(&mut self, change: UpdateTypeWrapper, hash: String, update_time: u64, time: u64) -> bool {
-		if update_time < self.time { //happens when client requests a change in trajectory that happened before the current trajectory state on the server
+	pub fn update(
+		&mut self,
+		change: UpdateTypeWrapper,
+		hash: String,
+		update_time: u64,
+		time: u64,
+	) -> bool {
+		if update_time < self.time {
+			//happens when client requests a change in trajectory that happened before the current trajectory state on the server
 			eprintln!("Update is in the past! {} < {}", update_time, self.time);
 			return false;
 		}
-		if update_time > time && (update_time - time) > MAX_TIME_AHEAD { //client not allowed to advance server trajectory too much ahead.
+		if update_time > time && (update_time - time) > MAX_TIME_AHEAD {
+			//client not allowed to advance server trajectory too much ahead.
 			eprintln!("Update is too far ahead!");
 			return false;
 		}
@@ -415,15 +419,17 @@ impl Trajectory {
 
 	#[cfg(not(target_arch = "wasm32"))]
 	fn gen_spawn() -> Vector {
-		let normal = Normal::new(DOME_RADIUS/4.0, DOME_RADIUS/4.0).unwrap();
+		let normal = Normal::new(DOME_RADIUS / 4.0, DOME_RADIUS / 4.0).unwrap();
 		let mut pos: Vector;
 		loop {
-			pos = Vector{
+			pos = Vector {
 				x: normal.sample(&mut rand::thread_rng()),
 				y: normal.sample(&mut rand::thread_rng()),
 			};
 			let psum = Trajectory::pull_sum(&pos);
-			if psum.x.powf(2.0) + psum.y.powf(2.0) < SPAWN_PULL_MAX.powf(2.0) && pos.mag() < DOME_RADIUS {
+			if psum.x.powf(2.0) + psum.y.powf(2.0) < SPAWN_PULL_MAX.powf(2.0)
+				&& pos.mag() < DOME_RADIUS
+			{
 				break;
 			}
 		}
@@ -437,7 +443,7 @@ impl Default for Trajectory {
 		Trajectory {
 			propelling: false,
 			pos: Trajectory::gen_spawn(),
-			vel: Vector{x: 0.0, y: 0.0},
+			vel: Vector { x: 0.0, y: 0.0 },
 			spin_direction: 0,
 			spin: 0.0,
 			boosters: 1,
@@ -452,7 +458,8 @@ impl Trajectory {
 	#[wasm_bindgen(constructor)]
 	#[cfg(target_arch = "wasm32")]
 	pub fn from_b64(data: String) -> Trajectory {
-		let mut result: Trajectory = deserialize(&general_purpose::STANDARD.decode(&data).unwrap()).unwrap();
+		let mut result: Trajectory =
+			deserialize(&general_purpose::STANDARD.decode(&data).unwrap()).unwrap();
 		result.updates = VecDeque::new();
 		result
 	}
@@ -491,7 +498,11 @@ impl Trajectory {
 						break;
 					}
 					if next_update.hash != self.hash_str() {
-						console_log!("Hash mismatch! request was {} but got {}", next_update.hash, self.hash_str());
+						console_log!(
+							"Hash mismatch! request was {} but got {}",
+							next_update.hash,
+							self.hash_str()
+						);
 						return None;
 					}
 					changes.push(next_update.change.utype);
@@ -518,35 +529,45 @@ impl Trajectory {
 		let delta_millis = time - self.time;
 		let delta_secs = delta_millis as f32 / 1000f32;
 		State {
-			x: self.pos.x + self.vel.x*delta_secs,
-			y: self.pos.y + self.vel.y*delta_secs,
+			x: self.pos.x + self.vel.x * delta_secs,
+			y: self.pos.y + self.vel.y * delta_secs,
 			r: self.spin + (self.spin_direction as f32) * RADIANS_PER_SECOND * delta_secs,
 		}
 	}
 
 	pub fn dump(&self) -> String {
-		format!("{},{:x},{:x},{:x},{:x},{:x},{},{},{}", self.propelling, self.pos.x.to_bits(), self.pos.y.to_bits(), self.vel.x.to_bits(), self.vel.y.to_bits(), self.spin.to_bits(), self.spin_direction, self.time, self.health)
+		format!(
+			"{},{:x},{:x},{:x},{:x},{:x},{},{},{}",
+			self.propelling,
+			self.pos.x.to_bits(),
+			self.pos.y.to_bits(),
+			self.vel.x.to_bits(),
+			self.vel.y.to_bits(),
+			self.spin.to_bits(),
+			self.spin_direction,
+			self.time,
+			self.health
+		)
 	}
 
 	#[cfg(target_arch = "wasm32")]
-	pub fn insert_update(&mut self, change: UpdateTypeWrapper, hash: String, time: u64) -> bool { //true if not in the past
+	pub fn insert_update(&mut self, change: UpdateTypeWrapper, hash: String, time: u64) -> bool {
+		//true if not in the past
 		if self.time > time {
 			return false;
 		}
-		self.updates.push_back(
-			TrajectoryUpdate {
-				time: time,
-				hash: hash,
-				change: change,
-			}
-		);
+		self.updates.push_back(TrajectoryUpdate {
+			time: time,
+			hash: hash,
+			change: change,
+		});
 		true
 	}
 
 	//TODO consider when velocity exceeds radius, use line_intersects_circle?
 	fn collides(&self) -> bool {
-		for body in BODIES{
-			if body.collides(&self.pos){
+		for body in BODIES {
+			if body.collides(&self.pos) {
 				return true;
 			}
 		}
@@ -560,16 +581,17 @@ impl Trajectory {
 		let rot_90 = self.spin - HALFPI;
 
 		//compute the quadratic's 'b' coefficient (for variable r in polar form)
-		let qb = -(2f32*a*rot_90.cos() + 2f32*b*rot_90.sin());
-		let discriminant: f32 = qb.powi(2) - 4f32*(a.powi(2) + b.powi(2) - PLAYER_RADIUS.powi(2));
-		if discriminant < 0f32 { //no real roots (no line-circle intersection)
+		let qb = -(2f32 * a * rot_90.cos() + 2f32 * b * rot_90.sin());
+		let discriminant: f32 = qb.powi(2) - 4f32 * (a.powi(2) + b.powi(2) - PLAYER_RADIUS.powi(2));
+		if discriminant < 0f32 {
+			//no real roots (no line-circle intersection)
 			return -1f32;
 		}
 
 		let root = discriminant.sqrt();
 
-		let r1 = (root - qb)/2f32;
-		let r2 = (-root - qb)/2f32;
+		let r1 = (root - qb) / 2f32;
+		let r2 = (-root - qb) / 2f32;
 
 		let r1_good = PISTOL_REACH > r1 && r1 > 0f32;
 		let r2_good = PISTOL_REACH > r2 && r2 > 0f32;
@@ -593,16 +615,32 @@ impl Trajectory {
 		format!("{:x}", hasher.finish())
 	}
 
-	pub fn apply_change(&mut self, change: UpdateTypeWrapper){
+	pub fn apply_change(&mut self, change: UpdateTypeWrapper) {
 		match change.utype {
-			UpdateType::RotStop => {self.spin_direction = 0;},
-			UpdateType::RotCw => {self.spin_direction = 1;},
-			UpdateType::RotCcw => {self.spin_direction = -1;},
-			UpdateType::PropOn => {self.propelling = true;},
-			UpdateType::PropOff => {self.propelling = false;},
-			UpdateType::AddBoost => {self.boosters += 1;},
-			UpdateType::Bullet => {self.health = self.health.saturating_sub(change.value.unwrap_or(0));},
-			UpdateType::Health => {self.health = self.health.saturating_add(change.value.unwrap_or(0));},
+			UpdateType::RotStop => {
+				self.spin_direction = 0;
+			}
+			UpdateType::RotCw => {
+				self.spin_direction = 1;
+			}
+			UpdateType::RotCcw => {
+				self.spin_direction = -1;
+			}
+			UpdateType::PropOn => {
+				self.propelling = true;
+			}
+			UpdateType::PropOff => {
+				self.propelling = false;
+			}
+			UpdateType::AddBoost => {
+				self.boosters += 1;
+			}
+			UpdateType::Bullet => {
+				self.health = self.health.saturating_sub(change.value.unwrap_or(0));
+			}
+			UpdateType::Health => {
+				self.health = self.health.saturating_add(change.value.unwrap_or(0));
+			}
 		}
 	}
 }
@@ -621,7 +659,7 @@ impl Hash for Trajectory {
 
 #[derive(Serialize, Debug, Clone, Copy, Deserialize)]
 #[wasm_bindgen]
-pub struct Vector{
+pub struct Vector {
 	pub x: f32,
 	pub y: f32,
 }
@@ -633,7 +671,7 @@ impl Vector {
 
 	pub fn normalized(&self) -> Vector {
 		let mag = self.mag();
-		Vector{
+		Vector {
 			x: self.x / mag,
 			y: self.y / mag,
 		}
@@ -647,7 +685,7 @@ impl Vector {
 	}
 
 	pub fn dot(&self, v: &Vector) -> f32 {
-		self.x*v.x + self.y*v.y
+		self.x * v.x + self.y * v.y
 	}
 }
 
@@ -660,7 +698,7 @@ impl Hash for Vector {
 
 #[derive(Serialize, Clone, Debug)]
 #[wasm_bindgen]
-pub struct Body{
+pub struct Body {
 	pub pos: Vector,
 	pub radius: f32,
 }
@@ -668,24 +706,25 @@ pub struct Body{
 #[wasm_bindgen]
 impl Body {
 	//returns the acceleration imposed by itself at a point
-	fn pull(&self, pos: &Vector) -> Vector{
+	fn pull(&self, pos: &Vector) -> Vector {
 		let xdiff = self.pos.x - pos.x;
 		let ydiff = self.pos.y - pos.y;
 		let powsum = xdiff.powi(2) + ydiff.powi(2);
 		let mag = G * self.mass() / powsum;
 		let dist = powsum.sqrt();
-		Vector{
+		Vector {
 			x: mag * xdiff / dist,
 			y: mag * ydiff / dist,
 		}
 	}
 
 	fn collides(&self, pos: &Vector) -> bool {
-		(self.radius+PLAYER_RADIUS).powi(2) > (pos.x - self.pos.x).powi(2) + (pos.y - self.pos.y).powi(2)
+		(self.radius + PLAYER_RADIUS).powi(2)
+			> (pos.x - self.pos.x).powi(2) + (pos.y - self.pos.y).powi(2)
 	}
 
 	fn mass(&self) -> f32 {
-		self.radius*self.radius*PI
+		self.radius * self.radius * PI
 	}
 }
 
@@ -698,7 +737,7 @@ pub struct QuadBeizer {
 #[derive(Clone)]
 pub struct LoopPart {
 	s: Vector,
-	c: Vector
+	c: Vector,
 }
 
 pub struct BeizerLoop {
@@ -710,13 +749,11 @@ impl BeizerLoop {
 		if parts.len() < 2 {
 			return Err(format!("Beizer loop instantiated without closure"));
 		}
-		Ok(BeizerLoop {
-			parts: parts
-		})
+		Ok(BeizerLoop { parts: parts })
 	}
 
 	pub fn num_beizers(&self) -> u32 {
-		(self.parts.len() as u32) *2 / 3
+		(self.parts.len() as u32) * 2 / 3
 	}
 
 	pub fn get_curve(&self, index: i32) -> QuadBeizer {

@@ -1,13 +1,13 @@
 use crate::{ws, Client, Clients, Result};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::collections::HashMap;
+use std::fs;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+use uuid::Uuid;
 use warp::{http::StatusCode, reply::json, Reply};
 use xxhash_rust::xxh3::xxh3_64;
-use uuid::Uuid;
-use serde_json::Value;
-use std::sync::Arc;
-use std::collections::HashMap;
-use tokio::sync::RwLock;
-use std::fs;
 
 use crate::PlayerState;
 use crate::WorldLoot;
@@ -23,7 +23,7 @@ pub struct RegisterResponse {
 #[derive(Deserialize)]
 pub struct UserSelections {
 	nick: String,
-	color: String
+	color: String,
 }
 
 pub async fn register_handler(body: Value, clients: Clients) -> Result<impl Reply> {
@@ -32,23 +32,19 @@ pub async fn register_handler(body: Value, clients: Clients) -> Result<impl Repl
 	match selection_result {
 		Ok(selections) => {
 			if selections.nick.len() > 24 {
-				return Ok(json(&"meow")) //TODO
+				return Ok(json(&"meow")); //TODO
 			}
 
 			let private_uuid = Uuid::new_v4().as_simple().to_string();
 			let public_id = format!("{:x}", xxh3_64(private_uuid.as_bytes()));
 			println!("Registering client {}", private_uuid);
-			register_client(
-				public_id.clone(),
-				selections,
-				clients,
-			).await;
+			register_client(public_id.clone(), selections, clients).await;
 			Ok(json(&RegisterResponse {
 				public: public_id,
 				private: private_uuid,
 			}))
-		},
-		Err(_) => Ok(json(&"meow")) //TODO write this in an acceptable manner
+		}
+		Err(_) => Ok(json(&"meow")), //TODO write this in an acceptable manner
 	}
 }
 
@@ -63,30 +59,60 @@ fn default_state() -> PlayerState {
 		id: "".to_string(),
 		cash: 20,
 		fuel: 100,
-		color: Color{r:255,g:255,b:255},
+		color: Color {
+			r: 255,
+			g: 255,
+			b: 255,
+		},
 		trigger_pressed: false,
-		inventory: Inventory{
+		inventory: Inventory {
 			selection: 0,
 			weapons: HashMap::from([
-				(0, Weapon{ weptype: WeaponType::Pistol, ammo: 50 }),
-				(1, Weapon{ weptype: WeaponType::Grenade {press_time: current_time() as f32}, ammo: 2 }),
-			])
+				(
+					0,
+					Weapon {
+						weptype: WeaponType::Pistol,
+						ammo: 50,
+					},
+				),
+				(
+					1,
+					Weapon {
+						weptype: WeaponType::Grenade {
+							press_time: current_time() as f32,
+						},
+						ammo: 2,
+					},
+				),
+			]),
 		},
-		trajectory: Trajectory::default()
+		trajectory: Trajectory::default(),
 	}
 }
 
 pub fn spawn_with_select(selections: &UserSelections, public_id: &String) -> PlayerState {
-	PlayerState{
+	PlayerState {
 		name: selections.nick.clone(),
 		id: public_id.clone(),
 		color: match selections.color.as_str() {
-			"red" => Color{r:255,g:0,b:0},
-			"orange" => Color{r:255,g:165,b:0},
-			"yellow" => Color{r:255,g:255,b:0},
-			"green" => Color{r:0,g:255,b:0},
-			"blue" => Color{r:0,g:0,b:255},
-			_ => Color{r:255,g:255,b:255}
+			"red" => Color { r: 255, g: 0, b: 0 },
+			"orange" => Color {
+				r: 255,
+				g: 165,
+				b: 0,
+			},
+			"yellow" => Color {
+				r: 255,
+				g: 255,
+				b: 0,
+			},
+			"green" => Color { r: 0, g: 255, b: 0 },
+			"blue" => Color { r: 0, g: 0, b: 255 },
+			_ => Color {
+				r: 255,
+				g: 255,
+				b: 255,
+			},
 		},
 		..default_state()
 	}
@@ -119,12 +145,21 @@ pub async fn unregister_handler(public_id: String, clients: Clients) -> Result<i
 	Ok(StatusCode::OK)
 }
 
-pub async fn ws_handler(ws: warp::ws::Ws, private_id: String, clients: Clients, loot: WorldLoot) -> Result<impl Reply> {
+pub async fn ws_handler(
+	ws: warp::ws::Ws,
+	private_id: String,
+	clients: Clients,
+	loot: WorldLoot,
+) -> Result<impl Reply> {
 	let public_id = format!("{:x}", xxh3_64(private_id.as_bytes()));
 	println!("Received connection from {}", public_id);
 	let client = clients.read().await.get(&public_id).cloned();
 	match client {
-		Some(c) => Ok(ws.on_upgrade(move |socket| ws::client_connection(socket, public_id, clients, loot, c))),
+		Some(c) => {
+			Ok(ws.on_upgrade(move |socket| {
+				ws::client_connection(socket, public_id, clients, loot, c)
+			}))
+		}
 		None => Err(warp::reject::not_found()),
 	}
 }

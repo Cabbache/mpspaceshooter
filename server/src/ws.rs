@@ -4,12 +4,18 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::ws::{Message, WebSocket};
 
-use crate::game::handle_game_message;
-use utils::server_gameobjects::ServerMessage;
-use crate::WorldLoot;
 use crate::game::broadcast;
+use crate::game::handle_game_message;
+use crate::WorldLoot;
+use utils::server_gameobjects::ServerMessage;
 
-pub async fn client_connection(ws: WebSocket, public_id: String, clients: Clients, loot: WorldLoot, client: Client) {
+pub async fn client_connection(
+	ws: WebSocket,
+	public_id: String,
+	clients: Clients,
+	loot: WorldLoot,
+	client: Client,
+) {
 	let (client_ws_sender, mut client_ws_rcv) = ws.split();
 	let (client_sender, client_rcv) = mpsc::unbounded_channel();
 
@@ -24,10 +30,16 @@ pub async fn client_connection(ws: WebSocket, public_id: String, clients: Client
 		let clr = clients.read().await;
 		broadcast(
 			&ServerMessage::PlayerJoin(client.state.read().await.clone()),
-			&clr
-		).await;
+			&clr,
+		)
+		.await;
 	}
-	clients.write().await.get_mut(&public_id.clone()).unwrap().sender = Some(client_sender);
+	clients
+		.write()
+		.await
+		.get_mut(&public_id.clone())
+		.unwrap()
+		.sender = Some(client_sender);
 
 	println!("{} connected", public_id);
 
@@ -35,7 +47,11 @@ pub async fn client_connection(ws: WebSocket, public_id: String, clients: Client
 		let msg = match result {
 			Ok(msg) => msg,
 			Err(e) => {
-				eprintln!("error receiving ws message for id: {}): {}", public_id.clone(), e);
+				eprintln!(
+					"error receiving ws message for id: {}): {}",
+					public_id.clone(),
+					e
+				);
 				break;
 			}
 		};
@@ -46,10 +62,7 @@ pub async fn client_connection(ws: WebSocket, public_id: String, clients: Client
 
 	{
 		let clr = clients.read().await;
-		broadcast(
-			&ServerMessage::PlayerLeave(public_id.clone()),
-			&clr
-		).await;
+		broadcast(&ServerMessage::PlayerLeave(public_id.clone()), &clr).await;
 	}
 	clients.write().await.remove(&public_id);
 	println!("{} disconnected", public_id);

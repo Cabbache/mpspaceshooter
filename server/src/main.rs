@@ -1,18 +1,18 @@
 use std::collections::HashMap;
 use std::convert::Infallible;
-use std::sync::Arc;
 use std::env;
+use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
 use warp::{ws::Message, Filter, Rejection};
 
 //use utils::server_gameobjects::LootContent;
 //use uuid::Uuid;
 
-mod handler;
 mod game;
+mod handler;
 mod ws;
 
-use utils::server_gameobjects::{PlayerState, LootObject};
+use utils::server_gameobjects::{LootObject, PlayerState};
 
 type Result<T> = std::result::Result<T, Rejection>;
 type Clients = Arc<RwLock<HashMap<String, Client>>>;
@@ -28,19 +28,19 @@ pub struct Client {
 async fn main() {
 	let clients: Clients = Arc::new(RwLock::new(HashMap::new()));
 	let world_loot: WorldLoot = Arc::new(RwLock::new(HashMap::new()));
-//	{
-//		let mut loot_writer = world_loot.write().await;
-//		for x in -150..150 {
-//			loot_writer.insert(
-//				Uuid::new_v4().as_simple().to_string(),
-//				LootObject {
-//					x: (x as f32)*100f32,
-//					y: (x as f32)*100f32,
-//					loot: LootContent::Cash(1),
-//				}
-//			);
-//		}
-//	}
+	//	{
+	//		let mut loot_writer = world_loot.write().await;
+	//		for x in -150..150 {
+	//			loot_writer.insert(
+	//				Uuid::new_v4().as_simple().to_string(),
+	//				LootObject {
+	//					x: (x as f32)*100f32,
+	//					y: (x as f32)*100f32,
+	//					loot: LootContent::Cash(1),
+	//				}
+	//			);
+	//		}
+	//	}
 
 	let health_route = warp::path!("health").and_then(handler::health_handler);
 
@@ -59,9 +59,8 @@ async fn main() {
 	let index = warp::path::end()
 		.and(warp::get())
 		.and_then(handler::serve_page);
-	
-	let assets = warp::path("static")
-		.and(warp::fs::dir("client"));
+
+	let assets = warp::path("static").and(warp::fs::dir("client"));
 
 	let ws_route = warp::path("ws")
 		.and(warp::ws())
@@ -78,16 +77,14 @@ async fn main() {
 		.with(warp::cors().allow_any_origin());
 
 	const USAGE: &str = "Usage: ./binary <port>";
-	let port: u16 = env::args().nth(1)
-		.expect(USAGE)
-		.parse()
-		.expect(USAGE);
+	let port: u16 = env::args().nth(1).expect(USAGE).parse().expect(USAGE);
 
 	warp::serve(routes)
-	//.tls()
-	//.cert_path("cert.pem")
-	//.key_path("key.rsa")
-	.run(([0, 0, 0, 0], port)).await;
+		//.tls()
+		//.cert_path("cert.pem")
+		//.key_path("key.rsa")
+		.run(([0, 0, 0, 0], port))
+		.await;
 }
 
 fn with_clients(clients: Clients) -> impl Filter<Extract = (Clients,), Error = Infallible> + Clone {
