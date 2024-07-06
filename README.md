@@ -73,7 +73,7 @@ The shared code in the `utils` directory is crucial for maintaining deterministi
 
 Key files:
 - `lib.rs`: Entry point for the shared code.
-- `trajectory.rs`: Contains the physics and movement logic for game objects.
+- `trajectory.rs`: Contains the core physics and movement logic for game objects. Most importantly, the [step](https://github.com/Cabbache/mpspaceshooter/blob/100faf577b112c930278113d5927afec67aec0b6/utils/src/trajectory.rs#L334) function which defines all physical movement from one time step to another time step.
 - `shared_gameobjects.rs`: Defines common game objects and their properties.
 
 ### Server Implementation
