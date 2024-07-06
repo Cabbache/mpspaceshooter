@@ -30,7 +30,7 @@ The `utils` directory contains shared Rust code that is compiled to WebAssembly 
 The `server` directory contains the Rust code for the game server.
 
 ### Client
-The `client` directory contains the client-side JavaScript code along with assets and WebAssembly bindings. It also 
+The `client` directory contains the client-side JavaScript code along with assets and WebAssembly bindings.
 
 ## Installation
 To get started, you need to have Rust installed on your system.
